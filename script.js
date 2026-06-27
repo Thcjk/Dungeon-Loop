@@ -27,9 +27,9 @@ const COMBAT_LAYOUT = {
   enemyBossReach: 68,
   introSpeed: 82,
   introOffscreen: 55,
-  enemyChaseSpeed: 88,
-  enemyBossChaseSpeed: 72,
-  enemySeparation: 22,
+  enemyChaseSpeed: 102,
+  enemyBossChaseSpeed: 84,
+  enemySeparation: 18,
   screenEdgePad: 8,
   minVisiblePx: 14
 };
@@ -1182,55 +1182,60 @@ function getEnemyGap(e, h) {
   return e.x - (h.x + h.w);
 }
 
-function getEnemyChaseX(e, h) {
+function getEnemyChaseGap(e) {
   const reach = getEnemyReach(e);
-  const idx = e.index || 0;
-  return h.x + h.w + Math.max(8, reach - 6) + idx * 14;
+  return Math.max(6, reach - 8);
 }
 
 function getEnemyMoveSpeed(e) {
-  if (e.walkingIn) return COMBAT_LAYOUT.introSpeed * 0.92;
+  if (e.walkingIn) return COMBAT_LAYOUT.introSpeed * 0.96;
   const base = e.isBoss ? COMBAT_LAYOUT.enemyBossChaseSpeed : COMBAT_LAYOUT.enemyChaseSpeed;
-  return base + (e.speed || 0) * 38;
+  return base + (e.speed || 0) * 42;
 }
 
-function separateEnemies(e, dt) {
+function separateEnemies(e, h, dt) {
+  const myGap = getEnemyGap(e, h);
   game.enemies.forEach((other) => {
     if (other === e || other.dead || other.hp <= 0) return;
     const dx = (e.x + e.w * 0.5) - (other.x + other.w * 0.5);
     const dist = Math.abs(dx);
-    const minDist = COMBAT_LAYOUT.enemySeparation + (e.w + other.w) * 0.22;
-    if (dist < minDist && dist > 0.1) {
-      const push = (minDist - dist) * 2.8 * dt;
-      e.x += dx > 0 ? push : -push;
-    }
+    const minDist = COMBAT_LAYOUT.enemySeparation + (e.w + other.w) * 0.16;
+    if (dist >= minDist || dist < 0.1) return;
+    const push = (minDist - dist) * 2.4 * dt;
+    const otherGap = getEnemyGap(other, h);
+    if (myGap > otherGap + 4) e.x += push;
+    else if (myGap < otherGap - 4) e.x -= push * 0.35;
+    else e.x += dx > 0 ? push * 0.5 : -push * 0.5;
   });
 }
 
 function updateEnemyMovement(e, h, dt) {
   if (e.dead || e.hp <= 0) return;
 
-  const reach = getEnemyReach(e);
+  const heroEdge = h.x + h.w;
   const gap = getEnemyGap(e, h);
-  const chaseX = getEnemyChaseX(e, h);
+  const idealGap = getEnemyChaseGap(e);
   let speed = getEnemyMoveSpeed(e);
 
-  if (e.attackWindup > 0.35) speed *= 0.25;
-  else if (e.attackAnim > 0) speed *= 0.45;
+  if (e.attackWindup > 0.45) speed *= 0.35;
+  else if (e.attackAnim > 0) speed *= 0.55;
 
-  const inRange = gap <= reach && gap >= -24 && e.x + e.w > h.x;
+  const inRange = enemyInCombatRange(e, h);
+  e.isChasing = !inRange;
 
-  if (!inRange && e.x > chaseX + 1) {
-    e.x -= speed * dt;
-  } else if (inRange && gap < -12) {
-    e.x += Math.min(speed * dt * 0.6, -gap - 8);
+  if (!inRange) {
+    const wantX = heroEdge + idealGap;
+    if (e.x > wantX + 0.5) e.x -= speed * dt;
+    else if (gap < -14) e.x += speed * dt * 0.5;
+  } else if (gap < -10) {
+    e.x += Math.min(speed * dt * 0.55, -gap - 8);
   }
 
-  const minX = h.x + h.w - e.w * 0.25;
+  const minX = heroEdge - e.w * 0.12;
   const maxX = CW + COMBAT_LAYOUT.introOffscreen + (e.index || 0) * 40;
   e.x = Math.max(minX, Math.min(maxX, e.x));
 
-  separateEnemies(e, dt);
+  separateEnemies(e, h, dt);
 }
 
 function safeSpawnWave() {
@@ -1490,7 +1495,7 @@ function updateWaveIntro() {
 
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0 || !e.walkingIn) return;
-    if (e.x > CW - 58) pending = true;
+    if (e.x > CW - 42) pending = true;
     else e.walkingIn = false;
   });
 
@@ -1852,26 +1857,27 @@ function updateFrame(dt) {
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
   game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
 
-  // Gegner – verfolgen den Helden und greifen in Nahreichweite an
+  // Gegner – jagen den Helden und greifen in Nahreichweite an
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0) return;
-    e.anim += dt * 6;
+    updateEnemyMovement(e, h, dt);
+    e.anim += dt * (e.isChasing ? 10 : 6);
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    updateEnemyMovement(e, h, dt);
-
-    if (e.walkingIn && e.x > CW - 58) {
+    if (e.walkingIn && e.x > CW - 42) {
       e.attackWindup = 0;
       return;
     }
 
     if (!enemyInCombatRange(e, h)) {
       e.attackWindup = 0;
-      e.attackTimer = Math.max(0, (e.attackTimer || 0) - dt * 0.5);
+      e.attackTimer = Math.max(0, (e.attackTimer || 0) - dt * 0.35);
       return;
     }
+
+    if ((e.attackTimer || 0) <= 0) e.attackTimer = 0.12;
 
     e.attackTimer += dt;
     const interval = e.attackInterval || 0.75;
