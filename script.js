@@ -11,7 +11,7 @@ let supabase = null;
 // --- Canvas ---
 const PIXEL = 3;
 const CHAR_PIXEL = 4;
-const WEAPON_PIXEL = 5;
+const WEAPON_PIXEL = 4;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
@@ -557,18 +557,13 @@ function spriteWeaponH(rows) { return rows.length * WEAPON_PIXEL; }
 function drawWeaponSprite(c, rows, x, y, flip, glowColor) {
   if (glowColor) {
     c.save();
-    c.globalAlpha = 0.35;
+    c.globalAlpha = 0.22;
     c.shadowColor = glowColor;
-    c.shadowBlur = 8;
-    drawSpriteScaled(c, rows, x - 1, y - 1, flip, WEAPON_PIXEL);
+    c.shadowBlur = 4;
+    drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
     c.restore();
   }
   drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
-  c.save();
-  c.globalCompositeOperation = "lighter";
-  c.globalAlpha = 0.18;
-  drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
-  c.restore();
 }
 function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
 function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
@@ -656,18 +651,18 @@ function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
   c.save();
   c.translate(cx, cy);
   c.rotate(angle);
-  const gripX = classKey === "mage" ? -7 : classKey === "ranger" ? -6 : 12;
-  const gripY = classKey === "mage" ? -38 : classKey === "ranger" ? -24 : -22;
+  const gripX = classKey === "mage" ? -4 : classKey === "ranger" ? -3 : 6;
+  const gripY = classKey === "mage" ? -28 : classKey === "ranger" ? -16 : -14;
   drawWeaponSprite(c, sp, gripX, gripY, false, glow);
   if (classKey === "mage") {
-    const pulse = 0.5 + Math.sin(performance.now() * 0.02) * 0.3;
+    const pulse = 0.45 + Math.sin(performance.now() * 0.02) * 0.25;
     c.globalAlpha = pulse;
-    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 3, gripY - 34, false, "#85c1e9");
+    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 2, gripY - 24, false, "#85c1e9");
     c.globalAlpha = 1;
   }
   if (classKey === "ranger" && attacking) {
-    c.globalAlpha = 0.7;
-    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 14, gripY - 2, false, "#f1c40f");
+    c.globalAlpha = 0.65;
+    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 10, gripY - 1, false, "#f1c40f");
     c.globalAlpha = 1;
   }
   c.restore();
@@ -689,7 +684,7 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   if (game.classKey === "warrior") {
     c.save();
     c.translate(cx, cy);
-    drawWeaponSprite(c, SPRITES.shield, flip ? 26 : -42, -10, flip, "#bdc3c7");
+    drawWeaponSprite(c, SPRITES.shield, flip ? 18 : -28, -6, flip, "#bdc3c7");
     c.restore();
   }
 
@@ -716,7 +711,7 @@ function drawPreviews() {
     const oy = Math.floor((cv.height - bh) / 2) + 2;
     const cx = ox + bw / 2;
     const cy = oy + bh / 2 + 4;
-    if (key === "warrior") drawWeaponSprite(c, SPRITES.shield, ox - 18, oy + 10, false, "#bdc3c7");
+    if (key === "warrior") drawWeaponSprite(c, SPRITES.shield, ox - 12, oy + 10, false, "#bdc3c7");
     drawCharSprite(c, body, ox, oy, false, PSC);
     const w = HERO_WEAPON[key];
     if (w) {
@@ -725,11 +720,11 @@ function drawPreviews() {
       c.save();
       c.translate(cx, cy);
       c.rotate(-0.55);
-      const gx = key === "mage" ? -6 : key === "ranger" ? -5 : 10;
-      const gy = key === "mage" ? -30 : key === "ranger" ? -18 : -18;
+      const gx = key === "mage" ? -4 : key === "ranger" ? -3 : 6;
+      const gy = key === "mage" ? -22 : key === "ranger" ? -14 : -14;
       const glow = key === "mage" ? "#5dade2" : key === "ranger" ? "#f1c40f" : "#ecf0f1";
       drawWeaponSprite(c, sp, gx, gy, false, glow);
-      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 3, gy - 28, false, "#85c1e9");
+      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 2, gy - 20, false, "#85c1e9");
       c.restore();
     }
   });
@@ -1322,63 +1317,96 @@ function getPath(world) {
   return world.path || { x: 40, w: CW - 80, center: "#3d2e1a", edge: "#2a1f12", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" };
 }
 
-function decorScreenX(d) {
-  const raw = ((d.x - game.scrollX * d.parallax) % (CW + 220)) - 40;
-  if (d.lane === "left") return 8 + (raw % 148);
-  if (d.lane === "right") return CW - 156 + (raw % 148);
+function decorScreenX(d, sp) {
   const path = getPath(getWorld());
-  return path.x + 24 + (raw % Math.max(80, path.w - 48));
+  const sw = sp ? spriteDecorW(sp) : 36;
+  const raw = ((d.x - game.scrollX * d.parallax) % (CW + 180)) - 30;
+  if (d.lane === "left") {
+    const maxX = path.x - sw - 2;
+    return Math.max(-sw / 2, Math.min(maxX, 2 + (raw % Math.max(24, maxX))));
+  }
+  const minX = path.x + path.w + 2;
+  const maxX = CW - sw - 2;
+  return minX + (raw % Math.max(24, maxX - minX));
 }
 
-const LANE_TYPES = {
-  left:  ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "fern", "root_cluster", "glow_mushroom", "pillar_ruin", "stalactite", "rock", "lava_rock", "obsidian"],
-  right: ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "fern", "glow_pod", "stone_lantern", "pillar_ruin", "torch", "banner", "dragon_bone", "cave_crystal"],
-  path:  ["mushroom", "glow_mushroom", "glow_pod", "stump", "bones", "bush", "rubble", "grave", "cross", "crystal", "skull_rock", "fern", "root_cluster"]
+const BG_TREE_TYPES = {
+  forest: ["pine_tree", "pine_silhouette", "tree", "dead_tree"],
+  cave:   ["stalactite", "rock", "cave_crystal"],
+  ruins:  ["pillar_ruin", "dead_tree", "banner"],
+  volcano:["lava_rock", "rock", "dead_tree"],
+  dragon: ["pine_silhouette", "obsidian", "dragon_bone", "cave_crystal"]
 };
 
 function initDecor() {
   const world = getWorld();
   game.decor = [];
   const themeTypes = world.decor;
-  const pick = (lane) => {
-    const pool = LANE_TYPES[lane].filter((t) => themeTypes.includes(t));
-    const src = pool.length ? pool : themeTypes;
-    return src[Math.floor(Math.random() * src.length)];
-  };
-  const parallaxFor = (lane) => (lane === "left" ? 0.26 : lane === "right" ? 0.34 : 0.5);
+  const pick = () => themeTypes[Math.floor(Math.random() * themeTypes.length)];
 
-  [["left", 20], ["right", 20], ["path", 16]].forEach(([lane, count]) => {
+  // Nur Hintergrund-Dekor an den Seiten – nie auf dem Weg
+  [["left", 10], ["right", 10]].forEach(([lane, count]) => {
     for (let i = 0; i < count; i++) {
-      const type = pick(lane);
-      const meta = DECOR_META[type] || { parallax: 0.3 };
+      const type = pick();
+      const meta = DECOR_META[type] || { parallax: 0.12 };
       const sp = SPRITES[type];
       const sh = sp ? spriteDecorH(sp) : 40;
-      const y = meta.ceiling
-        ? 2 + (i % 5) * 18 + Math.random() * 8
-        : GROUND - sh - (lane === "path" ? 0 : Math.floor(Math.random() * 6));
       game.decor.push({
-        x: i * 68 + Math.random() * 24,
+        x: i * 72 + Math.random() * 30,
         lane,
         type,
-        y,
-        parallax: parallaxFor(lane) + (Math.random() - 0.5) * 0.05,
+        y: GROUND - sh - Math.floor(Math.random() * 5),
+        parallax: (lane === "left" ? 0.1 : 0.14) + (Math.random() - 0.5) * 0.03,
         flip: Math.random() < 0.4
       });
     }
   });
-  if (themeTypes.includes("hanging_vine")) {
-    for (let i = 0; i < 10; i++) {
-      game.decor.push({
-        x: i * 64 + Math.random() * 20,
-        lane: i % 2 === 0 ? "left" : "right",
-        type: "hanging_vine",
-        y: 4 + (i % 4) * 16,
-        parallax: 0.08 + (Math.random() - 0.5) * 0.03,
-        flip: Math.random() < 0.3
-      });
-    }
-  }
   initWorldParticles();
+}
+
+function renderWorldBackTrees(world) {
+  const path = getPath(world);
+  const types = BG_TREE_TYPES[world.theme] || BG_TREE_TYPES.forest;
+
+  const drawSide = (side) => {
+    ctx.save();
+    if (side === "left") {
+      ctx.beginPath();
+      ctx.rect(0, 0, path.x, GROUND);
+      ctx.clip();
+    } else {
+      ctx.beginPath();
+      ctx.rect(path.x + path.w, 0, CW - path.x - path.w, GROUND);
+      ctx.clip();
+    }
+
+    for (let layer = 0; layer < 3; layer++) {
+      const parallax = 0.04 + layer * 0.035;
+      const scale = layer === 0 ? BG_PIXEL : layer === 1 ? DECOR_PIXEL : DECOR_PIXEL;
+      const alpha = 0.55 + layer * 0.18;
+      const count = 7 + layer * 2;
+
+      for (let i = 0; i < count; i++) {
+        const type = types[(i + layer) % types.length];
+        const sp = SPRITES[type];
+        if (!sp) continue;
+        const sh = sp[0].length * scale;
+        const sw = sp.length * scale;
+        const raw = ((i * 82 + layer * 40 - game.scrollX * parallax) % (CW + 120)) - 20;
+        const sx = side === "left"
+          ? (raw % Math.max(40, path.x + 20)) - 10
+          : path.x + path.w + 8 + (raw % Math.max(40, CW - path.x - path.w - 20));
+        const sy = GROUND - sw - layer * 8 - (i % 3) * 6;
+        ctx.globalAlpha = alpha;
+        drawSpriteScaled(ctx, sp, sx, sy, side === "right" && i % 2 === 0, scale);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  };
+
+  drawSide("left");
+  drawSide("right");
 }
 
 function initWorldParticles() {
@@ -1449,40 +1477,24 @@ function renderWorldDepth(world) {
   ctx.fillRect(path.x + path.w, PATH_TOP - 18, CW - path.x - path.w, GROUND - PATH_TOP + 18);
 
   if (world.theme === "forest") {
-    const sp = SPRITES.pine_silhouette;
-    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 84;
-    for (let i = 0; i < 16; i++) {
+    // Ferne Baum-Silhouetten (nur Hintergrund, hinter dem Weg)
+    for (let i = 0; i < 12; i++) {
       const side = i % 2 === 0;
-      const raw = ((i * 68 - game.scrollX * (side ? 0.07 : 0.09)) % (CW + 100)) - 20;
-      const sx = side ? raw % 130 : CW - 140 + (raw % 130);
-      if (sp) drawBgSprite(ctx, sp, sx, GROUND - sh - 4 - (i % 3) * 8, !side);
-    }
-    // Leuchtende Waldboden-Akzente (Hades-artig)
-    for (let i = 0; i < 24; i++) {
-      const gx = ((i * 47 - game.scrollX * 0.35) % (CW + 30)) - 8;
-      const gy = PATH_TOP + 4 + (i % 5) * 3;
-      const onPath = gx > path.x + 8 && gx < path.x + path.w - 8;
-      if (!onPath && gx > path.x - 40 && gx < path.x + path.w + 40) {
-        ctx.fillStyle = i % 3 === 0 ? world.particleColor : world.accent;
-        ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
-        ctx.fillRect(gx, gy, 2 + (i % 2), 2);
-        if (i % 5 === 0) {
-          ctx.globalAlpha = 0.15;
-          ctx.beginPath();
-          ctx.arc(gx + 1, gy + 1, 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
+      const raw = ((i * 72 - game.scrollX * 0.045) % (CW + 80)) - 15;
+      const sp = SPRITES.pine_silhouette;
+      const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 84;
+      const sx = side ? Math.min(raw, path.x - 30) : Math.max(raw, path.x + path.w + 10);
+      if (side ? sx < path.x - 10 : sx > path.x + path.w) {
+        drawBgSprite(ctx, sp, sx, GROUND - sh - (i % 3) * 10, !side);
       }
     }
-    ctx.fillStyle = path.wall || world.hill3;
-    for (let i = 0; i < 22; i++) {
-      const bx = ((i * 62 - game.scrollX * 0.12) % (CW + 40)) - 10;
-      const onLeft = bx < path.x - 10;
-      const onRight = bx > path.x + path.w + 10;
-      if (!onLeft && !onRight) continue;
-      ctx.globalAlpha = 0.35 + (i % 3) * 0.12;
-      ctx.fillRect(bx, PATH_TOP - 40 - (i % 4) * 12, 14 + (i % 3) * 6, GROUND - PATH_TOP + 36);
+    // Leucht-Akzente nur in Seitenstreifen
+    for (let i = 0; i < 18; i++) {
+      const gx = ((i * 47 - game.scrollX * 0.35) % (CW + 30)) - 8;
+      if (gx > path.x - 5 && gx < path.x + path.w + 5) continue;
+      ctx.fillStyle = i % 3 === 0 ? world.particleColor : world.accent;
+      ctx.globalAlpha = 0.2 + (i % 4) * 0.1;
+      ctx.fillRect(gx, PATH_TOP + 6 + (i % 4), 2, 2);
       ctx.globalAlpha = 1;
     }
   }
@@ -1618,129 +1630,72 @@ function renderWorldMidScatter(world) {
   const path = getPath(world);
   const scroll = game.scrollX;
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 36; i++) {
     const seed = i * 97;
-    const px = ((seed * 1.7 - scroll * (0.25 + (i % 5) * 0.06)) % (CW + 60)) - 20;
-    const side = px < path.x ? "left" : px > path.x + path.w ? "right" : "path";
-    const py = PATH_TOP - 8 - (seed % 55);
-    if (side === "path" && i % 3 !== 0) continue;
+    const px = ((seed * 1.7 - scroll * (0.2 + (i % 4) * 0.05)) % (CW + 60)) - 20;
+    if (px > path.x - 8 && px < path.x + path.w + 8) continue;
 
     if (world.theme === "forest") {
       ctx.fillStyle = i % 4 === 0 ? world.accent : world.moss;
-      ctx.globalAlpha = 0.2 + (i % 5) * 0.08;
-      if (i % 7 === 0) {
-        drawDecorSprite(ctx, SPRITES.fern, px, GROUND - spriteDecorH(SPRITES.fern) + (seed % 8), i % 2 === 0);
-      } else if (i % 11 === 0) {
+      ctx.globalAlpha = 0.18 + (i % 5) * 0.06;
+      if (i % 9 === 0 && px < path.x) {
         drawDecorSprite(ctx, SPRITES.glow_mushroom, px, GROUND - spriteDecorH(SPRITES.glow_mushroom), false);
+      } else if (i % 11 === 0 && px > path.x + path.w) {
+        drawDecorSprite(ctx, SPRITES.fern, px, GROUND - spriteDecorH(SPRITES.fern), i % 2 === 0);
       } else {
-        ctx.fillRect(px, py + 60, 3 + (i % 3), 2);
-        ctx.fillRect(px + 2, py + 58, 2, 2);
+        ctx.fillRect(px, PATH_TOP - 20 - (seed % 30), 2, 2);
       }
     } else if (world.theme === "cave") {
       ctx.fillStyle = world.accent;
-      ctx.globalAlpha = 0.12 + (i % 4) * 0.06;
-      ctx.fillRect(px, py + 50, 2, 2);
-      if (i % 9 === 0) drawDecorSprite(ctx, SPRITES.cave_crystal, px, GROUND - spriteDecorH(SPRITES.cave_crystal) - 2, false);
+      ctx.globalAlpha = 0.1 + (i % 4) * 0.05;
+      ctx.fillRect(px, PATH_TOP - 15 - (seed % 25), 2, 2);
+      if (i % 10 === 0) drawDecorSprite(ctx, SPRITES.cave_crystal, px, GROUND - spriteDecorH(SPRITES.cave_crystal) - 2, false);
     } else if (world.theme === "ruins") {
-      ctx.fillStyle = "rgba(180,180,190,0.15)";
-      ctx.fillRect(px, py + 55, 4, 2);
-      if (i % 8 === 0) drawDecorSprite(ctx, SPRITES.rubble, px, GROUND - spriteDecorH(SPRITES.rubble), i % 2 === 0);
+      if (i % 9 === 0) drawDecorSprite(ctx, SPRITES.rubble, px, GROUND - spriteDecorH(SPRITES.rubble), i % 2 === 0);
     } else if (world.theme === "volcano") {
       ctx.fillStyle = i % 2 ? "#f39c12" : "#e74c3c";
-      ctx.globalAlpha = 0.2;
-      ctx.fillRect(px, py + 58, 2, 2);
+      ctx.globalAlpha = 0.18;
+      ctx.fillRect(px, PATH_TOP - 10 - (seed % 20), 2, 2);
     } else if (world.theme === "dragon") {
-      ctx.fillStyle = world.accent;
-      ctx.globalAlpha = 0.15;
-      ctx.fillRect(px, py + 54, 2, 2);
-      if (i % 10 === 0) drawDecorSprite(ctx, SPRITES.glow_pod, px, GROUND - spriteDecorH(SPRITES.glow_pod), false);
+      if (i % 12 === 0) drawDecorSprite(ctx, SPRITES.glow_pod, px, GROUND - spriteDecorH(SPRITES.glow_pod), false);
     }
     ctx.globalAlpha = 1;
-  }
-
-  // Wurzeln / Steine am Wegrand
-  for (let i = 0; i < 14; i++) {
-    const rx = path.x - 8 + ((i * 52 - scroll * 0.5) % (path.w + 16));
-    const sp = world.theme === "forest" ? SPRITES.root_cluster : SPRITES.rubble;
-    if (sp && i % 2 === 0) {
-      drawDecorSprite(ctx, sp, rx, GROUND - spriteDecorH(sp) + 2, i % 3 === 0);
-    }
-  }
-}
-
-function renderWorldForegroundFrame(world) {
-  const sp = SPRITES.branch_fg;
-  if (!sp) return;
-
-  for (let i = 0; i < 5; i++) {
-    const lx = -10 + (i * 38) % 120;
-    drawDecorSprite(ctx, sp, lx, PATH_TOP - 20 + (i % 3) * 8, false);
-    drawDecorSprite(ctx, sp, CW - 90 + (i * 34) % 100, PATH_TOP - 16 + (i % 2) * 10, true);
-  }
-
-  ctx.fillStyle = world.theme === "forest" ? "rgba(4,14,10,0.55)" : "rgba(8,6,14,0.5)";
-  const fgGradL = ctx.createLinearGradient(0, 0, 90, 0);
-  fgGradL.addColorStop(0, "rgba(0,0,0,0.65)");
-  fgGradL.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = fgGradL;
-  ctx.fillRect(0, PATH_TOP - 30, 95, GROUND - PATH_TOP + 40);
-  const fgGradR = ctx.createLinearGradient(CW, 0, CW - 90, 0);
-  fgGradR.addColorStop(0, "rgba(0,0,0,0.65)");
-  fgGradR.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = fgGradR;
-  ctx.fillRect(CW - 95, PATH_TOP - 30, 95, GROUND - PATH_TOP + 40);
-
-  if (world.theme === "forest") {
-    for (let i = 0; i < 6; i++) {
-      drawDecorSprite(ctx, SPRITES.hanging_vine, 12 + i * 22, 8 + (i % 3) * 12, false);
-      drawDecorSprite(ctx, SPRITES.hanging_vine, CW - 40 - i * 24, 10 + (i % 2) * 14, true);
-    }
   }
 }
 
 function renderWorldCanopy(world) {
   const path = getPath(world);
+  const SKY_H = PATH_TOP - 55;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, CW, SKY_H);
+  ctx.clip();
 
   if (world.theme === "forest") {
     ctx.fillStyle = world.hill3 || "#123824";
-    for (let i = 0; i < 22; i++) {
-      const cx = (i * 44 - game.scrollX * 0.03) % (CW + 40);
-      const cy = 4 + (i % 5) * 11;
-      const r = 20 + (i % 6) * 4;
-      ctx.globalAlpha = 0.6 + (i % 3) * 0.1;
+    for (let i = 0; i < 20; i++) {
+      const cx = (i * 44 - game.scrollX * 0.025) % (CW + 40);
+      const cy = 6 + (i % 5) * 9;
+      ctx.globalAlpha = 0.5 + (i % 3) * 0.12;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, r, r * 0.62, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, 16 + (i % 5) * 3, 10 + (i % 3) * 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = world.leaf || "#2d6a4f";
-    for (let i = 0; i < 35; i++) {
-      const lx = (i * 31 + game.scrollX * 0.02) % CW;
-      ctx.globalAlpha = 0.22 + (i % 4) * 0.1;
-      ctx.fillRect(lx, 2 + (i % 7) * 8, 5 + (i % 4) * 2, 3);
+    for (let i = 0; i < 28; i++) {
+      const lx = (i * 31 + game.scrollX * 0.015) % CW;
+      ctx.globalAlpha = 0.2 + (i % 4) * 0.08;
+      ctx.fillRect(lx, 4 + (i % 6) * 7, 4 + (i % 3), 2);
     }
     ctx.globalAlpha = 1;
-    const vineGrad = ctx.createLinearGradient(0, 0, 0, 110);
-    vineGrad.addColorStop(0, "rgba(8,28,18,0.82)");
-    vineGrad.addColorStop(0.6, "rgba(8,28,18,0.35)");
-    vineGrad.addColorStop(1, "rgba(8,28,18,0)");
-    ctx.fillStyle = vineGrad;
-    ctx.fillRect(0, 0, CW, 110);
-    for (let i = 0; i < 14; i++) {
-      const vx = (i * 52 - game.scrollX * 0.04) % CW;
+    for (let i = 0; i < 10; i++) {
+      const vx = (i * 58 - game.scrollX * 0.03) % CW;
       ctx.fillStyle = world.moss;
-      ctx.globalAlpha = 0.45;
-      ctx.fillRect(vx, 0, 2, 42 + (i % 5) * 10);
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(vx, 0, 2, 28 + (i % 4) * 8);
       ctx.globalAlpha = 1;
-    }
-    // Lichtstrahlen durch Blätterdach
-    for (let i = 0; i < 5; i++) {
-      const bx = path.x + 40 + i * 110 + (game.scrollX * 0.02) % 80;
-      const beam = ctx.createLinearGradient(bx, 0, bx + 30, PATH_TOP);
-      beam.addColorStop(0, "rgba(149,225,163,0.08)");
-      beam.addColorStop(1, "rgba(149,225,163,0)");
-      ctx.fillStyle = beam;
-      ctx.fillRect(bx, 0, 28, PATH_TOP - 20);
     }
   }
 
@@ -1807,6 +1762,8 @@ function renderWorldCanopy(world) {
       ctx.globalAlpha = 1;
     }
   }
+
+  ctx.restore();
 }
 
 function renderWorldAtmosphere(world) {
@@ -2359,20 +2316,22 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  // Welt: Himmel → Tiefe → Weg → Dekor → Boden → Kronendach → Atmosphäre
+  // Alles Hintergrund – Charaktere immer im Vordergrund
   renderWorldSky(world);
+  renderWorldCanopy(world);
   renderWorldDepth(world);
+  renderWorldBackTrees(world);
   renderWorldMidScatter(world);
   renderWorldWalkway(world);
 
   game.decor.forEach((d) => {
-    const dx = decorScreenX(d);
     const sp = SPRITES[d.type];
-    if (sp) drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
+    if (!sp) return;
+    const dx = decorScreenX(d, sp);
+    drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
   });
 
   renderWorldGround(world);
-  renderWorldCanopy(world);
   renderWorldAtmosphere(world);
 
   if (!game.hero) {
@@ -2487,8 +2446,6 @@ function render() {
   drawHero(ctx, h, bob, atkOff, hurtOff, world);
   ctx.globalAlpha = 1;
   ctx.restore();
-
-  renderWorldForegroundFrame(world);
 
   game.projectiles.forEach((p) => {
     const sc = p.big ? 1.5 : 1;
