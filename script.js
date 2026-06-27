@@ -31,7 +31,11 @@ const PAL = {
   c: "#1abc9c", C: "#16a085", a: "#2c3e50",
   t: "#2e4053", T: "#4a6fa5", i: "#85c1e9",
   z: "#52be80", Z: "#1e8449", f: "#f39c12",
-  x: "#abb2b9", X: "#808b96", q: "#1c2833"
+  x: "#abb2b9", X: "#808b96", q: "#1c2833",
+  j: "#0b1f14", J: "#1a3d2a", v: "#2d6a4f", V: "#52b788",
+  L: "#081c15", M: "#1b4332", N: "#40916c", O: "#74c69d",
+  A: "#4a3728", E: "#6b4f3a", Q: "#95e1a3", U: "#5c4d7a",
+  Y: "#d4a574"
 };
 
 const SPRITES = {
@@ -107,6 +111,64 @@ const SPRITES = {
     "....KK....","...KGGK...","..KGGGGK..","..KGGGGK..",
     "...KGGK...","....GK....","....GK....","...KGGK..."
   ],
+  pine_tree: [
+    "....KK....","...KLLK...","..KJMJK..",".KJMMJK.",
+    "..KJMJK..","...KJJk...","....Jk....","...KAAK...","..KAAAK.."
+  ],
+  pine_silhouette: [
+    "...KKK...","..KLLLK..",".KJJMJK.","KJJMMJJK",
+    ".KJJMJK.","..KJJJK..","...KJK..."
+  ],
+  dead_tree: [
+    "....KK....","...KAAK...","..KAEAK..",".Kk..kK.",
+    "..K...K..","...K.K....","...K.K....","..K...K.."
+  ],
+  mushroom: [
+    "....KK....","..KRRRRK..",".KRWwWRK.","..KWWWK..",
+    "...KWK....","...KWK....","...KKK..."
+  ],
+  stump: [
+    "...KKK...","..KAAAK..",".KAAAAAK.",".KAAEAAK.","..KAAAK.."
+  ],
+  bush_dark: [
+    "....KK....","..KvVvK..",".KvNNVvk.",".KvNNVvk.",
+    "..KvVVk..","...KVK..."
+  ],
+  bones: [
+    "....KK....","..KWWWK..",".KW.K.WK.","..KWWWK..","...KKK..."
+  ],
+  firefly: ["..K..",".QyQ.","..K.."],
+  stalactite: [
+    "...KKK...","..KXXXk..",".KXXxXXK.","..KXXK...","...KXK..."
+  ],
+  skull_rock: [
+    "...KKK...","..KWWWk..",".KWsWsWK.",".KWWWWWK.","..KXXXK.."
+  ],
+  torch: [
+    "....KK....","...KffK...","..KffffK..","...KyyK...","...KDDK...","...KDDK..."
+  ],
+  pillar_ruin: [
+    "...KKK...","..KXXXK..",".KXXXXXK.",".KXXXXXK.",".KXXxXXK.","..KXXXK.."
+  ],
+  rubble: [
+    "....KK....","..KXXXK..",".KxX.XxK.","..KXXXK.."
+  ],
+  banner: [
+    "....KK....","...KRRK...","..KRRRRK..","..KRRRRK..","...KDDK...","...KDDK..."
+  ],
+  lava_rock: [
+    "...KKK...","..KHHHk..",".KHffHHK.",".KHHHHHK.","..KHHHK.."
+  ],
+  smoke_puff: ["..K..",".KXK.","..K.."],
+  dragon_bone: [
+    "....KKKK....","..KYYYYK..",".KYYYYYYK.","..KYY.YK..","...KYYK...","....YK...."
+  ],
+  obsidian: [
+    "...KKK...","..Kuuuk..",".KuPPuPK.",".KuPPuPK.","..KuuuK.."
+  ],
+  cave_crystal: [
+    "...KiK...","..KiBiK..",".KiBBiBK.",".KiBiBiK.","..KiBK..."
+  ],
   grave: [
     "...KKK...","..KWWWk..",".KWWWWWK.",".KWWWWWK.",
     ".KWWWWWK.","..KWWWK..","...KKK..."
@@ -172,46 +234,89 @@ const BOSS_MONSTERS = ["Ork-Champion","Schattenritter","Feuerdämon","Drachenwä
 
 const WORLDS = [
   {
-    name: "Dunkler Wald", min: 1, danger: 1,
+    name: "Dunkler Wald", min: 1, danger: 1, theme: "forest",
     hpMult: 1, atkMult: 1, speedMult: 1,
-    bg: "#030308", sky: "#08081a", hill: "#0c1820",
-    ground: "#142838", tile1: "#1e3d52", tile2: "#2a5870", tile3: "#1a3348",
-    accent: "#3dba8c", star: "#4a9a7a", fog: "rgba(10,30,24,0.4)",
-    decor: ["tree", "tree", "grave", "bush", "cross"]
+    sky: "#040e0a", bg: "#071812", hill: "#0a2218",
+    hill2: "#0d2e1e", hill3: "#123824",
+    ground: "#1a1208", tile1: "#2a1f12", tile2: "#3d2e1a", tile3: "#2a2215",
+    moss: "#1b4332", leaf: "#2d6a4f",
+    accent: "#52b788", star: "#74c69d", fog: "rgba(8,28,18,0.55)",
+    fog2: "rgba(20,50,30,0.35)", moonTint: "#95e1a3",
+    particleColor: "#95e1a3", hasMoon: true, hasStars: false,
+    decor: ["pine_tree", "pine_tree", "pine_silhouette", "dead_tree", "mushroom", "stump", "bush_dark", "grave", "bones", "bush"]
   },
   {
-    name: "Verfluchte Höhle", min: 10, danger: 2,
+    name: "Verfluchte Höhle", min: 10, danger: 2, theme: "cave",
     hpMult: 1.6, atkMult: 1.45, speedMult: 1.15,
-    bg: "#04040c", sky: "#0a0a1e", hill: "#12122a",
-    ground: "#1a1a32", tile1: "#2a2a48", tile2: "#3a3a62", tile3: "#22224a",
-    accent: "#9b59b6", star: "#7d5ea8", fog: "rgba(20,10,40,0.5)",
-    decor: ["rock", "rock", "crystal", "grave", "cross"]
+    sky: "#0a0814", bg: "#120e1e", hill: "#1a1430", hill2: "#221a3a", hill3: "#2a2050",
+    ground: "#18141f", tile1: "#2a2438", tile2: "#3a3250", tile3: "#2a2238",
+    moss: "#4a235a", leaf: "#6c3483",
+    accent: "#bb86fc", star: "#9b59b6", fog: "rgba(30,10,50,0.5)",
+    fog2: "rgba(60,20,90,0.25)", moonTint: "#9b59b6",
+    particleColor: "#bb86fc", hasMoon: false, hasStars: false,
+    decor: ["stalactite", "stalactite", "cave_crystal", "skull_rock", "rock", "rock", "grave", "bones", "crystal"]
   },
   {
-    name: "Schlossruine", min: 20, danger: 3,
+    name: "Schlossruine", min: 20, danger: 3, theme: "ruins",
     hpMult: 2.2, atkMult: 1.85, speedMult: 1.25,
-    bg: "#060510", sky: "#100c1a", hill: "#1a1428",
-    ground: "#282038", tile1: "#3a3050", tile2: "#4a4060", tile3: "#322848",
-    accent: "#95a5a6", star: "#708090", fog: "rgba(30,25,40,0.45)",
-    decor: ["grave", "grave", "rock", "cross", "tree"]
+    sky: "#0c0a14", bg: "#14101c", hill: "#1c1628", hill2: "#241c32", hill3: "#2c243c",
+    ground: "#2a2430", tile1: "#3a3448", tile2: "#4a4458", tile3: "#3a3448",
+    moss: "#3d4a3d", leaf: "#5a6a5a",
+    accent: "#bdc3c7", star: "#95a5a6", fog: "rgba(25,20,35,0.45)",
+    fog2: "rgba(40,35,50,0.3)", moonTint: "#ecf0f1",
+    particleColor: "#f39c12", hasMoon: true, hasStars: true,
+    decor: ["pillar_ruin", "pillar_ruin", "rubble", "rubble", "torch", "banner", "grave", "grave", "rock", "cross"]
   },
   {
-    name: "Feuervulkan", min: 30, danger: 4,
+    name: "Feuervulkan", min: 30, danger: 4, theme: "volcano",
     hpMult: 3.0, atkMult: 2.3, speedMult: 1.35,
-    bg: "#0a0204", sky: "#180608", hill: "#280a08",
-    ground: "#3a1208", tile1: "#5a1a10", tile2: "#7a2818", tile3: "#4a150c",
-    accent: "#e74c3c", star: "#f39c12", fog: "rgba(60,15,5,0.5)",
-    decor: ["rock", "rock", "crystal", "cross"]
+    sky: "#180404", bg: "#280808", hill: "#3a0c08", hill2: "#4a1008", hill3: "#5a180a",
+    ground: "#2a0804", tile1: "#4a1208", tile2: "#6a1a0c", tile3: "#4a1008",
+    moss: "#5a1a08", leaf: "#922b21",
+    accent: "#e74c3c", star: "#f39c12", fog: "rgba(80,20,5,0.45)",
+    fog2: "rgba(120,40,10,0.3)", moonTint: "#f39c12",
+    particleColor: "#f39c12", hasMoon: false, hasStars: false,
+    decor: ["lava_rock", "lava_rock", "rock", "rock", "crystal", "smoke_puff", "bones", "rubble"]
   },
   {
-    name: "Drachenland", min: 40, danger: 5,
+    name: "Drachenland", min: 40, danger: 5, theme: "dragon",
     hpMult: 4.0, atkMult: 2.9, speedMult: 1.45,
-    bg: "#05020a", sky: "#0c0618", hill: "#180a28",
-    ground: "#220e38", tile1: "#3a1860", tile2: "#502080", tile3: "#2a1048",
-    accent: "#f39c12", star: "#d4a017", fog: "rgba(40,10,60,0.5)",
-    decor: ["crystal", "grave", "rock", "cross", "tree"]
+    sky: "#08040e", bg: "#10081a", hill: "#180c28", hill2: "#201038", hill3: "#281448",
+    ground: "#1a0c28", tile1: "#2a1440", tile2: "#3a1c58", tile3: "#2a1048",
+    moss: "#4a1860", leaf: "#6a2080",
+    accent: "#f1c40f", star: "#d4a017", fog: "rgba(50,15,70,0.45)",
+    fog2: "rgba(80,30,100,0.25)", moonTint: "#f1c40f",
+    particleColor: "#f1c40f", hasMoon: true, hasStars: true,
+    decor: ["dragon_bone", "obsidian", "obsidian", "cave_crystal", "pillar_ruin", "crystal", "grave", "rock", "banner"]
   }
 ];
+
+const DECOR_META = {
+  pine_tree:       { h: 52, parallax: 0.35 },
+  pine_silhouette: { h: 38, parallax: 0.12 },
+  dead_tree:       { h: 44, parallax: 0.3 },
+  mushroom:        { h: 28, parallax: 0.4 },
+  stump:           { h: 18, parallax: 0.45 },
+  bush_dark:       { h: 22, parallax: 0.42 },
+  bones:           { h: 16, parallax: 0.5 },
+  tree:            { h: 36, parallax: 0.35 },
+  bush:            { h: 20, parallax: 0.42 },
+  grave:           { h: 30, parallax: 0.4 },
+  cross:           { h: 18, parallax: 0.38 },
+  rock:            { h: 22, parallax: 0.4 },
+  crystal:         { h: 20, parallax: 0.38 },
+  stalactite:      { h: 28, parallax: 0.15, ceiling: true },
+  cave_crystal:    { h: 24, parallax: 0.35 },
+  skull_rock:      { h: 26, parallax: 0.42 },
+  torch:           { h: 32, parallax: 0.45 },
+  pillar_ruin:     { h: 48, parallax: 0.28 },
+  rubble:          { h: 16, parallax: 0.48 },
+  banner:          { h: 38, parallax: 0.32 },
+  lava_rock:       { h: 24, parallax: 0.4 },
+  smoke_puff:      { h: 12, parallax: 0.08, ceiling: true },
+  dragon_bone:     { h: 34, parallax: 0.3 },
+  obsidian:        { h: 22, parallax: 0.4 }
+};
 
 const LOOT_TYPES = ["Waffe","Rüstung","Amulett","Zauberbuch"];
 const RARITIES = [
@@ -258,6 +363,7 @@ const game = {
   hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
   attackEffects: [], screenShake: 0,
   waveNumber: 0, currentWave: null,
+  worldParticles: [],
   combatLog: [], bestLoot: null,
   specialTimer: 0, lastShot: 0,
   scrollX: 0, decor: [], waveCooldown: 0,
@@ -679,6 +785,7 @@ function resetRun() {
   game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
   game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveCooldown = 0;
   game.waveNumber = 0; game.currentWave = null;
+  game.worldParticles = [];
   $("loot-display").classList.add("hidden");
   initDecor();
 }
@@ -887,13 +994,279 @@ function initDecor() {
   const world = getWorld();
   game.decor = [];
   const types = world.decor;
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 24; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    const meta = DECOR_META[type] || { h: 30, parallax: 0.3 };
+    const y = meta.ceiling
+      ? 6 + Math.random() * 45
+      : GROUND - meta.h - Math.floor(Math.random() * 12);
     game.decor.push({
-      x: i * 75 + Math.random() * 30,
-      type: types[Math.floor(Math.random() * types.length)],
-      y: GROUND - 35 - Math.random() * 45,
-      parallax: 0.2 + Math.random() * 0.25
+      x: i * 58 + Math.random() * 35,
+      type,
+      y,
+      parallax: meta.parallax + (Math.random() - 0.5) * 0.06,
+      flip: Math.random() < 0.45
     });
+  }
+  initWorldParticles();
+}
+
+function initWorldParticles() {
+  const world = getWorld();
+  game.worldParticles = [];
+  const n = world.theme === "forest" ? 28 : world.theme === "volcano" ? 22 : 16;
+  for (let i = 0; i < n; i++) {
+    game.worldParticles.push({
+      x: Math.random() * CW,
+      y: 20 + Math.random() * (GROUND - 40),
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.4 + Math.random() * 1.2,
+      size: world.theme === "volcano" ? 2 + Math.random() * 2 : 1 + Math.random() * 1.5,
+      drift: (Math.random() - 0.5) * 12
+    });
+  }
+}
+
+function renderWorldSky(world) {
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
+  grad.addColorStop(0, world.sky);
+  grad.addColorStop(0.55, world.bg);
+  grad.addColorStop(1, world.hill);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CW, GROUND);
+
+  if (world.theme === "cave") {
+    ctx.fillStyle = world.hill2 || world.hill;
+    for (let i = 0; i < 6; i++) {
+      const cx = ((i * 140 - game.scrollX * 0.04) % (CW + 160)) - 40;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx + 50, 0);
+      ctx.lineTo(cx + 25, 55 + i * 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = world.fog2 || world.fog;
+    ctx.fillRect(0, 0, CW, 70);
+    return;
+  }
+
+  const hills = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
+  hills.forEach((col, layer) => {
+    ctx.fillStyle = col;
+    const parallax = 0.05 + layer * 0.04;
+    for (let i = 0; i < 6; i++) {
+      const hx = ((i * 150 - game.scrollX * parallax) % (CW + 180)) - 50;
+      const hh = 45 + layer * 18;
+      const hy = GROUND - hh - layer * 12;
+      ctx.beginPath();
+      ctx.moveTo(hx, GROUND);
+      ctx.quadraticCurveTo(hx + 70, hy - 20, hx + 140, GROUND);
+      ctx.fill();
+    }
+  });
+
+  if (world.theme === "forest") {
+    ctx.fillStyle = world.hill3 || "#123824";
+    for (let i = 0; i < 8; i++) {
+      const sx = ((i * 95 - game.scrollX * 0.06) % (CW + 100)) - 20;
+      const sp = SPRITES.pine_silhouette;
+      if (sp) drawSprite(ctx, sp, sx, GROUND - spriteH(sp) - 8 - (i % 3) * 6, false);
+    }
+  }
+
+  if (world.theme === "ruins") {
+    ctx.fillStyle = "rgba(30,25,40,0.7)";
+    for (let i = 0; i < 4; i++) {
+      const rx = ((i * 200 - game.scrollX * 0.05) % (CW + 120)) - 30;
+      ctx.fillRect(rx, GROUND - 90 - i * 5, 18, 90);
+      ctx.fillRect(rx + 30, GROUND - 60, 40, 8);
+    }
+  }
+
+  if (world.theme === "volcano") {
+    ctx.fillStyle = world.hill3 || "#5a180a";
+    for (let i = 0; i < 3; i++) {
+      const vx = ((i * 220 - game.scrollX * 0.03) % (CW + 80)) + 40;
+      ctx.beginPath();
+      ctx.moveTo(vx, GROUND);
+      ctx.lineTo(vx + 60, GROUND - 100 - i * 15);
+      ctx.lineTo(vx + 120, GROUND);
+      ctx.fill();
+    }
+  }
+
+  if (world.theme === "dragon") {
+    for (let i = 0; i < 3; i++) {
+      const dx = ((i * 250 - game.scrollX * 0.04) % (CW + 100)) - 20;
+      const sp = SPRITES.dragon_bone;
+      if (sp) drawSprite(ctx, sp, dx, GROUND - spriteH(sp) - 5, i % 2 === 0);
+    }
+  }
+}
+
+function renderWorldAtmosphere(world) {
+  if (world.hasStars !== false && world.theme !== "cave" && world.theme !== "volcano") {
+    for (let i = 0; i < 35; i++) {
+      const sx = (i * 67 + game.scrollX * 0.05) % CW;
+      const sy = 12 + (i * 43) % (GROUND - 90);
+      ctx.fillStyle = world.star;
+      if (i % 6 === 0 && world.theme === "ruins") {
+        drawSprite(ctx, SPRITES.cross, sx, sy, false);
+      } else {
+        ctx.globalAlpha = 0.4 + (i % 5) * 0.12;
+        ctx.fillRect(sx, sy, 2, 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  if (world.hasMoon) {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    if (world.moonTint) {
+      ctx.filter = "none";
+      drawSprite(ctx, SPRITES.moon, CW - 72, 22, false);
+      ctx.fillStyle = world.moonTint;
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(CW - 78, 16, 30, 30);
+    } else {
+      drawSprite(ctx, SPRITES.moon, CW - 72, 22, false);
+    }
+    ctx.restore();
+  }
+
+  if (world.theme === "forest") {
+    game.worldParticles.forEach((p) => {
+      const fx = (p.x + game.scrollX * 0.02 + Math.sin(p.phase) * 8) % CW;
+      const fy = p.y + Math.cos(p.phase * 1.3) * 6;
+      ctx.fillStyle = world.particleColor || "#95e1a3";
+      ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.25;
+      ctx.fillRect(fx, fy, p.size, p.size);
+      if (p.size > 1.5) ctx.fillRect(fx - 1, fy, 1, 1);
+    });
+    ctx.globalAlpha = 1;
+  } else if (world.theme === "volcano") {
+    game.worldParticles.forEach((p) => {
+      const fx = (p.x + game.scrollX * 0.08) % CW;
+      const fy = p.y - ((game.scrollX * 0.02 + p.phase * 10) % 80);
+      ctx.fillStyle = p.phase % 2 > 1 ? "#f39c12" : "#e74c3c";
+      ctx.globalAlpha = 0.5 + Math.sin(p.phase) * 0.3;
+      ctx.fillRect(fx, fy, p.size, p.size);
+    });
+    ctx.globalAlpha = 1;
+  } else if (world.theme === "cave" || world.theme === "dragon") {
+    game.worldParticles.forEach((p) => {
+      const fx = (p.x + Math.sin(p.phase) * 5) % CW;
+      const fy = p.y + Math.cos(p.phase) * 4;
+      ctx.fillStyle = world.particleColor || world.accent;
+      ctx.globalAlpha = 0.25 + Math.sin(p.phase * 2) * 0.2;
+      ctx.fillRect(fx, fy, 2, 2);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.fillStyle = world.fog;
+  ctx.fillRect(0, GROUND - 70, CW, 55);
+  if (world.fog2) {
+    ctx.fillStyle = world.fog2;
+    ctx.fillRect(0, GROUND - 45, CW, 35);
+  }
+}
+
+function renderWorldGround(world) {
+  ctx.fillStyle = world.ground;
+  ctx.fillRect(0, GROUND, CW, CH - GROUND);
+
+  if (world.theme === "forest") {
+    const tileW = 20, tileH = 10;
+    for (let row = 0; row < 4; row++) {
+      for (let tx = 0; tx < CW / tileW + 2; tx++) {
+        const ox = tx * tileW - (game.scrollX % tileW);
+        const oy = GROUND + row * tileH;
+        const colors = [world.tile1, world.tile2, world.tile3, world.moss];
+        ctx.fillStyle = colors[(tx + row) % colors.length];
+        ctx.fillRect(ox, oy, tileW - 1, tileH - 1);
+        if (row === 0 && tx % 3 === 0) {
+          ctx.fillStyle = world.leaf || world.accent;
+          ctx.fillRect(ox + 4, oy - 2, 3, 2);
+          ctx.fillRect(ox + 10, oy - 1, 2, 2);
+        }
+      }
+    }
+    ctx.fillStyle = world.moss;
+    for (let i = 0; i < 12; i++) {
+      const mx = ((i * 55 - game.scrollX * 0.5) % (CW + 30)) - 5;
+      ctx.fillRect(mx, GROUND - 2, 8, 3);
+      ctx.fillRect(mx + 2, GROUND - 4, 4, 2);
+    }
+    return;
+  }
+
+  if (world.theme === "cave") {
+    const tileW = 18, tileH = 11;
+    for (let row = 0; row < 3; row++) {
+      for (let tx = 0; tx < CW / tileW + 2; tx++) {
+        const ox = tx * tileW - (game.scrollX % tileW);
+        const oy = GROUND + row * tileH;
+        ctx.fillStyle = [world.tile1, world.tile2, world.tile3][(tx + row) % 3];
+        ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
+        if ((tx + row) % 4 === 0) {
+          ctx.fillStyle = world.accent;
+          ctx.globalAlpha = 0.15;
+          ctx.fillRect(ox + 2, oy + 2, tileW - 6, tileH - 6);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    return;
+  }
+
+  if (world.theme === "volcano") {
+    const tileW = 16, tileH = 12;
+    for (let row = 0; row < 3; row++) {
+      for (let tx = 0; tx < CW / tileW + 2; tx++) {
+        const ox = tx * tileW - (game.scrollX % tileW);
+        const oy = GROUND + row * tileH;
+        ctx.fillStyle = [world.tile1, world.tile2, world.tile3][(tx + row) % 3];
+        ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
+        if ((tx * 7 + row * 3) % 5 === 0) {
+          ctx.fillStyle = "#f39c12";
+          ctx.globalAlpha = 0.6;
+          ctx.fillRect(ox + 4, oy + 2, 4, 2);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    ctx.fillStyle = "rgba(231,76,60,0.35)";
+    for (let i = 0; i < 6; i++) {
+      const lx = ((i * 90 - game.scrollX * 0.3) % (CW + 40)) - 10;
+      ctx.fillRect(lx, GROUND - 1, 20, 3);
+    }
+    return;
+  }
+
+  const tileW = 16, tileH = 12;
+  for (let row = 0; row < 3; row++) {
+    for (let tx = 0; tx < CW / tileW + 2; tx++) {
+      const ox = tx * tileW - (game.scrollX % tileW);
+      const oy = GROUND + row * tileH;
+      const colors = [world.tile1, world.tile2, world.tile3];
+      ctx.fillStyle = colors[(tx + row) % 3];
+      ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(ox, oy + tileH - 4, tileW - 2, 2);
+      if (world.theme === "ruins" && row === 0 && tx % 2 === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        ctx.fillRect(ox, oy, tileW - 2, 2);
+      }
+      if (world.theme === "dragon" && (tx + row) % 3 === 0) {
+        ctx.fillStyle = world.accent;
+        ctx.globalAlpha = 0.12;
+        ctx.fillRect(ox + 1, oy + 1, tileW - 4, tileH - 4);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 }
 
@@ -1156,6 +1529,16 @@ function updateFrame(dt) {
   // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
   if (mouse.onCanvas) attack();
 
+  // Ambient-Weltpartikel (Glühwürmchen, Funken, Kristallstaub)
+  if (game.worldParticles.length) {
+    game.worldParticles.forEach((p) => {
+      p.phase += dt * p.speed;
+      p.x += p.drift * dt;
+      if (p.x < -5) p.x = CW + 5;
+      if (p.x > CW + 5) p.x = -5;
+    });
+  }
+
   // Schwert-Slashes & Effekte altern
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
   game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
@@ -1344,61 +1727,19 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  // Himmel
-  const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
-  grad.addColorStop(0, world.sky);
-  grad.addColorStop(1, world.bg);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, CW, GROUND);
-
-  // Hügel-Silhouette
-  ctx.fillStyle = world.hill;
-  for (let i = 0; i < 5; i++) {
-    const hx = ((i * 180 - game.scrollX * 0.08) % (CW + 200)) - 60;
-    ctx.fillRect(hx, GROUND - 50 - i * 8, 140 + i * 20, 60);
-  }
-
-  // Sterne / Kreuze (wie Referenzbild)
-  for (let i = 0; i < 40; i++) {
-    const sx = (i * 67 + game.scrollX * 0.05) % CW;
-    const sy = 15 + (i * 43) % (GROUND - 80);
-    ctx.fillStyle = world.star;
-    if (i % 5 === 0) {
-      drawSprite(ctx, SPRITES.cross, sx, sy, false);
-    } else {
-      ctx.fillRect(sx, sy, 2, 2);
-    }
-  }
-
-  // Mond
-  drawSprite(ctx, SPRITES.moon, CW - 70, 25, false);
-
-  // Nebel
-  ctx.fillStyle = world.fog;
-  ctx.fillRect(0, GROUND - 60, CW, 50);
+  // Himmel, Landschaft & Atmosphäre (welt-spezifisch)
+  renderWorldSky(world);
+  renderWorldAtmosphere(world);
 
   // Dekoration Parallax
   game.decor.forEach((d) => {
-    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 120)) - 30;
+    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 140)) - 35;
     const sp = SPRITES[d.type];
-    if (sp) drawSprite(ctx, sp, dx, d.y, false);
+    if (sp) drawSprite(ctx, sp, dx, d.y, !!d.flip);
   });
 
-  // Pixel-Boden (Ziegel wie Referenz)
-  ctx.fillStyle = world.ground;
-  ctx.fillRect(0, GROUND, CW, CH - GROUND);
-  const tileW = 16, tileH = 12;
-  for (let row = 0; row < 3; row++) {
-    for (let tx = 0; tx < CW / tileW + 2; tx++) {
-      const ox = tx * tileW - (game.scrollX % tileW);
-      const oy = GROUND + row * tileH;
-      const colors = [world.tile1, world.tile2, world.tile3];
-      ctx.fillStyle = colors[(tx + row) % 3];
-      ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.fillRect(ox, oy + tileH - 4, tileW - 2, 2);
-    }
-  }
+  // Boden (welt-spezifisch)
+  renderWorldGround(world);
 
   if (!game.hero) {
     ctx.restore();
