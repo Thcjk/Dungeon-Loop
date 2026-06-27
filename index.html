@@ -97,6 +97,18 @@
               <p class="hint" id="save-hint"></p>
             </div>
           </div>
+
+          <div class="upgrade-overlay hidden" id="upgrade-section">
+            <div class="upgrade-panel card">
+              <div class="upgrade-header">
+                <h2>Permanente Upgrades</h2>
+                <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
+              </div>
+              <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
+              <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
+              <div class="upgrade-grid" id="upgrade-grid"></div>
+            </div>
+          </div>
         </div>
 
         <aside class="game-sidebar">
@@ -125,18 +137,6 @@
           </div>
         </aside>
       </div>
-
-      <div class="upgrade-overlay hidden" id="upgrade-section">
-        <div class="upgrade-panel card">
-          <div class="upgrade-header">
-            <h2>Permanente Upgrades</h2>
-            <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
-          </div>
-          <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
-          <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
-          <div class="upgrade-grid" id="upgrade-grid"></div>
-        </div>
-      </div>
     </section>
 
     <section class="card leaderboard-card hidden" id="leaderboard-section">
@@ -148,6 +148,6 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop – Pixel Edition</p></footer>
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>

@@ -298,6 +298,18 @@ body {
   padding: 2rem 1.75rem;
 }
 
+.game-frame:fullscreen .upgrade-overlay {
+  padding: 2rem;
+  align-items: center;
+}
+
+.game-frame:fullscreen .upgrade-panel {
+  width: min(92%, 640px);
+  max-height: 92vh;
+  overflow-y: auto;
+  margin: auto;
+}
+
 /* Status */
 .status-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
 .status-item { text-align: center; background: var(--bg); border: 1px solid var(--border); padding: 0.4rem; }
@@ -323,7 +335,7 @@ kbd {
 .upgrade-overlay {
   position: absolute;
   inset: 0;
-  z-index: 300;
+  z-index: 250;
   display: flex;
   align-items: flex-start;
   justify-content: center;

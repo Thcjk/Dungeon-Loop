@@ -491,8 +491,13 @@ function bindEvents() {
       if (document.activeElement?.tagName === "INPUT") return;
       toggleUpgrades();
     }
-    if (e.key === "Escape" && $("upgrade-section") && !$("upgrade-section").classList.contains("hidden")) {
-      hideUpgrades();
+    if (e.key === "Escape") {
+      const sec = $("upgrade-section");
+      if (sec && !sec.classList.contains("hidden")) {
+        e.preventDefault();
+        hideUpgrades();
+        return;
+      }
     }
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
@@ -714,6 +719,7 @@ function hideUpgrades() {
     game.isPaused = false;
     $("btn-pause").textContent = "Pause (P)";
   }
+  if (game.isDead) $("gameover-panel").classList.remove("hidden");
   if (game.isRunning && !game.isDead && !game.isPaused) {
     ensureGameLoop();
     if (countAliveEnemies() === 0) safeSpawnWave();
