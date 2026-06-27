@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dungeon Loop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="header">
+    <h1>Dungeon Loop</h1>
+    <p class="subtitle">Idle-RPG Dungeon-Crawler – kämpfe automatisch, sammle Gold und werde stärker!</p>
+  </header>
+
+  <main class="container">
+
+    <!-- Startbereich -->
+    <section class="card setup-card" id="setup-section">
+      <h2>Held erstellen</h2>
+
+      <label class="label" for="player-name">Spielername</label>
+      <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
+
+      <p class="label">Klasse wählen</p>
+      <div class="class-select" id="class-select">
+        <button type="button" class="class-btn warrior selected" data-class="warrior">
+          <span class="class-icon">⚔️</span>
+          <span class="class-name">Krieger</span>
+          <span class="class-desc">Viel Leben, gute Verteidigung</span>
+        </button>
+        <button type="button" class="class-btn ranger" data-class="ranger">
+          <span class="class-icon">🏹</span>
+          <span class="class-name">Waldläufer</span>
+          <span class="class-desc">Hoher Schaden, hohe Krit-Chance</span>
+        </button>
+        <button type="button" class="class-btn mage" data-class="mage">
+          <span class="class-icon">🔮</span>
+          <span class="class-name">Magier</span>
+          <span class="class-desc">Magieschaden & Mana-System</span>
+        </button>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spieler laden</button>
+      <p class="hint" id="load-hint">Gib deinen Namen ein und lade deinen Fortschritt.</p>
+    </section>
+
+    <!-- Spielbereich -->
+    <section class="card game-card hidden" id="game-section">
+
+      <!-- Statusleiste -->
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="status-label">Level</span>
+          <span class="status-value" id="dungeon-level">1</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Gold</span>
+          <span class="status-value gold" id="run-gold">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">XP</span>
+          <span class="status-value" id="run-xp">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Held-Lv</span>
+          <span class="status-value" id="player-level">1</span>
+        </div>
+      </div>
+
+      <!-- Kampfkarten -->
+      <div class="battle-area">
+        <div class="fighter-card hero-card" id="hero-card">
+          <h3 id="hero-name">Held</h3>
+          <p class="fighter-class" id="hero-class">Klasse</p>
+          <div class="hp-bar">
+            <div class="hp-fill" id="hero-hp-fill"></div>
+          </div>
+          <p class="hp-text" id="hero-hp-text">0 / 0</p>
+          <div class="mana-area hidden" id="mana-area">
+            <div class="mana-bar">
+              <div class="mana-fill" id="hero-mana-fill"></div>
+            </div>
+            <p class="mana-text" id="hero-mana-text">0 / 0</p>
+          </div>
+          <div class="stats-mini" id="hero-stats"></div>
+        </div>
+
+        <div class="vs">VS</div>
+
+        <div class="fighter-card monster-card" id="monster-card">
+          <h3 id="monster-name">Monster</h3>
+          <p class="monster-level" id="monster-level-text">Dungeon Level 1</p>
+          <div class="hp-bar monster-hp">
+            <div class="hp-fill" id="monster-hp-fill"></div>
+          </div>
+          <p class="hp-text" id="monster-hp-text">0 / 0</p>
+          <div class="stats-mini" id="monster-stats"></div>
+        </div>
+      </div>
+
+      <!-- Bester Loot -->
+      <div class="loot-display hidden" id="loot-display">
+        <span class="loot-label">Bester Loot:</span>
+        <span class="loot-item" id="best-loot-text">–</span>
+      </div>
+
+      <!-- Steuerung -->
+      <div class="controls">
+        <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
+        <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause</button>
+        <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
+      </div>
+
+      <!-- Game Over -->
+      <div class="gameover-panel hidden" id="gameover-panel">
+        <h3>Game Over!</h3>
+        <p id="gameover-summary"></p>
+        <p class="score-text">Score: <strong id="final-score">0</strong></p>
+        <button type="button" class="btn btn-primary" id="btn-save-score">Score speichern</button>
+        <p class="hint" id="save-hint"></p>
+      </div>
+    </section>
+
+    <!-- Upgrades -->
+    <section class="card upgrade-card hidden" id="upgrade-section">
+      <h2>Upgrades</h2>
+      <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
+      <div class="upgrade-grid" id="upgrade-grid"></div>
+    </section>
+
+    <!-- Kampflog -->
+    <section class="card log-card hidden" id="log-section">
+      <h2>Kampflog</h2>
+      <ul class="combat-log" id="combat-log"></ul>
+    </section>
+
+    <!-- Rangliste -->
+    <section class="card leaderboard-card">
+      <h2>Online-Rangliste</h2>
+      <button type="button" class="btn btn-secondary btn-small" id="btn-reload-leaderboard">Rangliste neu laden</button>
+      <ol class="leaderboard" id="leaderboard">
+        <li class="loading">Lade Rangliste...</li>
+      </ol>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>Dungeon Loop – Idle-RPG für GitHub Pages</p>
+  </footer>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+</body>
+</html>
