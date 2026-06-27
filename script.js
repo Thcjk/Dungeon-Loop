@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – Pixel Canvas Edition
-   Maus = Zielen + Schießen | Q = Spezial
+   Maus über Canvas = Auto-Angriff | 1 = Spezial
    WASD = Bewegen | P = Pause
    ============================================ */
 
@@ -111,6 +111,21 @@ const SPRITES = {
     "...KKK...","..KWWWk..",".KWWWWWK.",".KWWWWWK.",
     ".KWWWWWK.","..KWWWK..","...KKK..."
   ],
+  bush: [
+    "....KK....","..KmZmK..",".KmZZZmk.",".KmZZZmk.",
+    "..KZZZK..","...KZK..."
+  ],
+  rock: [
+    "...KKK...","..KXXXk..",".KXXXXXK.",".KXXxXXK.",
+    "..KXXXK..","...KKK..."
+  ],
+  crystal: [
+    "...KiK...","..KiBiK..",".KiBBiBK.","..KiBiK..",
+    "...KkK..."
+  ],
+  cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
+  moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
+  slash: ["...K...","..KRK..",".KRRRK.","..KRK..","...K..."],
   projectile_sword: ["..K..",".KRK.",".KRK.","..K.."],
   projectile_arrow: ["..K..",".KyK.","KyyyK","..K.."],
   projectile_fire:  ["..f..",".fef.",".fff.","..f.."],
@@ -125,20 +140,76 @@ const MONSTER_SPRITE = {
 };
 
 const CLASSES = {
-  warrior: { name: "Krieger", hp: 150, attack: 14, defense: 8, crit: 0.05, mana: 0, magicDamage: 0, special: "Schildschlag", specialCd: 6, proj: "projectile_sword", projSpeed: 7 },
-  ranger:  { name: "Waldläufer", hp: 100, attack: 18, defense: 3, crit: 0.15, mana: 0, magicDamage: 0, special: "Präzisionsschuss", specialCd: 5, proj: "projectile_arrow", projSpeed: 11 },
-  mage:    { name: "Magier", hp: 80, attack: 10, defense: 2, crit: 0.10, mana: 120, magicDamage: 24, special: "Feuerball", specialCd: 5, manaCost: 25, proj: "projectile_fire", projSpeed: 6 }
+  warrior: {
+    name: "Krieger", attackType: "melee",
+    hp: 165, attack: 24, defense: 11, crit: 0.06, mana: 0, magicDamage: 0,
+    range: 90, attackRate: 420, moveSpeed: 125,
+    special: "Schildschlag", specialCd: 7, specialRange: 115,
+    desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
+  },
+  ranger: {
+    name: "Waldläufer", attackType: "ranged",
+    hp: 95, attack: 17, defense: 3, crit: 0.18, mana: 0, magicDamage: 0,
+    range: 520, attackRate: 200, moveSpeed: 158,
+    closeRange: 60, meleePenalty: 0.3,
+    proj: "projectile_arrow", projSpeed: 14,
+    special: "Präzisionsschuss", specialCd: 5,
+    desc: "Bogen, große Reichweite, schwach im Nahkampf"
+  },
+  mage: {
+    name: "Magier", attackType: "magic",
+    hp: 72, attack: 7, defense: 2, crit: 0.12, mana: 120, magicDamage: 28,
+    range: 340, attackRate: 300, moveSpeed: 108, manaPerShot: 5,
+    proj: "projectile_fire", projSpeed: 8,
+    special: "Feuerball", specialCd: 6, manaCost: 30,
+    desc: "Zauber, mittlere Reichweite, braucht Mana"
+  }
 };
 
 const NORMAL_MONSTERS = ["Goblin","Skelett","Schleim","Bandit","Wolf","Spinne"];
 const BOSS_MONSTERS = ["Ork-Champion","Schattenritter","Feuerdämon","Drachenwächter","Nekromant"];
 
 const WORLDS = [
-  { name: "Dunkler Wald", min: 1,  bg: "#050508", ground: "#1a3a4a", ground2: "#2e5a6a", accent: "#2ecc71" },
-  { name: "Verfluchte Höhle", min: 10, bg: "#080810", ground: "#2a2a4a", ground2: "#3d3d6a", accent: "#9b59b6" },
-  { name: "Schlossruine", min: 20, bg: "#0a0810", ground: "#3a3048", ground2: "#524868", accent: "#95a5a6" },
-  { name: "Feuervulkan", min: 30, bg: "#100508", ground: "#4a1a10", ground2: "#6b2a18", accent: "#e74c3c" },
-  { name: "Drachenland", min: 40, bg: "#08040f", ground: "#2a1040", ground2: "#4a1870", accent: "#f39c12" }
+  {
+    name: "Dunkler Wald", min: 1, danger: 1,
+    hpMult: 1, atkMult: 1, speedMult: 1,
+    bg: "#030308", sky: "#08081a", hill: "#0c1820",
+    ground: "#142838", tile1: "#1e3d52", tile2: "#2a5870", tile3: "#1a3348",
+    accent: "#3dba8c", star: "#4a9a7a", fog: "rgba(10,30,24,0.4)",
+    decor: ["tree", "tree", "grave", "bush", "cross"]
+  },
+  {
+    name: "Verfluchte Höhle", min: 10, danger: 2,
+    hpMult: 1.6, atkMult: 1.45, speedMult: 1.15,
+    bg: "#04040c", sky: "#0a0a1e", hill: "#12122a",
+    ground: "#1a1a32", tile1: "#2a2a48", tile2: "#3a3a62", tile3: "#22224a",
+    accent: "#9b59b6", star: "#7d5ea8", fog: "rgba(20,10,40,0.5)",
+    decor: ["rock", "rock", "crystal", "grave", "cross"]
+  },
+  {
+    name: "Schlossruine", min: 20, danger: 3,
+    hpMult: 2.2, atkMult: 1.85, speedMult: 1.25,
+    bg: "#060510", sky: "#100c1a", hill: "#1a1428",
+    ground: "#282038", tile1: "#3a3050", tile2: "#4a4060", tile3: "#322848",
+    accent: "#95a5a6", star: "#708090", fog: "rgba(30,25,40,0.45)",
+    decor: ["grave", "grave", "rock", "cross", "tree"]
+  },
+  {
+    name: "Feuervulkan", min: 30, danger: 4,
+    hpMult: 3.0, atkMult: 2.3, speedMult: 1.35,
+    bg: "#0a0204", sky: "#180608", hill: "#280a08",
+    ground: "#3a1208", tile1: "#5a1a10", tile2: "#7a2818", tile3: "#4a150c",
+    accent: "#e74c3c", star: "#f39c12", fog: "rgba(60,15,5,0.5)",
+    decor: ["rock", "rock", "crystal", "cross"]
+  },
+  {
+    name: "Drachenland", min: 40, danger: 5,
+    hpMult: 4.0, atkMult: 2.9, speedMult: 1.45,
+    bg: "#05020a", sky: "#0c0618", hill: "#180a28",
+    ground: "#220e38", tile1: "#3a1860", tile2: "#502080", tile3: "#2a1048",
+    accent: "#f39c12", star: "#d4a017", fog: "rgba(40,10,60,0.5)",
+    decor: ["crystal", "grave", "rock", "cross", "tree"]
+  }
 ];
 
 const LOOT_TYPES = ["Waffe","Rüstung","Amulett","Zauberbuch"];
@@ -154,19 +225,27 @@ const LOOT_EFFECTS = [
   { key: "goldBonus", label: "Gold" }, { key: "magicDamage", label: "Magie" }, { key: "mana", label: "Mana" }
 ];
 const UPGRADES = [
-  { key: "upgrade_attack", label: "Angriff", baseCost: 50 },
-  { key: "upgrade_health", label: "Leben", baseCost: 50 },
-  { key: "upgrade_defense", label: "Verteidigung", baseCost: 50 },
-  { key: "upgrade_crit", label: "Krit-Chance", baseCost: 80 },
-  { key: "upgrade_gold", label: "Gold-Bonus", baseCost: 60 },
-  { key: "upgrade_xp", label: "XP-Bonus", baseCost: 60 },
-  { key: "upgrade_magic", label: "Magieschaden", baseCost: 70 },
-  { key: "upgrade_mana", label: "Mana", baseCost: 70 },
-  { key: "upgrade_cooldown", label: "Cooldown", baseCost: 100 }
+  { key: "upgrade_health",   label: "Leben",        baseCost: 100, bonus: 20,  bonusText: "+20 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
+  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 90,  bonus: 1,   bonusText: "+1 DEF",       tip: "Weniger Schaden. Krieger & Magier zuerst.", forClass: "warrior,mage" },
+  { key: "upgrade_attack",   label: "Angriff",      baseCost: 110, bonus: 3,   bonusText: "+3 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
+  { key: "upgrade_magic",    label: "Magieschaden", baseCost: 130, bonus: 5,   bonusText: "+5 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
+  { key: "upgrade_mana",     label: "Mana",         baseCost: 120, bonus: 15,  bonusText: "+15 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
+  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 140, bonus: 0.008, bonusText: "+0.8% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
+  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 150, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
+  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 130, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 180, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Öfter Spezial = mehr Überleben.",           forClass: "all" }
 ];
 
-const LOOT_CHANCE = 0.25, XP_PER_LEVEL = 100;
-const FIRE_RATE = 180; // ms zwischen Schüssen
+// Balance – Spiel soll über viele Runs mit Upgrades geschafft werden
+const BALANCE = {
+  upgradeCostPow: 1.72,
+  upgradeMax: 25,
+  lootChance: 0.10,
+  xpPerLevel: 200,
+  levelScalePow: 1.15,
+  waveCooldown: 2.2,
+  minWaveCooldown: 0.9
+};
 let enemyId = 0;
 
 const game = {
@@ -174,10 +253,10 @@ const game = {
   totalGold: 0, upgrades: {},
   isRunning: false, isPaused: false, isDead: false,
   dungeonLevel: 1, runGold: 0, runXp: 0, playerLevel: 1, monstersDefeated: 0,
-  hero: null, enemies: [], projectiles: [], particles: [], coins: [],
+  hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
   combatLog: [], bestLoot: null,
   specialTimer: 0, lastShot: 0,
-  scrollX: 0, decor: [], waveTimer: 0,
+  scrollX: 0, decor: [], waveCooldown: 0,
   loopId: null
 };
 
@@ -236,6 +315,7 @@ function bindEvents() {
       document.querySelectorAll(".class-btn").forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
       game.classKey = btn.dataset.class;
+      updateClassHint();
     });
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
@@ -245,27 +325,60 @@ function bindEvents() {
   bind("btn-restart", restartRun);
   bind("btn-save-score", saveScore);
   bind("btn-reload-leaderboard", loadLeaderboard);
+  bind("btn-fullscreen", toggleFullscreen);
+
+  document.addEventListener("fullscreenchange", onFullscreenChange);
 
   canvas.addEventListener("mousemove", onMouseMove);
-  canvas.addEventListener("mousedown", (e) => { mouse.down = true; e.preventDefault(); });
-  canvas.addEventListener("mouseup", () => { mouse.down = false; });
-  canvas.addEventListener("mouseleave", () => { mouse.down = false; mouse.onCanvas = false; });
   canvas.addEventListener("mouseenter", () => { mouse.onCanvas = true; });
+  canvas.addEventListener("mouseleave", () => { mouse.onCanvas = false; });
 
   window.addEventListener("keydown", (e) => {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
-    if (e.key.toLowerCase() === "q" && game.isRunning) useSpecial();
+    if (e.key === "1" && game.isRunning) useSpecial();
+    if (e.key.toLowerCase() === "f") toggleFullscreen();
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+  updateClassHint();
+}
+
+function updateClassHint() {
+  const cls = CLASSES[game.classKey];
+  const hint = $("controls-hint");
+  if (!hint || !cls) return;
+  if (cls.attackType === "melee") {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>F</kbd> Vollbild";
+  } else if (cls.attackType === "ranged") {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>F</kbd> Vollbild";
+  } else {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>F</kbd> Vollbild";
+  }
 }
 
 function onMouseMove(e) {
   const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0) return;
   const scaleX = CW / rect.width, scaleY = CH / rect.height;
   mouse.x = (e.clientX - rect.left) * scaleX;
   mouse.y = (e.clientY - rect.top) * scaleY;
-  mouse.onCanvas = true;
+  mouse.onCanvas = mouse.x >= 0 && mouse.x <= CW && mouse.y >= 0 && mouse.y <= CH;
+}
+
+function toggleFullscreen() {
+  const frame = $("game-frame");
+  if (!frame) return;
+  if (!document.fullscreenElement) {
+    frame.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function onFullscreenChange() {
+  const btn = $("btn-fullscreen");
+  if (btn) btn.textContent = document.fullscreenElement ? "✕" : "⛶";
+  setTimeout(() => canvas && canvas.focus(), 100);
 }
 
 async function initSupabase() {
@@ -355,15 +468,16 @@ function startRun() {
   $("btn-restart").disabled = false;
   canvas.focus();
   spawnWave();
-  addLog("Run gestartet – Maus zielen, halten zum Schießen!");
+  addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
+  updateClassHint();
   startLoop();
 }
 
 function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
-  game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
-  game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveTimer = 0;
+  game.enemies = []; game.projectiles = []; game.particles = []; game.coins = []; game.meleeSlashes = [];
+  game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveCooldown = 0;
   $("loot-display").classList.add("hidden");
   initDecor();
 }
@@ -392,16 +506,24 @@ function togglePause() {
 
 function createHero() {
   const cls = CLASSES[game.classKey], u = game.upgrades;
+  const ub = (key) => {
+    const up = UPGRADES.find((x) => x.key === key);
+    return (u[key] || 0) * up.bonus;
+  };
   game.hero = {
     x: 70, y: GROUND - 40, vx: 0, vy: 0,
     w: spriteW(SPRITES[game.classKey]), h: spriteH(SPRITES[game.classKey]),
-    maxHp: cls.hp + u.upgrade_health * 15, hp: cls.hp + u.upgrade_health * 15,
-    attack: cls.attack + u.upgrade_attack * 2, defense: cls.defense + u.upgrade_defense,
-    crit: cls.crit + u.upgrade_crit * 0.01,
-    magicDamage: cls.magicDamage + u.upgrade_magic * 3,
-    maxMana: cls.mana + u.upgrade_mana * 10, mana: cls.mana + u.upgrade_mana * 10,
-    goldBonus: 1 + u.upgrade_gold * 0.05, xpBonus: 1 + u.upgrade_xp * 0.05,
-    specialCd: Math.max(2, cls.specialCd - u.upgrade_cooldown * 0.4),
+    maxHp: cls.hp + ub("upgrade_health"),
+    hp: cls.hp + ub("upgrade_health"),
+    attack: cls.attack + ub("upgrade_attack"),
+    defense: cls.defense + ub("upgrade_defense"),
+    crit: cls.crit + ub("upgrade_crit"),
+    magicDamage: cls.magicDamage + ub("upgrade_magic"),
+    maxMana: cls.mana + ub("upgrade_mana"),
+    mana: cls.mana + ub("upgrade_mana"),
+    goldBonus: 1 + ub("upgrade_gold"),
+    xpBonus: 1 + ub("upgrade_xp"),
+    specialCd: Math.max(2.5, cls.specialCd - ub("upgrade_cooldown")),
     specialTimer: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
     facing: 1, anim: 0
@@ -426,110 +548,260 @@ function getWorld() {
   return w;
 }
 
+// Schwierigkeit skaliert exponentiell – ein Run reicht NIE für alles
+function getDifficultyScale() {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  const levelMult = Math.pow(BALANCE.levelScalePow, lv);
+  return levelMult * world.hpMult;
+}
+
+function getAttackScale() {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  return Math.pow(BALANCE.levelScalePow - 0.02, lv) * world.atkMult;
+}
+
+function getEnemyStats(isBoss) {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  const hpScale = getDifficultyScale();
+  const atkScale = getAttackScale();
+  const bossHp = isBoss ? 5.5 : 1;
+  const bossAtk = isBoss ? 2.8 : 1;
+  const bossRew = isBoss ? 3.5 : 1;
+
+  return {
+    hp: Math.floor((28 + lv * 5) * hpScale * bossHp),
+    attack: Math.floor((5 + lv * 1.8) * atkScale * bossAtk),
+    gold: Math.floor((3 + lv * 1.2) * bossRew * (1 + lv * 0.05)),
+    xp: Math.floor((8 + lv * 2.5) * bossRew),
+    speed: (isBoss ? 0.55 : 0.75) * world.speedMult + lv * 0.012,
+    attackInterval: Math.max(0.45, 0.9 - lv * 0.008 - world.danger * 0.05)
+  };
+}
+
+function getWaveSize() {
+  const lv = game.dungeonLevel;
+  return Math.min(7, 2 + Math.floor(lv / 2) + getWorld().danger);
+}
+
+function getUpgradeTip() {
+  const tips = {
+    warrior: "Krieger: Leben → Verteidigung → Angriff → Spezial-CD",
+    ranger:  "Waldläufer: Angriff → Krit → Leben → Gold-Farm",
+    mage:    "Magier: Magieschaden → Mana → Leben → Spezial-CD"
+  };
+  return tips[game.classKey] || "";
+}
+
 // ============================================
 // GEGNER & WELLEN
 // ============================================
 
 function spawnWave() {
-  const count = Math.min(6, 2 + Math.floor(game.dungeonLevel / 3));
-  const isBoss = game.dungeonLevel % 10 === 0;
-  for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0);
-  if (isBoss) addLog("⚠ BOSS-WELLE!", "boss");
+  const count = getWaveSize();
+  const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
+  const world = getWorld();
+  for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
+  if (isBoss) addLog("⚠ BOSS! Gefahr " + world.danger + "/5", "boss");
+  else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "death");
+  else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
 }
 
-function spawnEnemy(isBoss) {
-  const lv = game.dungeonLevel;
+function spawnEnemy(isBoss, index) {
   const names = isBoss ? BOSS_MONSTERS : NORMAL_MONSTERS;
   const name = names[Math.floor(Math.random() * names.length)];
   const spKey = MONSTER_SPRITE[name];
   const sp = SPRITES[spKey];
-  const hpM = isBoss ? 4 : 1, atkM = isBoss ? 2.2 : 1, rewM = isBoss ? 2.5 : 1;
+  const stats = getEnemyStats(isBoss);
+  const idx = index || 0;
 
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
-    x: CW + 30 + Math.random() * 120, y: GROUND - spriteH(sp) + Math.random() * 20 - 10,
+    x: CW - 40 - idx * 50 - Math.random() * 15,
+    y: GROUND - spriteH(sp) - 4,
     w: spriteW(sp), h: spriteH(sp),
-    maxHp: Math.floor((20 + lv * 7) * hpM), hp: Math.floor((20 + lv * 7) * hpM),
-    attack: Math.floor((3 + lv * 1.2) * atkM),
-    goldReward: Math.floor((3 + lv * 2) * rewM), xpReward: Math.floor((6 + lv * 3) * rewM),
-    speed: (isBoss ? 0.6 : 1) + lv * 0.02, hitFlash: 0, anim: Math.random() * 6, dead: false
+    maxHp: stats.hp, hp: stats.hp,
+    attack: stats.attack,
+    goldReward: stats.gold, xpReward: stats.xp,
+    speed: stats.speed,
+    attackInterval: stats.attackInterval,
+    hitFlash: 0, anim: Math.random() * 6, dead: false, attackTimer: 0
   });
 }
 
 function initDecor() {
+  const world = getWorld();
   game.decor = [];
-  for (let i = 0; i < 12; i++) {
+  const types = world.decor;
+  for (let i = 0; i < 16; i++) {
     game.decor.push({
-      x: i * 90 + Math.random() * 40,
-      type: Math.random() > 0.5 ? "tree" : "grave",
-      y: GROUND - (Math.random() > 0.5 ? 60 : 40)
+      x: i * 75 + Math.random() * 30,
+      type: types[Math.floor(Math.random() * types.length)],
+      y: GROUND - 35 - Math.random() * 45,
+      parallax: 0.2 + Math.random() * 0.25
     });
   }
 }
 
 // ============================================
-// KAMPF – MAUS & TASTEN
+// KAMPF – KLASSEN-SPEZIFISCH
 // ============================================
 
-function shoot() {
-  const now = performance.now();
-  if (now - game.lastShot < FIRE_RATE) return;
-  game.lastShot = now;
-
-  const h = game.hero, st = heroStats();
+function attack() {
   const cls = CLASSES[game.classKey];
+  const now = performance.now();
+  if (now - game.lastShot < cls.attackRate) return;
+
+  if (cls.attackType === "melee") {
+    if (warriorMeleeAttack()) game.lastShot = now;
+  } else if (cls.attackType === "ranged") {
+    rangerShoot(cls);
+    game.lastShot = now;
+  } else if (cls.attackType === "magic") {
+    if (mageShoot(cls)) game.lastShot = now;
+  }
+}
+
+function warriorMeleeAttack() {
+  const h = game.hero, st = heroStats();
+  const cls = CLASSES.warrior;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
+  h.facing = Math.cos(angle) >= 0 ? 1 : -1;
+
+  let hitAny = false;
+  game.enemies.forEach((e) => {
+    if (e.dead || e.hp <= 0) return;
+    const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+    const dist = Math.hypot(ex - hx, ey - hy);
+    if (dist > cls.range) return;
+    let diff = Math.atan2(ey - hy, ex - hx) - angle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    if (Math.abs(diff) > 1.1) return;
+
+    let dmg = st.attack;
+    const isCrit = Math.random() < st.crit;
+    if (isCrit) dmg *= 2;
+    dmg = Math.floor(dmg);
+    e.hp -= dmg; e.hitFlash = 8;
+    spawnDamage(ex, e.y, dmg, isCrit);
+    if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+    hitAny = true;
+  });
+
+  game.meleeSlashes.push({ x: hx, y: hy, angle, life: 14, range: cls.range });
+  if (hitAny) addLog("Schwerttreffer!", "crit");
+  return true;
+}
+
+function rangerShoot(cls) {
+  const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const dx = mouse.x - hx, dy = mouse.y - hy;
-  const len = Math.hypot(dx, dy) || 1;
-  const speed = cls.projSpeed;
+  const dist = Math.hypot(dx, dy);
+  if (dist > cls.range) return;
 
-  let dmg = game.classKey === "mage" ? st.magicDamage : st.attack;
-  if (game.classKey === "mage" && h.mana < 5) dmg = st.attack * 0.5;
-  else if (game.classKey === "mage") h.mana = Math.max(0, h.mana - 3);
+  let dmgMult = 1;
+  const tooClose = game.enemies.some((e) => !e.dead && e.hp > 0 &&
+    Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy) < cls.closeRange);
+  if (tooClose) { dmgMult = cls.meleePenalty; }
 
-  const isCrit = Math.random() < st.crit;
+  const len = dist || 1;
+  let dmg = st.attack * dmgMult;
+  const isCrit = Math.random() < st.crit + (tooClose ? 0 : 0.05);
   if (isCrit) dmg *= 2;
 
   game.projectiles.push({
-    x: hx, y: hy, vx: (dx / len) * speed, vy: (dy / len) * speed,
+    x: hx, y: hy, vx: (dx / len) * cls.projSpeed, vy: (dy / len) * cls.projSpeed,
     dmg: Math.floor(dmg), crit: isCrit, sprite: cls.proj,
-    life: 80, owner: "player"
+    life: 70, owner: "player", pierce: false
   });
   h.facing = dx >= 0 ? 1 : -1;
+}
+
+function mageShoot(cls) {
+  const h = game.hero, st = heroStats();
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const dx = mouse.x - hx, dy = mouse.y - hy;
+  const dist = Math.hypot(dx, dy);
+  if (dist > cls.range) return;
+
+  let dmg = st.magicDamage;
+  if (h.mana < cls.manaPerShot) {
+    dmg = st.attack * 0.4;
+    addLog("Kein Mana – Stab-Schlag!");
+  } else {
+    h.mana -= cls.manaPerShot;
+  }
+
+  const isCrit = Math.random() < st.crit;
+  if (isCrit) dmg *= 2;
+  const len = dist || 1;
+
+  game.projectiles.push({
+    x: hx, y: hy, vx: (dx / len) * cls.projSpeed, vy: (dy / len) * cls.projSpeed,
+    dmg: Math.floor(dmg), crit: isCrit, sprite: cls.proj,
+    life: 65, owner: "player", magic: true
+  });
+  h.facing = dx >= 0 ? 1 : -1;
+  return true;
 }
 
 function useSpecial() {
   const h = game.hero;
   if (h.specialTimer < h.specialCd || game.isPaused) return;
   const st = heroStats();
-  h.specialTimer = 0;
+  const cls = CLASSES[game.classKey];
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
 
   if (game.classKey === "warrior") {
+    h.specialTimer = 0;
+    const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
+    game.meleeSlashes.push({ x: hx, y: hy, angle, life: 20, range: cls.specialRange, big: true });
     game.enemies.forEach((e) => {
       if (e.dead) return;
-      if (e.x < h.x + 200) {
-        const dmg = Math.floor(st.attack * 2.5);
-        e.hp -= dmg; e.hitFlash = 8;
-        spawnDamage(e.x + e.w/2, e.y, dmg, true);
-        if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
-      }
+      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+      const dist = Math.hypot(ex - hx, ey - hy);
+      if (dist > cls.specialRange) return;
+      let diff = Math.atan2(ey - hy, ex - hx) - angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > 1.4) return;
+      const dmg = Math.floor(st.attack * 2.8);
+      e.hp -= dmg; e.hitFlash = 10;
+      spawnDamage(ex, e.y, dmg, true);
+      if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
     });
-    addLog("Schildschlag!", "special");
-    for (let i = 0; i < 8; i++) game.particles.push({ x: h.x+30, y: h.y+10, vx: (Math.random()-0.5)*4, vy: -Math.random()*3, life: 20, color: "#e74c3c", size: 3 });
+    addLog("Schildschlag! – Nahkampf-Spezial", "special");
+    for (let i = 0; i < 10; i++) game.particles.push({ x: hx, y: hy, vx: Math.cos(angle + (Math.random()-0.5)) * 5, vy: Math.sin(angle + (Math.random()-0.5)) * 5, life: 18, color: "#e74c3c", size: 4 });
+
   } else if (game.classKey === "ranger") {
-    for (let a = -2; a <= 2; a++) {
-      const angle = Math.atan2(mouse.y - h.y, mouse.x - h.x) + a * 0.18;
-      game.projectiles.push({ x: h.x+h.w/2, y: h.y+h.h/2, vx: Math.cos(angle)*12, vy: Math.sin(angle)*12,
-        dmg: Math.floor(st.attack*1.8), crit: Math.random()<st.crit+0.2, sprite: "projectile_arrow", life: 60, owner: "player" });
+    h.specialTimer = 0;
+    const baseAngle = Math.atan2(mouse.y - hy, mouse.x - hx);
+    for (let a = -3; a <= 3; a++) {
+      const ang = baseAngle + a * 0.12;
+      game.projectiles.push({
+        x: hx, y: hy, vx: Math.cos(ang) * 16, vy: Math.sin(ang) * 16,
+        dmg: Math.floor(st.attack * 2), crit: Math.random() < st.crit + 0.25,
+        sprite: "projectile_arrow", life: 80, owner: "player", pierce: true
+      });
     }
-    addLog("Präzisionsschuss!", "special");
+    addLog("Präzisionsschuss! – 7 Pfeile", "special");
+
   } else if (game.classKey === "mage") {
-    if (h.mana < CLASSES.mage.manaCost) { addLog("Nicht genug Mana!"); h.specialTimer = h.specialCd - 1; return; }
-    h.mana -= CLASSES.mage.manaCost;
-    game.projectiles.push({ x: h.x+h.w/2, y: h.y+h.h/2,
-      vx: Math.cos(Math.atan2(mouse.y-h.y, mouse.x-h.x))*5, vy: Math.sin(Math.atan2(mouse.y-h.y, mouse.x-h.x))*5,
-      dmg: Math.floor(st.magicDamage*2.5), crit: false, sprite: "projectile_fire", life: 50, owner: "player", explosive: true });
-    addLog("Feuerball!", "special");
+    if (h.mana < cls.manaCost) { addLog("Nicht genug Mana!"); return; }
+    h.mana -= cls.manaCost;
+    h.specialTimer = 0;
+    const ang = Math.atan2(mouse.y - hy, mouse.x - hx);
+    game.projectiles.push({
+      x: hx, y: hy, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6,
+      dmg: Math.floor(st.magicDamage * 3), crit: false,
+      sprite: "projectile_fire", life: 55, owner: "player", explosive: true, big: true
+    });
+    addLog("Feuerball! – Explosion", "special");
   }
 }
 
@@ -560,36 +832,63 @@ function update(dt) {
   h.specialTimer += dt;
   h.anim += dt * 8;
 
-  // WASD Bewegung
-  const spd = 140;
+  // WASD Bewegung (klassenabhängige Geschwindigkeit)
+  const spd = CLASSES[game.classKey].moveSpeed;
   if (keys.w) h.y -= spd * dt;
   if (keys.s) h.y += spd * dt;
   if (keys.a) { h.x -= spd * dt; h.facing = -1; }
   if (keys.d) { h.x += spd * dt; h.facing = 1; }
-  h.x = Math.max(10, Math.min(CW * 0.4, h.x));
+  h.x = Math.max(10, Math.min(CW * 0.45, h.x));
   h.y = Math.max(GROUND - 80, Math.min(GROUND - h.h + 5, h.y));
 
-  // Mana regen
-  if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 8);
+  // Mana regen (nur Magier)
+  if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
 
-  // Schießen bei Mausklick
-  if (mouse.down && mouse.onCanvas) shoot();
+  // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
+  if (mouse.onCanvas) attack();
 
-  // Gegner bewegen
+  // Schwert-Slashs altern
+  game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
+
+  // Gegner bewegen, stoppen & angreifen
+  const stopLine = h.x + h.w + 4;
   game.enemies.forEach((e) => {
+    if (e.dead || e.hp <= 0) return;
     e.anim += dt * 6;
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
-    e.x -= e.speed * 60 * dt;
-    // Nahkampf-Schaden
-    if (e.x < h.x + h.w + 10 && e.x + e.w > h.x - 10) {
-      e.attackTimer = (e.attackTimer || 0) + dt;
-      if (e.attackTimer >= 1.2) {
+
+    // Auf gleiche Höhe wie Held
+    e.y += (h.y - e.y) * Math.min(1, dt * 5);
+
+    // Zum Held laufen bis Stopplinie
+    if (e.x > stopLine) {
+      e.x -= e.speed * 50 * dt;
+    }
+    // Nicht durch den Held laufen!
+    if (e.x < stopLine) e.x = stopLine;
+
+    const inRange = e.x < h.x + h.w + 70 && e.x + e.w > h.x;
+    const yClose = Math.abs((e.y + e.h / 2) - (h.y + h.h / 2)) < 40;
+
+    if (inRange && yClose) {
+      e.attackTimer += dt;
+      const interval = e.attackInterval || 0.75;
+      if (e.attackTimer >= interval) {
         e.attackTimer = 0;
         const dmg = Math.max(1, e.attack - st.defense);
         h.hp -= dmg;
-        spawnDamage(h.x + h.w/2, h.y, dmg, false, true);
+        spawnDamage(h.x + h.w / 2, h.y - 5, dmg, false, true);
+        e.hitFlash = 5;
         if (h.hp <= 0) { h.hp = 0; onDeath(); }
       }
+    }
+  });
+
+  // Entkommene Gegner entfernen (Fallback)
+  game.enemies.forEach((e) => {
+    if (!e.dead && e.hp > 0 && e.x < h.x - 40) {
+      e.dead = true;
+      addLog(e.name + " ist entkommen!");
     }
   });
 
@@ -605,12 +904,16 @@ function update(dt) {
           spawnDamage(e.x+e.w/2, e.y, p.dmg, p.crit);
           if (p.explosive) {
             game.enemies.forEach((o) => {
-              if (Math.hypot(o.x-p.x, o.y-p.y) < 80) { o.hp -= Math.floor(p.dmg*0.4); o.hitFlash = 5; }
+              if (o.dead || o.hp <= 0) return;
+              if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < 90) {
+                o.hp -= Math.floor(p.dmg * 0.45); o.hitFlash = 5;
+                if (o.hp <= 0 && !o.dead) { o.dead = true; onEnemyKill(o); }
+              }
             });
-            for (let i = 0; i < 12; i++) game.particles.push({ x:p.x, y:p.y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:25, color:"#e74c3c", size:4 });
+            for (let i = 0; i < 14; i++) game.particles.push({ x:p.x, y:p.y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:28, color:"#e74c3c", size:4 });
           }
           if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
-          return false;
+          if (!p.pierce) return false;
         }
       }
     }
@@ -627,16 +930,22 @@ function update(dt) {
     return c.life > 0;
   });
 
-  // Neue Welle
-  game.waveTimer += dt;
-  const alive = game.enemies.filter((e) => e.hp > 0);
+  // Neue Welle wenn alle besiegt oder entkommen
+  const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead);
   if (alive.length === 0) {
-    game.waveTimer += dt;
-    if (game.waveTimer > 1.5) { game.waveTimer = 0; spawnWave(); }
+    game.waveCooldown += dt;
+    const cd = Math.max(BALANCE.minWaveCooldown, BALANCE.waveCooldown - game.dungeonLevel * 0.04);
+    if (game.waveCooldown >= cd) {
+      game.waveCooldown = 0;
+      game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
+      spawnWave();
+    }
+  } else {
+    game.waveCooldown = 0;
   }
 
-  // Nachrücken
-  game.enemies = game.enemies.filter((e) => e.hp > 0 || e.hitFlash > 0);
+  // Tote Gegner aufräumen
+  game.enemies = game.enemies.filter((e) => (e.hp > 0 && !e.dead) || e.hitFlash > 0);
 
   updateHUD();
   updateStatus();
@@ -646,19 +955,25 @@ function onEnemyKill(e) {
   const st = heroStats();
   const gold = Math.floor(e.goldReward * st.goldBonus);
   const xp = Math.floor(e.xpReward * game.hero.xpBonus);
+  const oldWorld = getWorld().name;
   game.runGold += gold; game.runXp += xp;
   game.monstersDefeated++; game.dungeonLevel++;
+  const newWorld = getWorld().name;
+  if (newWorld !== oldWorld) {
+    initDecor();
+    addLog("⚠ NEUE WELT: " + newWorld + " – viel schwerer!", "boss");
+  }
   addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "");
   game.coins.push({ x: e.x+e.w/2, y: e.y, val: gold, life: 3 });
   for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
 
-  while (game.runXp >= game.playerLevel * XP_PER_LEVEL) {
-    game.runXp -= game.playerLevel * XP_PER_LEVEL;
+  while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
+    game.runXp -= game.playerLevel * BALANCE.xpPerLevel;
     game.playerLevel++;
-    game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * 0.2));
+    game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * 0.12));
     addLog("Level Up! Held " + game.playerLevel);
   }
-  if (Math.random() < LOOT_CHANCE) generateLoot();
+  if (Math.random() < BALANCE.lootChance) generateLoot();
 }
 
 function onDeath() {
@@ -667,9 +982,14 @@ function onDeath() {
   game.totalGold += game.runGold;
   savePlayer();
   addLog("Game Over!", "death");
+
+  const world = getWorld();
   $("gameover-panel").classList.remove("hidden");
-  $("gameover-summary").textContent = "Level " + game.dungeonLevel + " | " + game.monstersDefeated + " Monster";
+  $("gameover-summary").textContent =
+    "Level " + game.dungeonLevel + " (" + world.name + ") | " +
+    game.monstersDefeated + " Monster | " + game.runGold + " Gold";
   $("final-score").textContent = calcScore();
+  $("save-hint").textContent = "Tipp: " + getUpgradeTip();
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons();
@@ -685,36 +1005,65 @@ function spawnDamage(x, y, val, crit, taken) {
 
 function render() {
   const world = getWorld();
-  ctx.fillStyle = world.bg;
-  ctx.fillRect(0, 0, CW, CH);
 
-  // Sterne / Partikel Hintergrund
-  ctx.fillStyle = world.accent + "33";
-  for (let i = 0; i < 30; i++) {
-    const sx = ((i * 97 + game.scrollX * 0.1) % CW);
-    const sy = (i * 53) % (GROUND - 40);
-    ctx.fillRect(sx, sy, 2, 2);
+  // Himmel
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
+  grad.addColorStop(0, world.sky);
+  grad.addColorStop(1, world.bg);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CW, GROUND);
+
+  // Hügel-Silhouette
+  ctx.fillStyle = world.hill;
+  for (let i = 0; i < 5; i++) {
+    const hx = ((i * 180 - game.scrollX * 0.08) % (CW + 200)) - 60;
+    ctx.fillRect(hx, GROUND - 50 - i * 8, 140 + i * 20, 60);
   }
 
-  // Dekoration (Parallax)
+  // Sterne / Kreuze (wie Referenzbild)
+  for (let i = 0; i < 40; i++) {
+    const sx = (i * 67 + game.scrollX * 0.05) % CW;
+    const sy = 15 + (i * 43) % (GROUND - 80);
+    ctx.fillStyle = world.star;
+    if (i % 5 === 0) {
+      drawSprite(ctx, SPRITES.cross, sx, sy, false);
+    } else {
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+  }
+
+  // Mond
+  drawSprite(ctx, SPRITES.moon, CW - 70, 25, false);
+
+  // Nebel
+  ctx.fillStyle = world.fog;
+  ctx.fillRect(0, GROUND - 60, CW, 50);
+
+  // Dekoration Parallax
   game.decor.forEach((d) => {
-    const dx = ((d.x - game.scrollX * 0.3) % (CW + 100)) - 20;
-    drawSprite(ctx, SPRITES[d.type], dx, d.y, false);
+    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 120)) - 30;
+    const sp = SPRITES[d.type];
+    if (sp) drawSprite(ctx, sp, dx, d.y, false);
   });
 
-  // Boden
+  // Pixel-Boden (Ziegel wie Referenz)
   ctx.fillStyle = world.ground;
   ctx.fillRect(0, GROUND, CW, CH - GROUND);
-  ctx.fillStyle = world.ground2;
-  for (let tx = 0; tx < CW + 32; tx += 16) {
-    const ox = (tx - (game.scrollX % 16));
-    ctx.fillRect(ox, GROUND, 14, 8);
-    ctx.fillRect(ox + 4, GROUND + 10, 10, 6);
+  const tileW = 16, tileH = 12;
+  for (let row = 0; row < 3; row++) {
+    for (let tx = 0; tx < CW / tileW + 2; tx++) {
+      const ox = tx * tileW - (game.scrollX % tileW);
+      const oy = GROUND + row * tileH;
+      const colors = [world.tile1, world.tile2, world.tile3];
+      ctx.fillStyle = colors[(tx + row) % 3];
+      ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(ox, oy + tileH - 4, tileW - 2, 2);
+    }
   }
 
   if (!game.hero) return;
 
-  // Münzen
   game.coins.forEach((c) => drawSprite(ctx, SPRITES.coin, c.x - 6, c.y, false));
 
   // Gegner
@@ -724,22 +1073,59 @@ function render() {
     if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     drawSprite(ctx, SPRITES[e.sprite], e.x, e.y + bob, true);
     ctx.globalAlpha = 1;
-    // HP Balken
-    const bw = e.w;
-    ctx.fillStyle = "#111"; ctx.fillRect(e.x, e.y - 6, bw, 4);
+    ctx.fillStyle = "#111"; ctx.fillRect(e.x, e.y - 6, e.w, 4);
     ctx.fillStyle = e.isBoss ? "#f1c40f" : "#e74c3c";
-    ctx.fillRect(e.x, e.y - 6, bw * (e.hp / e.maxHp), 4);
+    ctx.fillRect(e.x, e.y - 6, e.w * (e.hp / e.maxHp), 4);
   });
 
-  // Held
   const h = game.hero;
   const bob = Math.sin(h.anim) * 2;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+
+  // Reichweiten-Anzeige
+  if (game.isRunning && !game.isPaused && mouse.onCanvas) {
+    const cls = CLASSES[game.classKey];
+    if (cls.attackType === "melee") {
+      ctx.strokeStyle = "rgba(231,76,60,0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const a = Math.atan2(mouse.y - hy, mouse.x - hx);
+      ctx.arc(hx, hy, cls.range, a - 1.1, a + 1.1);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = cls.attackType === "ranged" ? "rgba(46,204,113,0.2)" : "rgba(155,89,182,0.25)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
+      ctx.stroke();
+      if (cls.attackType === "ranged") {
+        ctx.strokeStyle = "rgba(231,76,60,0.25)";
+        ctx.beginPath();
+        ctx.arc(hx, hy, cls.closeRange, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Schwert-Slashes
+  game.meleeSlashes.forEach((s) => {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.angle);
+    const alpha = s.life / 14;
+    ctx.globalAlpha = alpha * (s.big ? 0.9 : 0.7);
+    const sc = s.big ? 2.5 : 1.8;
+    drawSprite(ctx, SPRITES.slash, s.range * 0.4, -6 * sc, false);
+    ctx.restore();
+  });
+
   drawSprite(ctx, SPRITES[game.classKey], h.x, h.y + bob, h.facing < 0);
 
-  // Projektile
-  game.projectiles.forEach((p) => drawSprite(ctx, SPRITES[p.sprite], p.x - 6, p.y - 6, p.vx < 0));
+  game.projectiles.forEach((p) => {
+    const sc = p.big ? 1.5 : 1;
+    drawSprite(ctx, SPRITES[p.sprite], p.x - 6 * sc, p.y - 6 * sc, p.vx < 0);
+  });
 
-  // Schadenszahlen & Partikel
   game.particles.forEach((p) => {
     if (p.text) {
       ctx.font = "bold " + (p.crit ? "14" : "11") + "px Courier New";
@@ -753,7 +1139,7 @@ function render() {
 
   // Fadenkreuz
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(mouse.x - 8, mouse.y); ctx.lineTo(mouse.x + 8, mouse.y);
@@ -761,11 +1147,10 @@ function render() {
     ctx.stroke();
   }
 
-  // Spezial bereit?
   if (h.specialTimer >= h.specialCd) {
-    ctx.fillStyle = "rgba(142,68,173,0.6)";
+    ctx.fillStyle = "rgba(142,68,173,0.8)";
     ctx.font = "bold 10px Courier New";
-    ctx.fillText("[Q] SPEZIAL BEREIT", h.x, h.y - 14);
+    ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
   }
 }
 
@@ -779,12 +1164,15 @@ function updateHUD() {
   const world = getWorld();
   $("hud-hp-fill").style.width = (h.hp / st.maxHp * 100) + "%";
   $("hud-hp-text").textContent = Math.floor(h.hp) + " / " + st.maxHp;
-  const xpNeed = game.playerLevel * XP_PER_LEVEL;
+  const xpNeed = game.playerLevel * BALANCE.xpPerLevel;
   $("hud-xp-fill").style.width = (game.runXp / xpNeed * 100) + "%";
   $("hud-xp-text").textContent = Math.floor(game.runXp / xpNeed * 100) + "%";
   $("hud-gold").textContent = game.runGold;
   $("hud-level").textContent = game.dungeonLevel;
-  $("hud-world").textContent = world.name;
+  $("hud-world").textContent = world.name + " ☠" + world.danger;
+  const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
+  const hudEn = $("hud-enemies");
+  if (hudEn) hudEn.textContent = alive;
   if (game.classKey === "mage") {
     $("hud-mana-fill").style.width = (h.mana / st.maxMana * 100) + "%";
     $("hud-mana-text").textContent = Math.floor(h.mana) + " / " + st.maxMana;
@@ -798,7 +1186,7 @@ function updateStatus() {
   const h = game.hero;
   if (h) {
     const ready = h.specialTimer >= h.specialCd;
-    $("special-status").textContent = ready ? "Q bereit!" : Math.ceil(h.specialCd - h.specialTimer) + "s";
+    $("special-status").textContent = ready ? "1 bereit!" : Math.ceil(h.specialCd - h.specialTimer) + "s";
     $("special-status").style.color = ready ? "#2ecc71" : "";
   }
 }
@@ -837,16 +1225,40 @@ function applyLoot(loot) {
   }
 }
 
-function getUpgradeCost(k) { return Math.floor(UPGRADES.find(u=>u.key===k).baseCost * Math.pow(1.5, game.upgrades[k]||0)); }
+function getUpgradeCost(k) {
+  const up = UPGRADES.find((u) => u.key === k);
+  const lv = game.upgrades[k] || 0;
+  if (lv >= BALANCE.upgradeMax) return Infinity;
+  return Math.floor(up.baseCost * Math.pow(BALANCE.upgradeCostPow, lv));
+}
+
+function isUpgradeRelevant(up) {
+  if (up.forClass === "all") return true;
+  return up.forClass.split(",").includes(game.classKey);
+}
 
 function renderUpgradeButtons() {
   const grid = $("upgrade-grid"); if (!grid) return;
   grid.innerHTML = "";
+
+  const tipEl = $("upgrade-tip");
+  if (tipEl) tipEl.textContent = getUpgradeTip();
+
   UPGRADES.forEach((up) => {
-    const lv = game.upgrades[up.key]||0, cost = getUpgradeCost(up.key);
+    const lv = game.upgrades[up.key] || 0;
+    const cost = getUpgradeCost(up.key);
+    const maxed = lv >= BALANCE.upgradeMax;
+    const relevant = isUpgradeRelevant(up);
     const btn = document.createElement("button");
-    btn.className = "upgrade-btn"; btn.disabled = game.totalGold < cost;
-    btn.innerHTML = '<span class="upgrade-name">' + up.label + '</span><span class="upgrade-level">Stufe ' + lv + '</span><span class="upgrade-cost">' + cost + ' 🪙</span>';
+    btn.className = "upgrade-btn" + (relevant ? " relevant" : "") + (maxed ? " maxed" : "");
+    btn.disabled = maxed || game.totalGold < cost;
+    btn.innerHTML =
+      '<span class="upgrade-info">' +
+        '<span class="upgrade-name">' + up.label + (relevant ? " ★" : "") + '</span>' +
+        '<span class="upgrade-level">Stufe ' + lv + (maxed ? " MAX" : "") + ' – ' + up.bonusText + '</span>' +
+        '<span class="upgrade-tip-text">' + up.tip + '</span>' +
+      '</span>' +
+      '<span class="upgrade-cost">' + (maxed ? "MAX" : cost + " 🪙") + '</span>';
     btn.onclick = () => buyUpgrade(up.key);
     grid.appendChild(btn);
   });
@@ -854,8 +1266,10 @@ function renderUpgradeButtons() {
 
 async function buyUpgrade(k) {
   const cost = getUpgradeCost(k);
-  if (game.totalGold < cost) return;
-  game.totalGold -= cost; game.upgrades[k] = (game.upgrades[k]||0) + 1;
+  if (game.totalGold < cost || (game.upgrades[k] || 0) >= BALANCE.upgradeMax) return;
+  game.totalGold -= cost;
+  game.upgrades[k] = (game.upgrades[k] || 0) + 1;
+  addLog("Upgrade: " + UPGRADES.find(u => u.key === k).label + " Stufe " + game.upgrades[k]);
   await savePlayer(); updateTotalGold(); renderUpgradeButtons();
 }
 
@@ -889,12 +1303,15 @@ async function loadLeaderboard() {
 
 function addLog(msg, css) {
   game.combatLog.push({ text: msg, css: css||"" });
-  if (game.combatLog.length > 8) game.combatLog.shift();
-  const ul = $("combat-log"); if (!ul) return;
-  ul.innerHTML = "";
-  game.combatLog.forEach((e) => {
-    const li = document.createElement("li");
-    li.textContent = e.text; if (e.css) li.classList.add(e.css);
-    ul.appendChild(li);
+  if (game.combatLog.length > 12) game.combatLog.shift();
+  ["combat-log", "combat-log-full"].forEach((id) => {
+    const ul = $(id);
+    if (!ul) return;
+    ul.innerHTML = "";
+    game.combatLog.forEach((e) => {
+      const li = document.createElement("li");
+      li.textContent = e.text; if (e.css) li.classList.add(e.css);
+      ul.appendChild(li);
+    });
   });
 }
