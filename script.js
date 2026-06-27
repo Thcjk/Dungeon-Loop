@@ -123,18 +123,44 @@ function playSound(name) {
 // ============================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  initSupabase();
-  bindEvents();
-  renderUpgradeButtons();
-  loadLeaderboard();
+  try {
+    bindEvents();
+    renderUpgradeButtons();
+    loadLeaderboard();
+    initSupabase(); // optional, blockiert das Spiel nicht
+  } catch (err) {
+    console.error("Startfehler:", err);
+    const hint = document.getElementById("load-hint");
+    if (hint) hint.textContent = "Fehler beim Laden. Seite neu laden.";
+  }
 });
 
-function initSupabase() {
+// Supabase nur laden wenn konfiguriert (blockiert Offline-Spiel nicht)
+async function initSupabase() {
   if (SUPABASE_URL === "DEINE_SUPABASE_URL" || SUPABASE_KEY === "DEIN_SUPABASE_KEY") {
-    console.warn("Supabase noch nicht konfiguriert.");
+    console.warn("Supabase noch nicht konfiguriert – Offline-Modus.");
     return;
   }
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  try {
+    if (!window.supabase) {
+      await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    loadLeaderboard();
+  } catch (err) {
+    console.warn("Supabase konnte nicht geladen werden:", err);
+  }
+}
+
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
 function bindEvents() {
@@ -147,12 +173,17 @@ function bindEvents() {
     });
   });
 
-  $("btn-load-player").addEventListener("click", loadPlayer);
-  $("btn-start-run").addEventListener("click", startRun);
-  $("btn-pause").addEventListener("click", togglePause);
-  $("btn-restart").addEventListener("click", restartRun);
-  $("btn-save-score").addEventListener("click", saveScore);
-  $("btn-reload-leaderboard").addEventListener("click", loadLeaderboard);
+  const bind = (id, fn) => {
+    const el = $(id);
+    if (el) el.addEventListener("click", fn);
+  };
+
+  bind("btn-load-player", loadPlayer);
+  bind("btn-start-run", startRun);
+  bind("btn-pause", togglePause);
+  bind("btn-restart", restartRun);
+  bind("btn-save-score", saveScore);
+  bind("btn-reload-leaderboard", loadLeaderboard);
 }
 
 // ============================================
@@ -167,13 +198,13 @@ async function loadPlayer() {
   }
 
   game.playerName = name;
+  $("btn-load-player").disabled = true;
+  $("load-hint").textContent = "Starte Spiel...";
 
   if (!supabase) {
-    // Offline-Modus: lokal im Speicher (nur Session, kein localStorage)
     game.totalGold = 0;
     game.upgrades = createEmptyUpgrades();
-    showGameSections();
-    $("load-hint").textContent = "Offline-Modus (Supabase nicht konfiguriert).";
+    enterGame("Bereit! Tippe auf „Run starten“.");
     return;
   }
 
@@ -187,6 +218,7 @@ async function loadPlayer() {
 
   if (error) {
     $("load-hint").textContent = "Fehler: " + error.message;
+    $("btn-load-player").disabled = false;
     return;
   }
 
@@ -206,7 +238,7 @@ async function loadPlayer() {
       upgrade_cooldown: data.upgrade_cooldown || 0
     };
     selectClassButton(game.classKey);
-    $("load-hint").textContent = "Willkommen zurück, " + name + "!";
+    enterGame("Willkommen zurück, " + name + "!");
   } else {
     // Neuer Spieler anlegen
     const newPlayer = {
@@ -224,18 +256,31 @@ async function loadPlayer() {
 
     if (insertError) {
       $("load-hint").textContent = "Fehler: " + insertError.message;
+      $("btn-load-player").disabled = false;
       return;
     }
 
     game.playerId = inserted.id;
     game.totalGold = 0;
     game.upgrades = createEmptyUpgrades();
-    $("load-hint").textContent = "Neuer Spieler erstellt!";
+    enterGame("Neuer Spieler erstellt!");
   }
+}
 
+function enterGame(message) {
   showGameSections();
   updateTotalGoldDisplay();
   renderUpgradeButtons();
+
+  $("setup-section").classList.add("collapsed");
+  $("game-section").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const startBtn = $("btn-start-run");
+  startBtn.classList.add("pulse");
+  setTimeout(() => startBtn.classList.remove("pulse"), 2000);
+
+  $("load-hint").textContent = message;
+  $("btn-load-player").disabled = false;
 }
 
 function createEmptyUpgrades() {
