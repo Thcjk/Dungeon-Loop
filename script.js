@@ -16,15 +16,15 @@ const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
-const CAM_ZOOM = 1.15;
+const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
   heroMinX: 20,
-  heroMaxX: 340,
-  enemyRightMargin: 168,
-  enemySpacing: 54,
-  enemyMeleeReach: 78,
-  enemyBossReach: 98,
+  heroMaxX: 320,
+  enemyRightMargin: 205,
+  enemySpacing: 50,
+  enemyMeleeReach: 52,
+  enemyBossReach: 68,
   introSpeed: 82,
   introOffscreen: 55
 };
@@ -1130,7 +1130,9 @@ function getCombatAim() {
 }
 
 function enemyInCombatRange(e, h) {
-  return e.x + e.w > h.x - 16 && e.x < h.x + h.w + 400;
+  const gap = e.x - (h.x + h.w);
+  const reach = e.isBoss ? COMBAT_LAYOUT.enemyBossReach : COMBAT_LAYOUT.enemyMeleeReach;
+  return gap <= reach && gap >= -24 && e.x + e.w > h.x;
 }
 
 function safeSpawnWave() {
@@ -1331,14 +1333,16 @@ function getEnemyStats(isBoss) {
   const bossHp = isBoss ? 5.5 : 1;
   const bossAtk = isBoss ? 2.8 : 1;
   const bossRew = isBoss ? 3.5 : 1;
+  const worldEase = world.danger === 1 ? 0.7 : world.danger === 2 ? 0.82 : world.danger === 3 ? 0.92 : 1;
+  const lvEase = lv <= 8 ? 0.85 : lv <= 15 ? 0.93 : 1;
 
   return {
     hp: Math.floor((28 + lv * 5) * hpScale * bossHp),
-    attack: Math.floor((5 + lv * 1.8) * atkScale * bossAtk),
+    attack: Math.max(1, Math.floor((4 + lv * 1.5) * atkScale * bossAtk * worldEase * lvEase)),
     gold: Math.floor((3 + lv * 1.2) * bossRew * (1 + lv * 0.05)),
     xp: Math.floor((8 + lv * 2.5) * bossRew),
     speed: (isBoss ? 0.55 : 0.75) * world.speedMult + lv * 0.012,
-    attackInterval: Math.max(0.45, 0.9 - lv * 0.008 - world.danger * 0.05)
+    attackInterval: Math.max(0.55, 1.05 - lv * 0.006 - world.danger * 0.035)
   };
 }
 
