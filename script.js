@@ -177,7 +177,7 @@ const game = {
   hero: null, enemies: [], projectiles: [], particles: [], coins: [],
   combatLog: [], bestLoot: null,
   specialTimer: 0, lastShot: 0,
-  scrollX: 0, decor: [], waveTimer: 0,
+  scrollX: 0, decor: [], waveCooldown: 0,
   loopId: null
 };
 
@@ -245,6 +245,9 @@ function bindEvents() {
   bind("btn-restart", restartRun);
   bind("btn-save-score", saveScore);
   bind("btn-reload-leaderboard", loadLeaderboard);
+  bind("btn-fullscreen", toggleFullscreen);
+
+  document.addEventListener("fullscreenchange", onFullscreenChange);
 
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mousedown", (e) => { mouse.down = true; e.preventDefault(); });
@@ -256,16 +259,34 @@ function bindEvents() {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
     if (e.key.toLowerCase() === "q" && game.isRunning) useSpecial();
+    if (e.key.toLowerCase() === "f") toggleFullscreen();
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 }
 
 function onMouseMove(e) {
   const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0) return;
   const scaleX = CW / rect.width, scaleY = CH / rect.height;
   mouse.x = (e.clientX - rect.left) * scaleX;
   mouse.y = (e.clientY - rect.top) * scaleY;
-  mouse.onCanvas = true;
+  mouse.onCanvas = mouse.x >= 0 && mouse.x <= CW && mouse.y >= 0 && mouse.y <= CH;
+}
+
+function toggleFullscreen() {
+  const frame = $("game-frame");
+  if (!frame) return;
+  if (!document.fullscreenElement) {
+    frame.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function onFullscreenChange() {
+  const btn = $("btn-fullscreen");
+  if (btn) btn.textContent = document.fullscreenElement ? "✕" : "⛶";
+  setTimeout(() => canvas && canvas.focus(), 100);
 }
 
 async function initSupabase() {
@@ -363,7 +384,7 @@ function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
-  game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveTimer = 0;
+  game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveCooldown = 0;
   $("loot-display").classList.add("hidden");
   initDecor();
 }
@@ -431,28 +452,32 @@ function getWorld() {
 // ============================================
 
 function spawnWave() {
-  const count = Math.min(6, 2 + Math.floor(game.dungeonLevel / 3));
-  const isBoss = game.dungeonLevel % 10 === 0;
-  for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0);
+  const count = Math.min(4, 2 + Math.floor(game.dungeonLevel / 5));
+  const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
+  for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
   if (isBoss) addLog("⚠ BOSS-WELLE!", "boss");
+  else addLog(count + " Gegner erscheinen!");
 }
 
-function spawnEnemy(isBoss) {
+function spawnEnemy(isBoss, index) {
   const lv = game.dungeonLevel;
   const names = isBoss ? BOSS_MONSTERS : NORMAL_MONSTERS;
   const name = names[Math.floor(Math.random() * names.length)];
   const spKey = MONSTER_SPRITE[name];
   const sp = SPRITES[spKey];
-  const hpM = isBoss ? 4 : 1, atkM = isBoss ? 2.2 : 1, rewM = isBoss ? 2.5 : 1;
+  const hpM = isBoss ? 3.5 : 1, atkM = isBoss ? 2 : 1, rewM = isBoss ? 2.5 : 1;
+  const idx = index || 0;
 
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
-    x: CW + 30 + Math.random() * 120, y: GROUND - spriteH(sp) + Math.random() * 20 - 10,
+    x: CW - 40 - idx * 55 - Math.random() * 20,
+    y: GROUND - spriteH(sp) - 4,
     w: spriteW(sp), h: spriteH(sp),
-    maxHp: Math.floor((20 + lv * 7) * hpM), hp: Math.floor((20 + lv * 7) * hpM),
-    attack: Math.floor((3 + lv * 1.2) * atkM),
+    maxHp: Math.floor((18 + lv * 6) * hpM), hp: Math.floor((18 + lv * 6) * hpM),
+    attack: Math.floor((4 + lv * 1.2) * atkM),
     goldReward: Math.floor((3 + lv * 2) * rewM), xpReward: Math.floor((6 + lv * 3) * rewM),
-    speed: (isBoss ? 0.6 : 1) + lv * 0.02, hitFlash: 0, anim: Math.random() * 6, dead: false
+    speed: (isBoss ? 0.5 : 0.8) + lv * 0.015,
+    hitFlash: 0, anim: Math.random() * 6, dead: false, attackTimer: 0
   });
 }
 
@@ -575,21 +600,45 @@ function update(dt) {
   // Schießen bei Mausklick
   if (mouse.down && mouse.onCanvas) shoot();
 
-  // Gegner bewegen
+  // Gegner bewegen, stoppen & angreifen
+  const stopLine = h.x + h.w + 4;
   game.enemies.forEach((e) => {
+    if (e.dead || e.hp <= 0) return;
     e.anim += dt * 6;
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
-    e.x -= e.speed * 60 * dt;
-    // Nahkampf-Schaden
-    if (e.x < h.x + h.w + 10 && e.x + e.w > h.x - 10) {
-      e.attackTimer = (e.attackTimer || 0) + dt;
-      if (e.attackTimer >= 1.2) {
+
+    // Auf gleiche Höhe wie Held
+    e.y += (h.y - e.y) * Math.min(1, dt * 5);
+
+    // Zum Held laufen bis Stopplinie
+    if (e.x > stopLine) {
+      e.x -= e.speed * 50 * dt;
+    }
+    // Nicht durch den Held laufen!
+    if (e.x < stopLine) e.x = stopLine;
+
+    const inRange = e.x < h.x + h.w + 70 && e.x + e.w > h.x;
+    const yClose = Math.abs((e.y + e.h / 2) - (h.y + h.h / 2)) < 40;
+
+    if (inRange && yClose) {
+      e.attackTimer += dt;
+      if (e.attackTimer >= 0.7) {
         e.attackTimer = 0;
         const dmg = Math.max(1, e.attack - st.defense);
         h.hp -= dmg;
-        spawnDamage(h.x + h.w/2, h.y, dmg, false, true);
+        spawnDamage(h.x + h.w / 2, h.y - 5, dmg, false, true);
+        e.hitFlash = 5;
+        addLog(e.name + " greift an! -" + dmg + " LP");
         if (h.hp <= 0) { h.hp = 0; onDeath(); }
       }
+    }
+  });
+
+  // Entkommene Gegner entfernen (Fallback)
+  game.enemies.forEach((e) => {
+    if (!e.dead && e.hp > 0 && e.x < h.x - 40) {
+      e.dead = true;
+      addLog(e.name + " ist entkommen!");
     }
   });
 
@@ -627,16 +676,21 @@ function update(dt) {
     return c.life > 0;
   });
 
-  // Neue Welle
-  game.waveTimer += dt;
-  const alive = game.enemies.filter((e) => e.hp > 0);
+  // Neue Welle wenn alle besiegt oder entkommen
+  const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead);
   if (alive.length === 0) {
-    game.waveTimer += dt;
-    if (game.waveTimer > 1.5) { game.waveTimer = 0; spawnWave(); }
+    game.waveCooldown += dt;
+    if (game.waveCooldown >= 1.5) {
+      game.waveCooldown = 0;
+      game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
+      spawnWave();
+    }
+  } else {
+    game.waveCooldown = 0;
   }
 
-  // Nachrücken
-  game.enemies = game.enemies.filter((e) => e.hp > 0 || e.hitFlash > 0);
+  // Tote Gegner aufräumen
+  game.enemies = game.enemies.filter((e) => (e.hp > 0 && !e.dead) || e.hitFlash > 0);
 
   updateHUD();
   updateStatus();
@@ -785,6 +839,9 @@ function updateHUD() {
   $("hud-gold").textContent = game.runGold;
   $("hud-level").textContent = game.dungeonLevel;
   $("hud-world").textContent = world.name;
+  const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
+  const hudEn = $("hud-enemies");
+  if (hudEn) hudEn.textContent = alive;
   if (game.classKey === "mage") {
     $("hud-mana-fill").style.width = (h.mana / st.maxMana * 100) + "%";
     $("hud-mana-text").textContent = Math.floor(h.mana) + " / " + st.maxMana;
@@ -889,12 +946,15 @@ async function loadLeaderboard() {
 
 function addLog(msg, css) {
   game.combatLog.push({ text: msg, css: css||"" });
-  if (game.combatLog.length > 8) game.combatLog.shift();
-  const ul = $("combat-log"); if (!ul) return;
-  ul.innerHTML = "";
-  game.combatLog.forEach((e) => {
-    const li = document.createElement("li");
-    li.textContent = e.text; if (e.css) li.classList.add(e.css);
-    ul.appendChild(li);
+  if (game.combatLog.length > 12) game.combatLog.shift();
+  ["combat-log", "combat-log-full"].forEach((id) => {
+    const ul = $(id);
+    if (!ul) return;
+    ul.innerHTML = "";
+    game.combatLog.forEach((e) => {
+      const li = document.createElement("li");
+      li.textContent = e.text; if (e.css) li.classList.add(e.css);
+      ul.appendChild(li);
+    });
   });
 }
