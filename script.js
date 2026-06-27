@@ -1425,7 +1425,7 @@ function renderWorldAtmosphere(world) {
 // ============================================
 
 function attack() {
-  if (game.waveIntro || !game.combatReady) return;
+  if (!game.isRunning || game.isPaused || game.isDead || !game.hero) return;
   const cls = CLASSES[game.classKey];
   const now = performance.now();
   if (now - game.lastShot < cls.attackRate) return;
