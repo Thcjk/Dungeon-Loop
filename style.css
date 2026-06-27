@@ -105,6 +105,34 @@ body {
   display: none !important;
 }
 
+/* Setup nach Start einklappen */
+.setup-card.collapsed {
+  padding: 0.8rem 1.2rem;
+}
+
+.setup-card.collapsed h2,
+.setup-card.collapsed .label,
+.setup-card.collapsed .input,
+.setup-card.collapsed .class-select,
+.setup-card.collapsed #btn-load-player {
+  display: none;
+}
+
+.setup-card.collapsed #load-hint {
+  margin: 0;
+  color: var(--success);
+}
+
+/* Run-starten Button hervorheben */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.6); }
+  50%      { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+}
+
+.btn.pulse {
+  animation: pulse-glow 0.8s ease-in-out 3;
+}
+
 /* Formular */
 .label {
   display: block;
