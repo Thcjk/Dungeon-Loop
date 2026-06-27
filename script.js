@@ -1319,15 +1319,20 @@ function getPath(world) {
 
 function decorScreenX(d, sp) {
   const path = getPath(getWorld());
-  const sw = sp ? spriteDecorW(sp) : 36;
-  const raw = ((d.x - game.scrollX * d.parallax) % (CW + 180)) - 30;
-  if (d.lane === "left") {
-    const maxX = path.x - sw - 2;
-    return Math.max(-sw / 2, Math.min(maxX, 2 + (raw % Math.max(24, maxX))));
-  }
-  const minX = path.x + path.w + 2;
-  const maxX = CW - sw - 2;
-  return minX + (raw % Math.max(24, maxX - minX));
+  const period = d.lane === "left" ? path.x + 50 : CW - path.x - path.w + 50;
+  const drift = d.x - game.scrollX * d.parallax;
+  const local = scrollWrap(drift, period);
+  if (d.lane === "left") return -12 + local;
+  return path.x + path.w - 8 + local;
+}
+
+function decorDrawCopies(d, sp, drawFn) {
+  const path = getPath(getWorld());
+  const period = d.lane === "left" ? path.x + 50 : CW - path.x - path.w + 50;
+  const base = decorScreenX(d, sp);
+  drawFn(base);
+  if (base > CW - 80) drawFn(base - period);
+  if (base < 80) drawFn(base + period);
 }
 
 const BG_TREE_TYPES = {
@@ -1376,20 +1381,57 @@ function renderWorldHillsAndVerge(world) {
   const hills = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
   hills.forEach((col, layer) => {
     ctx.fillStyle = col;
-    const parallax = 0.06 + layer * 0.05;
-    for (let i = 0; i < 7; i++) {
-      const hx = ((i * 148 - game.scrollX * parallax) % (CW + 190)) - 48;
+    const parallax = 0.05 + layer * 0.04;
+    drawTiledInRange(-60, CW + 60, game.scrollX, parallax, 148, (hx) => {
       const hh = 95 + layer * 32;
       const hy = GROUND - hh - layer * 10;
       ctx.beginPath();
       ctx.moveTo(hx, GROUND);
       ctx.quadraticCurveTo(hx + 88, hy - 28, hx + 168, GROUND);
       ctx.fill();
-    }
+    });
   });
   ctx.fillStyle = path.verge || world.moss;
   ctx.fillRect(0, PATH_TOP - 18, path.x, GROUND - PATH_TOP + 18);
   ctx.fillRect(path.x + path.w, PATH_TOP - 18, CW - path.x - path.w, GROUND - PATH_TOP + 18);
+}
+
+function scrollWrap(x, period) {
+  return ((x % period) + period) % period;
+}
+
+function drawTiledInRange(minX, maxX, scroll, parallax, spacing, drawFn) {
+  const drift = scroll * parallax;
+  const span = maxX - minX + 140;
+  const count = Math.ceil(span / spacing) + 3;
+  const i0 = Math.floor((minX + drift - 60) / spacing);
+  for (let i = i0; i < i0 + count; i++) {
+    const sx = i * spacing - drift;
+    if (sx + 90 < minX - 40 || sx > maxX + 40) continue;
+    drawFn(sx, i);
+  }
+}
+
+function renderWorldEdgeAnchors(world) {
+  const layout = worldLayout(world);
+  const sp = SPRITES[layout.silhouette] || SPRITES.pine_tree;
+  if (!sp) return;
+  const sh = spriteDecorH(sp, BG_PIXEL);
+  const path = getPath(world);
+
+  ctx.globalAlpha = 0.75;
+  drawBgSprite(ctx, sp, scrollWrap(-18 - game.scrollX * 0.018, 24), GROUND - sh - 4, false);
+  drawBgSprite(ctx, sp, scrollWrap(-8 - game.scrollX * 0.022, 20), GROUND - sh - 12, false);
+  drawBgSprite(ctx, sp, scrollWrap(CW - sh - 10 - game.scrollX * 0.02, 28), GROUND - sh - 6, true);
+  drawBgSprite(ctx, sp, scrollWrap(CW - 20 - game.scrollX * 0.025, 22), GROUND - sh - 14, true);
+
+  const tree = SPRITES.pine_tree;
+  if (tree && world.theme === "forest") {
+    const th = spriteDecorH(tree, DECOR_PIXEL);
+    drawDecorSprite(ctx, tree, scrollWrap(2 - game.scrollX * 0.04, 30), GROUND - th, false);
+    drawDecorSprite(ctx, tree, scrollWrap(CW - spriteDecorW(tree) - 4 - game.scrollX * 0.045, 34), GROUND - th, true);
+  }
+  ctx.globalAlpha = 1;
 }
 
 function renderWorldSideSilhouettes(world) {
@@ -1398,43 +1440,45 @@ function renderWorldSideSilhouettes(world) {
   const sp = SPRITES[layout.silhouette];
   if (!sp) return;
   const sh = spriteDecorH(sp, BG_PIXEL);
-  for (let i = 0; i < 12; i++) {
-    const side = i % 2 === 0;
-    const raw = ((i * 72 - game.scrollX * 0.045) % (CW + 80)) - 15;
-    const sx = side ? Math.min(raw, path.x - 30) : Math.max(raw, path.x + path.w + 10);
-    if (side ? sx < path.x - 10 : sx > path.x + path.w) {
-      drawBgSprite(ctx, sp, sx, GROUND - sh - (i % 3) * 10, !side);
-    }
-  }
+
+  const drawLeft = (sx) => {
+    if (sx > path.x + 8) return;
+    drawBgSprite(ctx, sp, sx, GROUND - sh - (Math.abs(sx) % 3) * 8, false);
+  };
+  const drawRight = (sx) => {
+    if (sx + spriteDecorW(sp, BG_PIXEL) < path.x + path.w - 8) return;
+    drawBgSprite(ctx, sp, sx, GROUND - sh - (Math.abs(sx) % 3) * 8, true);
+  };
+
+  drawTiledInRange(-30, path.x + 5, game.scrollX, 0.04, 52, drawLeft);
+  drawTiledInRange(path.x + path.w - 5, CW + 30, game.scrollX, 0.045, 54, drawRight);
 }
 
 function renderWorldSideGlow(world) {
   const path = getPath(world);
-  for (let i = 0; i < 18; i++) {
-    const gx = ((i * 47 - game.scrollX * 0.35) % (CW + 30)) - 8;
-    if (isOnPath(gx, path, 5)) continue;
-    ctx.fillStyle = i % 3 === 0 ? world.particleColor : world.accent;
-    ctx.globalAlpha = 0.2 + (i % 4) * 0.1;
-    ctx.fillRect(gx, PATH_TOP + 6 + (i % 4), 2, 2);
+  drawTiledInRange(-10, CW + 10, game.scrollX, 0.28, 38, (gx) => {
+    if (isOnPath(gx, path, 5)) return;
+    ctx.fillStyle = Math.abs(gx) % 3 === 0 ? world.particleColor : world.accent;
+    ctx.globalAlpha = 0.22 + (Math.abs(gx) % 5) * 0.06;
+    ctx.fillRect(gx, PATH_TOP + 6 + (Math.abs(gx) % 4), 2, 2);
     ctx.globalAlpha = 1;
-  }
+  });
 }
 
 function renderWorldFarPeaks(world) {
   const path = getPath(world);
   if (world.theme === "volcano") {
     ctx.fillStyle = path.wall || world.hill3;
-    for (let i = 0; i < 6; i++) {
-      const vx = ((i * 185 - game.scrollX * 0.04) % (CW + 80)) + 10;
+    drawTiledInRange(-10, CW + 10, game.scrollX, 0.04, 185, (vx, i) => {
       const vh = 145 + (i % 3) * 20;
       const cx = vx + 70;
-      if (isOnPath(cx, path, 20)) continue;
+      if (isOnPath(cx, path, 20)) return;
       ctx.beginPath();
       ctx.moveTo(vx, GROUND);
       ctx.lineTo(vx + 70, GROUND - vh);
       ctx.lineTo(vx + 140, GROUND);
       ctx.fill();
-    }
+    });
   }
   if (world.theme === "cave") {
     ctx.fillStyle = world.hill3 || world.hill;
@@ -1452,18 +1496,17 @@ function initDecor() {
   const pick = () => themeTypes[Math.floor(Math.random() * themeTypes.length)];
 
   // Nur Hintergrund-Dekor an den Seiten – nie auf dem Weg
-  [["left", 10], ["right", 10]].forEach(([lane, count]) => {
+  [["left", 18], ["right", 18]].forEach(([lane, count]) => {
     for (let i = 0; i < count; i++) {
       const type = pick();
-      const meta = DECOR_META[type] || { parallax: 0.12 };
       const sp = SPRITES[type];
       const sh = sp ? spriteDecorH(sp) : 40;
       game.decor.push({
-        x: i * 72 + Math.random() * 30,
+        x: i * 48 + Math.random() * 18,
         lane,
         type,
         y: GROUND - sh - Math.floor(Math.random() * 5),
-        parallax: (lane === "left" ? 0.1 : 0.14) + (Math.random() - 0.5) * 0.03,
+        parallax: (lane === "left" ? 0.08 : 0.11) + (Math.random() - 0.5) * 0.02,
         flip: Math.random() < 0.4
       });
     }
@@ -1475,45 +1518,28 @@ function renderWorldBackTrees(world) {
   const path = getPath(world);
   const types = BG_TREE_TYPES[world.theme] || BG_TREE_TYPES.forest;
 
-  const drawSide = (side) => {
-    ctx.save();
-    if (side === "left") {
-      ctx.beginPath();
-      ctx.rect(0, 0, path.x, GROUND);
-      ctx.clip();
-    } else {
-      ctx.beginPath();
-      ctx.rect(path.x + path.w, 0, CW - path.x - path.w, GROUND);
-      ctx.clip();
-    }
-
+  const drawZone = (side, minX, maxX) => {
     for (let layer = 0; layer < 3; layer++) {
-      const parallax = 0.04 + layer * 0.035;
-      const scale = layer === 0 ? BG_PIXEL : layer === 1 ? DECOR_PIXEL : DECOR_PIXEL;
-      const alpha = 0.55 + layer * 0.18;
-      const count = 7 + layer * 2;
+      const parallax = 0.025 + layer * 0.02;
+      const scale = layer === 0 ? BG_PIXEL : DECOR_PIXEL;
+      const alpha = 0.58 + layer * 0.16;
+      const spacing = 44 + layer * 10;
 
-      for (let i = 0; i < count; i++) {
+      drawTiledInRange(minX, maxX, game.scrollX, parallax, spacing, (sx, i) => {
         const type = types[(i + layer) % types.length];
         const sp = SPRITES[type];
-        if (!sp) continue;
-        const sh = sp[0].length * scale;
+        if (!sp) return;
         const sw = sp.length * scale;
-        const raw = ((i * 82 + layer * 40 - game.scrollX * parallax) % (CW + 120)) - 20;
-        const sx = side === "left"
-          ? (raw % Math.max(40, path.x + 20)) - 10
-          : path.x + path.w + 8 + (raw % Math.max(40, CW - path.x - path.w - 20));
-        const sy = GROUND - sw - layer * 8 - (i % 3) * 6;
+        const sy = GROUND - sw - layer * 5 - (i % 3) * 5;
         ctx.globalAlpha = alpha;
         drawSpriteScaled(ctx, sp, sx, sy, side === "right" && i % 2 === 0, scale);
-      }
+      });
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
   };
 
-  drawSide("left");
-  drawSide("right");
+  drawZone("left", -35, path.x + 6);
+  drawZone("right", path.x + path.w - 6, CW + 35);
 }
 
 function initWorldParticles() {
@@ -1612,15 +1638,12 @@ function renderWorldWalkway(world) {
 
 function renderWorldMidScatter(world) {
   const path = getPath(world);
-  const scroll = game.scrollX;
   const layout = worldLayout(world);
   const spL = SPRITES[layout.scatterL];
   const spR = SPRITES[layout.scatterR];
 
-  for (let i = 0; i < 36; i++) {
-    const seed = i * 97;
-    const px = ((seed * 1.7 - scroll * (0.2 + (i % 4) * 0.05)) % (CW + 60)) - 20;
-    if (isOnPath(px, path)) continue;
+  drawTiledInRange(-20, CW + 20, game.scrollX, 0.22, 58, (px, i) => {
+    if (isOnPath(px, path)) return;
 
     ctx.globalAlpha = 0.18 + (i % 5) * 0.06;
     if (i % 9 === 0 && px < path.x && spL) {
@@ -1629,10 +1652,10 @@ function renderWorldMidScatter(world) {
       drawDecorSprite(ctx, spR, px, GROUND - spriteDecorH(spR), i % 2 === 0);
     } else {
       ctx.fillStyle = i % 4 === 0 ? world.accent : (world.moss || world.verge);
-      ctx.fillRect(px, PATH_TOP - 20 - (seed % 30), 2, 2);
+      ctx.fillRect(px, PATH_TOP - 20 - (i * 17 % 30), 2, 2);
     }
     ctx.globalAlpha = 1;
-  }
+  });
 }
 
 function renderWorldCanopy(world) {
@@ -1649,38 +1672,34 @@ function renderWorldCanopy(world) {
   ctx.clip();
 
   ctx.fillStyle = fillCol;
-  for (let i = 0; i < 20; i++) {
-    const cx = (i * 44 - game.scrollX * 0.025) % (CW + 40);
+  drawTiledInRange(-40, CW + 40, game.scrollX, 0.025, 44, (cx, i) => {
     const cy = 6 + (i % 5) * 9;
     ctx.globalAlpha = 0.5 + (i % 3) * 0.12;
     ctx.beginPath();
     ctx.ellipse(cx, cy, 16 + (i % 5) * 3, 10 + (i % 3) * 2, 0, 0, Math.PI * 2);
     ctx.fill();
-  }
+  });
   ctx.globalAlpha = 1;
 
   ctx.fillStyle = speckCol;
-  for (let i = 0; i < 28; i++) {
-    const lx = (i * 31 + game.scrollX * 0.015) % CW;
+  drawTiledInRange(0, CW, game.scrollX, 0.015, 31, (lx, i) => {
     ctx.globalAlpha = 0.2 + (i % 4) * 0.08;
     ctx.fillRect(lx, 4 + (i % 6) * 7, 4 + (i % 3), 2);
-  }
+  });
   ctx.globalAlpha = 1;
 
-  for (let i = 0; i < 10; i++) {
-    const vx = (i * 58 - game.scrollX * 0.03) % CW;
+  drawTiledInRange(0, CW, game.scrollX, 0.03, 58, (vx, i) => {
     ctx.fillStyle = dropCol;
     ctx.globalAlpha = 0.35;
     ctx.fillRect(vx, 0, 2, 28 + (i % 4) * 8);
     ctx.globalAlpha = 1;
-  }
+  });
 
   if (world.theme === "cave") {
-    for (let i = 0; i < 12; i++) {
-      const cx = ((i * 88 - game.scrollX * 0.02) % (CW + 60)) - 20;
+    drawTiledInRange(-20, CW + 20, game.scrollX, 0.02, 88, (cx, i) => {
       const sp = SPRITES.stalactite;
       if (sp) drawBgSprite(ctx, sp, cx, 2 + (i % 3) * 8, false);
-    }
+    });
   }
   if (world.theme === "ruins" && world.hasMoon) {
     const mx = CW / 2 - 14;
@@ -1698,8 +1717,7 @@ function renderWorldAtmosphere(world) {
   const path = getPath(world);
 
   if (world.hasStars && world.theme !== "cave" && world.theme !== "volcano") {
-    for (let i = 0; i < 28; i++) {
-      const sx = (i * 67 + game.scrollX * 0.04) % CW;
+    drawTiledInRange(0, CW, game.scrollX, 0.04, 67, (sx, i) => {
       const sy = 18 + (i * 31) % 72;
       ctx.fillStyle = world.star;
       if (i % 7 === 0 && world.theme === "ruins") {
@@ -1709,7 +1727,7 @@ function renderWorldAtmosphere(world) {
         ctx.fillRect(sx, sy, 2, 2);
         ctx.globalAlpha = 1;
       }
-    }
+    });
   }
 
   if (world.hasMoon) {
@@ -2229,14 +2247,16 @@ function render() {
   renderWorldCanopy(world);
   renderWorldDepth(world);
   renderWorldBackTrees(world);
+  renderWorldEdgeAnchors(world);
   renderWorldMidScatter(world);
   renderWorldWalkway(world);
 
   game.decor.forEach((d) => {
     const sp = SPRITES[d.type];
     if (!sp) return;
-    const dx = decorScreenX(d, sp);
-    drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
+    decorDrawCopies(d, sp, (dx) => {
+      if (dx > -80 && dx < CW + 80) drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
+    });
   });
 
   renderWorldGround(world);
