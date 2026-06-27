@@ -11,7 +11,7 @@ let supabase = null;
 // --- Canvas ---
 const PIXEL = 3;
 const CHAR_PIXEL = 4;
-const WEAPON_PIXEL = 4;
+const WEAPON_PIXEL = 3;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
@@ -64,40 +64,36 @@ const SPRITES = {
     "....KK..KK...."
   ],
   shield: [
-    "....KKKKKK....","...KWWWWWWK...","..KWwSSSSwWK..",".KWwwSSSSwwWK.",
-    "KWwwSSyySSwwWK","KWwwSSyySSwwWK",".KWwwwwwwwwWK.","..KWwSSSSwWK..",
-    "...KWWWWWWK...","....KKDDKK....",".....KDDK.....","......KK......"
+    "....KKKK....","...KWWWWK...","..KWwSSwWK..","..KWSSSSWK..",
+    "..KWSSSSWK..","...KWWWWK...","....KDDK....",".....KK....."
   ],
   sword: [
-    ".....K.....","....KwWK....","....KWWK....","...KWWWWK...",
-    "...KWWWWK...","...KWWWWK...","...KWwwWK...","....KWWK....",
-    "...KDDDDK...","....KDDK....",".....KK....."
+    ".....K.....","....KwK....",".....WK.....",".....WK.....",
+    ".....WK.....",".....WK.....",".....WK.....",".....WK.....",
+    ".....WK.....","....KDDK....",".....KK....."
   ],
   sword_heavy: [
-    ".....K......","....KwWWK....","...KWWWWWK...","...KWWWWWWK..",
-    "..KWWWWWWWK.","..KWWWWWWWK.","...KWWWWWWK..","....KWWWWK...",
-    "....KWwwWK...","....KDDDDK...",".....KDDK....","......KK....."
+    ".....K.....","....KWWK....","....KwWK....",".....WK.....",
+    ".....WK.....",".....WK.....",".....WK.....",".....WK.....",
+    ".....WK.....","....KDDDK...",".....KK....."
   ],
   bow: [
-    ".....K.....","....KyK....","...Ky.wyK...","..Ky...wyK..",
-    ".Ky.....wyK.","..Ky...wyK..","...Ky.wyK...","....KyK....",
-    ".....K....."
+    ".....K.....","....KyK....","...Ky.wyK..","..Ky...wyK.",
+    "..Ky.....wyK","...Ky.wyK..","....KyK....",".....K....."
   ],
   bow_aim: [
-    ".....K.....","....KyK....","...KyywyK...","..KyyyyyK..",
-    ".KyyywyyyyK.","..KyyyyyK..","...KyywyK...","....KyK....",
+    ".....K.....","....KyK....","...KyywyK..","..KyyyyyK..",
+    ".KyyywyyyyK","..KyyyyyK..","...KyywyK..","....KyK....",
     ".....K....."
   ],
   staff: [
-    "....KiBiK....","...KiBBiBK...","..KiBwwBiBK..","...KiBBiBK...",
-    "....KiBiK....",".....YWk.....",".....YWk.....",".....YWk.....",
-    ".....YWk.....",".....YWk.....",".....YWk.....","....KDDK.....",
-    ".....KK......"
+    "....KiK....","...KiBiK...","..KiBBiBK..","...KiBiK...",
+    "....KiK....",".....YWk....",".....YWk....",".....YWk....",
+    ".....YWk....",".....YWk....","....KDDK....",".....KK....."
   ],
   orb_glow: [
-    ".....KiK.....","....KiBiK....","...KiBBiBK...","..KiBBBBiBK..",
-    ".KiBBwwBBiBK.","..KiBBBBiBK..","...KiBBiBK...","....KiBiK....",
-    ".....KkK....."
+    "....KiK....","...KiBiK...","..KiBBiBK..","...KiBiK...",
+    "....KkK...."
   ],
   goblin: [
     "....KKKKKK....","...KmGGGGmK...","..KmGGGGGGmK..","..KmGeGGemK...",
@@ -521,16 +517,17 @@ function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
 function spriteWeaponW(rows) { return rows[0].length * WEAPON_PIXEL; }
 function spriteWeaponH(rows) { return rows.length * WEAPON_PIXEL; }
 
-function drawWeaponSprite(c, rows, x, y, flip, glowColor) {
+function drawWeaponSprite(c, rows, x, y, flip, glowColor, sc) {
+  const scale = sc || WEAPON_PIXEL;
   if (glowColor) {
     c.save();
-    c.globalAlpha = 0.22;
+    c.globalAlpha = 0.28;
     c.shadowColor = glowColor;
-    c.shadowBlur = 4;
-    drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
+    c.shadowBlur = 3;
+    drawSpriteScaled(c, rows, x, y, flip, scale);
     c.restore();
   }
-  drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
+  drawSpriteScaled(c, rows, x, y, flip, scale);
 }
 function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
 function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
@@ -608,30 +605,39 @@ const HERO_WEAPON = {
   mage:    { idle: "staff", attack: "staff", glow: "orb_glow" }
 };
 
-function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
+function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking, sc) {
   const w = HERO_WEAPON[classKey];
   if (!w) return;
   const wKey = attacking ? (w.attack || w.idle) : w.idle;
   const sp = SPRITES[wKey];
   if (!sp) return;
+  const scale = sc || WEAPON_PIXEL;
   const glow = classKey === "mage" ? "#5dade2" : classKey === "ranger" ? "#f1c40f" : "#ecf0f1";
   c.save();
   c.translate(cx, cy);
   c.rotate(angle);
-  const gripX = classKey === "mage" ? -4 : classKey === "ranger" ? -3 : 6;
-  const gripY = classKey === "mage" ? -28 : classKey === "ranger" ? -16 : -14;
-  drawWeaponSprite(c, sp, gripX, gripY, false, glow);
+  const gripX = classKey === "mage" ? -3 : classKey === "ranger" ? -2 : 4;
+  const gripY = classKey === "mage" ? -22 : classKey === "ranger" ? -12 : -10;
+  drawWeaponSprite(c, sp, gripX, gripY, false, glow, scale);
   if (classKey === "mage") {
     const pulse = 0.45 + Math.sin(performance.now() * 0.02) * 0.25;
     c.globalAlpha = pulse;
-    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 2, gripY - 24, false, "#85c1e9");
+    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 1, gripY - 14, false, "#85c1e9", scale);
     c.globalAlpha = 1;
   }
   if (classKey === "ranger" && attacking) {
     c.globalAlpha = 0.65;
-    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 10, gripY - 1, false, "#f1c40f");
+    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 8, gripY, false, "#f1c40f", scale);
     c.globalAlpha = 1;
   }
+  c.restore();
+}
+
+function drawHeroShieldLayer(c, flip, cx, cy, sc) {
+  const scale = sc || WEAPON_PIXEL;
+  c.save();
+  c.translate(cx, cy);
+  drawWeaponSprite(c, SPRITES.shield, flip ? 14 : -20, -4, flip, "#bdc3c7", scale);
   c.restore();
 }
 
@@ -640,31 +646,26 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   const y = h.y + bob;
   const flip = h.facing < 0;
   const cx = x + h.w / 2;
-  const cy = y + h.h / 2 + 6;
+  const cy = y + h.h / 2 + 4;
   const body = SPRITES[game.classKey];
   const attacking = h.attackAnim > 0.04;
   let angle = Math.atan2(mouse.y - cy, mouse.x - cx);
-  if (!mouse.onCanvas && !attacking) angle = flip ? Math.PI - 0.4 : -0.4;
+  if (!mouse.onCanvas && !attacking) angle = flip ? 2.4 : -0.75;
 
   drawCharShadow(c, cx, h.y + h.h, h.w, getCharStyle(world), bob, false);
 
-  if (game.classKey === "warrior") {
-    c.save();
-    c.translate(cx, cy);
-    drawWeaponSprite(c, SPRITES.shield, flip ? 18 : -28, -6, flip, "#bdc3c7");
-    c.restore();
-  }
+  if (game.classKey === "warrior") drawHeroShieldLayer(c, flip, cx, cy);
 
   drawCharSprite(c, body, x, y, flip);
-  drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
+  applyWorldCharTint(c, x, y, h.w, h.h, world);
+  drawCharFeetFog(c, x, y, h.w, h.h, world);
 
-  const pad = game.classKey === "warrior" ? 14 : game.classKey === "mage" ? 10 : 8;
-  applyWorldCharTint(c, x - pad, y - 2, h.w + pad * 2, h.h + 4, world);
-  drawCharFeetFog(c, x - 4, y, h.w + 8, h.h, world);
+  drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
 }
 
 function drawPreviews() {
   const PSC = 4;
+  const WSC = 3;
   document.querySelectorAll(".preview-sprite").forEach((cv) => {
     const c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
@@ -674,24 +675,27 @@ function drawPreviews() {
     if (!body) return;
     const bw = body[0].length * PSC;
     const bh = body.length * PSC;
-    const ox = Math.floor((cv.width - bw) / 2) - 4;
-    const oy = Math.floor((cv.height - bh) / 2) + 2;
+    const ox = Math.floor((cv.width - bw) / 2);
+    const oy = Math.floor((cv.height - bh) / 2) + 6;
     const cx = ox + bw / 2;
-    const cy = oy + bh / 2 + 4;
-    if (key === "warrior") drawWeaponSprite(c, SPRITES.shield, ox - 12, oy + 10, false, "#bdc3c7");
+    const cy = oy + bh / 2 + 2;
+    const aim = -0.65;
+
+    if (key === "warrior") drawHeroShieldLayer(c, false, cx, cy, WSC);
     drawCharSprite(c, body, ox, oy, false, PSC);
+
     const w = HERO_WEAPON[key];
     if (w) {
-      const wKey = key === "ranger" ? w.attack : w.idle;
+      const wKey = w.idle;
       const sp = SPRITES[wKey];
       c.save();
       c.translate(cx, cy);
-      c.rotate(-0.55);
-      const gx = key === "mage" ? -4 : key === "ranger" ? -3 : 6;
-      const gy = key === "mage" ? -22 : key === "ranger" ? -14 : -14;
+      c.rotate(aim);
+      const gx = key === "mage" ? -3 : key === "ranger" ? -2 : 4;
+      const gy = key === "mage" ? -18 : key === "ranger" ? -10 : -8;
       const glow = key === "mage" ? "#5dade2" : key === "ranger" ? "#f1c40f" : "#ecf0f1";
-      drawWeaponSprite(c, sp, gx, gy, false, glow);
-      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 2, gy - 20, false, "#85c1e9");
+      drawWeaponSprite(c, sp, gx, gy, false, glow, WSC);
+      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 1, gy - 12, false, "#85c1e9", WSC);
       c.restore();
     }
   });
