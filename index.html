@@ -10,7 +10,7 @@
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Pixel-RPG – Maus zielen, Linksklick schießen, Q = Spezial</p>
+    <p class="subtitle">Maus drüber = kämpfen | Taste 1 = Spezial</p>
   </header>
 
   <main class="container">
@@ -24,17 +24,17 @@
         <button type="button" class="class-btn warrior selected" data-class="warrior">
           <canvas class="preview-sprite" data-preview="warrior" width="48" height="48"></canvas>
           <span class="class-name">Krieger</span>
-          <span class="class-desc">Schwerter, viel Leben</span>
+          <span class="class-desc">Nahkampf – Schwert, kurze Reichweite</span>
         </button>
         <button type="button" class="class-btn ranger" data-class="ranger">
           <canvas class="preview-sprite" data-preview="ranger" width="48" height="48"></canvas>
           <span class="class-name">Waldläufer</span>
-          <span class="class-desc">Pfeile, hohe Krit-Chance</span>
+          <span class="class-desc">Bogen – große Reichweite, schwach nah</span>
         </button>
         <button type="button" class="class-btn mage" data-class="mage">
           <canvas class="preview-sprite" data-preview="mage" width="48" height="48"></canvas>
           <span class="class-name">Magier</span>
-          <span class="class-desc">Zauber, Mana-System</span>
+          <span class="class-desc">Zauber – mittlere Reichweite, Mana</span>
         </button>
       </div>
       <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
@@ -43,58 +43,70 @@
 
     <section class="card game-card hidden" id="game-section">
 
-      <div class="game-frame hidden" id="game-frame">
-        <canvas id="game-canvas" width="640" height="360" tabindex="0"></canvas>
+      <div class="game-layout">
+        <div class="game-frame hidden" id="game-frame">
+          <button type="button" class="btn-fullscreen" id="btn-fullscreen" title="Vollbild">⛶</button>
+          <canvas id="game-canvas" width="640" height="360" tabindex="0"></canvas>
 
-        <div class="hud">
-          <div class="hud-left">
-            <div class="hud-bar">
-              <span class="hud-label">HEALTH</span>
-              <div class="bar-bg"><div class="bar-fill hp" id="hud-hp-fill"></div></div>
-              <span class="hud-val" id="hud-hp-text">0 / 0</span>
+          <div class="hud">
+            <div class="hud-left">
+              <div class="hud-bar">
+                <span class="hud-label">HEALTH</span>
+                <div class="bar-bg"><div class="bar-fill hp" id="hud-hp-fill"></div></div>
+                <span class="hud-val" id="hud-hp-text">0 / 0</span>
+              </div>
+              <div class="hud-bar">
+                <span class="hud-label">XP</span>
+                <div class="bar-bg"><div class="bar-fill xp" id="hud-xp-fill"></div></div>
+                <span class="hud-val" id="hud-xp-text">0%</span>
+              </div>
+              <div class="hud-bar mana-bar hidden" id="hud-mana-wrap">
+                <span class="hud-label">MANA</span>
+                <div class="bar-bg"><div class="bar-fill mana" id="hud-mana-fill"></div></div>
+                <span class="hud-val" id="hud-mana-text">0 / 0</span>
+              </div>
             </div>
-            <div class="hud-bar">
-              <span class="hud-label">XP</span>
-              <div class="bar-bg"><div class="bar-fill xp" id="hud-xp-fill"></div></div>
-              <span class="hud-val" id="hud-xp-text">0%</span>
-            </div>
-            <div class="hud-bar mana-bar hidden" id="hud-mana-wrap">
-              <span class="hud-label">MANA</span>
-              <div class="bar-bg"><div class="bar-fill mana" id="hud-mana-fill"></div></div>
-              <span class="hud-val" id="hud-mana-text">0 / 0</span>
+            <div class="hud-right">
+              <div class="hud-stat"><span class="coin">🪙</span> <span id="hud-gold">0</span></div>
+              <div class="hud-stat"><span>LV</span> <span id="hud-level">1</span></div>
+              <div class="hud-stat"><span>Gegner</span> <span id="hud-enemies">0</span></div>
+              <div class="hud-stat world-name" id="hud-world">Wald</div>
             </div>
           </div>
-          <div class="hud-right">
-            <div class="hud-stat"><span class="coin">🪙</span> <span id="hud-gold">0</span></div>
-            <div class="hud-stat"><span>LV</span> <span id="hud-level">1</span></div>
-            <div class="hud-stat world-name" id="hud-world">Wald</div>
+
+          <div class="controls-hint" id="controls-hint">
+            <kbd>WASD</kbd> Bewegen &nbsp;|&nbsp;
+            <kbd>Maus</kbd> drüber = Auto-Angriff &nbsp;|&nbsp;
+            <kbd>1</kbd> Spezial &nbsp;|&nbsp;
+            <kbd>P</kbd> Pause &nbsp;|&nbsp;
+            <kbd>F</kbd> Vollbild
           </div>
         </div>
 
-        <div class="controls-hint">
-          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Bewegen &nbsp;|&nbsp;
-          <kbd>Maus</kbd> Zielen + Halten = Schießen &nbsp;|&nbsp;
-          <kbd>Q</kbd> Spezial &nbsp;|&nbsp;
-          <kbd>P</kbd> Pause
-        </div>
-      </div>
+        <aside class="game-sidebar">
+          <div class="status-bar">
+            <div class="status-item"><span class="status-label">Dungeon</span><span class="status-value" id="dungeon-level">1</span></div>
+            <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
+            <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
+            <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
+          </div>
 
-      <div class="status-bar">
-        <div class="status-item"><span class="status-label">Dungeon</span><span class="status-value" id="dungeon-level">1</span></div>
-        <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
-        <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
-        <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
-      </div>
+          <div class="loot-display hidden" id="loot-display">
+            <span class="loot-label">Bester Loot:</span>
+            <span class="loot-item" id="best-loot-text">–</span>
+          </div>
 
-      <div class="loot-display hidden" id="loot-display">
-        <span class="loot-label">Bester Loot:</span>
-        <span class="loot-item" id="best-loot-text">–</span>
-      </div>
+          <div class="controls">
+            <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
+            <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
+            <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
+          </div>
 
-      <div class="controls">
-        <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
-        <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
-        <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
+          <div class="sidebar-log">
+            <h3>Kampflog</h3>
+            <ul class="combat-log" id="combat-log"></ul>
+          </div>
+        </aside>
       </div>
 
       <div class="gameover-panel hidden" id="gameover-panel">
@@ -107,14 +119,15 @@
     </section>
 
     <section class="card upgrade-card hidden" id="upgrade-section">
-      <h2>Upgrades</h2>
+      <h2>Permanente Upgrades</h2>
+      <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
       <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
       <div class="upgrade-grid" id="upgrade-grid"></div>
     </section>
 
     <section class="card log-card hidden" id="log-section">
-      <h2>Kampflog</h2>
-      <ul class="combat-log" id="combat-log"></ul>
+      <h2>Kampflog (Vollansicht)</h2>
+      <ul class="combat-log combat-log-full" id="combat-log-full"></ul>
     </section>
 
     <section class="card leaderboard-card">
