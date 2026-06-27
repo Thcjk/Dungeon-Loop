@@ -49,28 +49,33 @@
           <canvas id="game-canvas" width="640" height="360" tabindex="0"></canvas>
 
           <div class="hud">
-            <div class="hud-left">
-              <div class="hud-bar">
-                <span class="hud-label">HEALTH</span>
+            <div class="hud-card hud-player">
+              <div class="hud-card-title">Spieler</div>
+              <div class="hud-bar hp-bar">
+                <span class="hud-label">HP</span>
                 <div class="bar-bg"><div class="bar-fill hp" id="hud-hp-fill"></div></div>
                 <span class="hud-val" id="hud-hp-text">0 / 0</span>
               </div>
-              <div class="hud-bar">
+              <div class="hud-bar xp-bar">
                 <span class="hud-label">XP</span>
                 <div class="bar-bg"><div class="bar-fill xp" id="hud-xp-fill"></div></div>
                 <span class="hud-val" id="hud-xp-text">0%</span>
               </div>
               <div class="hud-bar mana-bar hidden" id="hud-mana-wrap">
-                <span class="hud-label">MANA</span>
+                <span class="hud-label">MP</span>
                 <div class="bar-bg"><div class="bar-fill mana" id="hud-mana-fill"></div></div>
                 <span class="hud-val" id="hud-mana-text">0 / 0</span>
               </div>
             </div>
-            <div class="hud-right">
-              <div class="hud-stat"><span class="coin">🪙</span> <span id="hud-gold">0</span></div>
-              <div class="hud-stat"><span>LV</span> <span id="hud-level">1</span></div>
-              <div class="hud-stat"><span>Gegner</span> <span id="hud-enemies">0</span></div>
-              <div class="hud-stat world-name" id="hud-world">Wald</div>
+            <div class="hud-card hud-stats">
+              <div class="hud-stat-row">
+                <div class="hud-stat"><span class="stat-icon coin">🪙</span><span id="hud-gold">0</span></div>
+                <div class="hud-stat"><span class="stat-icon">LV</span><span id="hud-level">1</span></div>
+              </div>
+              <div class="hud-stat-row">
+                <div class="hud-stat"><span class="stat-icon">⚔</span><span id="hud-enemies">0</span></div>
+                <div class="hud-stat world-name" id="hud-world">Wald</div>
+              </div>
             </div>
           </div>
 
@@ -131,7 +136,7 @@
             <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
           </div>
 
-          <div class="sidebar-log">
+          <div class="sidebar-log combat-log-card">
             <h3>Kampflog</h3>
             <ul class="combat-log" id="combat-log"></ul>
           </div>
@@ -148,6 +153,7 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop – Pixel Edition</p></footer>
-  <script src="script.js?v=22"></script>
+  <script src="world-render.js?v=23"></script>
+  <script src="script.js?v=23"></script>
 </body>
 </html>
