@@ -10,13 +10,22 @@ let supabase = null;
 
 // --- Canvas ---
 const PIXEL = 3;
-const CHAR_PIXEL = 4;
-const WEAPON_PIXEL = 3;
+const CHAR_PIXEL = 3;
+const WEAPON_PIXEL = 2;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
-const CAM_ZOOM = 1.5;
+const CAM_ZOOM = 1.05;
+const COMBAT_LAYOUT = {
+  heroCombatX: 78,
+  heroMinX: 48,
+  heroMaxX: 118,
+  enemyRightMargin: 92,
+  enemySpacing: 54,
+  introSpeed: 82,
+  introOffscreen: 55
+};
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
 let canvas, ctx;
@@ -531,6 +540,7 @@ const game = {
   combatLog: [], bestLoot: null,
   specialTimer: 0, lastShot: 0,
   scrollX: 0, waveCooldown: 0,
+  waveIntro: false, combatReady: false,
   loopId: null
 };
 
@@ -1142,6 +1152,7 @@ function resetRun() {
   game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
   game.scrollX = 0; game.specialTimer = 0; game.waveCooldown = 0;
   game.waveNumber = 0; game.currentWave = null;
+  game.waveIntro = false; game.combatReady = false;
   game.worldParticles = [];
   $("loot-display").classList.add("hidden");
   initWorldBackground();
@@ -1221,7 +1232,10 @@ function createHero() {
   };
   const heroSp = SPRITES[game.classKey];
   game.hero = {
-    x: 70, y: GROUND - spriteCharH(heroSp), vx: 0, vy: 0,
+    x: -spriteCharW(heroSp) - COMBAT_LAYOUT.introOffscreen,
+    targetX: COMBAT_LAYOUT.heroCombatX,
+    walkingIn: true,
+    y: GROUND - spriteCharH(heroSp), vx: 0, vy: 0,
     w: spriteCharW(heroSp), h: spriteCharH(heroSp),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
@@ -1309,11 +1323,60 @@ function getUpgradeTip() {
 // GEGNER & WELLEN
 // ============================================
 
+function getEnemyTargetX(index, enemyW) {
+  return CW - COMBAT_LAYOUT.enemyRightMargin - enemyW - index * COMBAT_LAYOUT.enemySpacing;
+}
+
+function startWaveIntro() {
+  game.waveIntro = true;
+  game.combatReady = false;
+  const h = game.hero;
+  if (h) {
+    h.walkingIn = true;
+    h.targetX = COMBAT_LAYOUT.heroCombatX;
+    h.x = -h.w - COMBAT_LAYOUT.introOffscreen;
+    h.facing = 1;
+  }
+}
+
+function updateWaveIntro(dt) {
+  const spd = COMBAT_LAYOUT.introSpeed * dt;
+  const h = game.hero;
+  let pending = false;
+
+  if (h && h.walkingIn) {
+    if (h.x < h.targetX - 0.5) {
+      h.x += spd;
+      pending = true;
+    } else {
+      h.x = h.targetX;
+      h.walkingIn = false;
+    }
+  }
+
+  game.enemies.forEach((e) => {
+    if (e.dead || e.hp <= 0 || !e.walkingIn) return;
+    if (e.x > e.targetX + 0.5) {
+      e.x -= spd * 0.9;
+      pending = true;
+    } else {
+      e.x = e.targetX;
+      e.walkingIn = false;
+    }
+  });
+
+  if (!pending && h && !h.walkingIn) {
+    game.waveIntro = false;
+    game.combatReady = true;
+  }
+}
+
 function spawnWave() {
   const count = getWaveSize();
   const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
   const world = getWorld();
   onWaveSpawn(isBoss, count);
+  startWaveIntro();
   for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
   if (isBoss) addLog("⚠ BOSS! Gefahr " + world.danger + "/5", "boss");
   else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "death");
@@ -1334,12 +1397,16 @@ function spawnEnemy(isBoss, index) {
   }
   const stats = getEnemyStats(isBoss);
   const idx = index || 0;
+  const ew = spriteCharW(sp);
+  const targetX = getEnemyTargetX(idx, ew);
 
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
-    x: CW - 100 - idx * 78 - Math.random() * 28,
+    x: CW + COMBAT_LAYOUT.introOffscreen + idx * 62 + Math.random() * 18,
+    targetX,
+    walkingIn: true,
     y: GROUND - spriteCharH(sp),
-    w: spriteCharW(sp), h: spriteCharH(sp),
+    w: ew, h: spriteCharH(sp),
     maxHp: stats.hp, hp: stats.hp,
     attack: stats.attack,
     goldReward: stats.gold, xpReward: stats.xp,
@@ -1363,10 +1430,11 @@ function renderUnifiedBackground(world) {
 function renderWorldAtmosphere(world) {
   const pal = WR_PALETTES[world.theme];
   if (!pal) return;
+  const fogCol = pal.fog || world.fog || "rgba(0,0,0,0.3)";
   const fogGrad = ctx.createLinearGradient(0, GROUND - 30, 0, GROUND + 20);
   fogGrad.addColorStop(0, "rgba(0,0,0,0)");
-  fogGrad.addColorStop(0.6, world.fog || pal.fog || "rgba(0,0,0,0.2)");
-  fogGrad.addColorStop(1, world.fog2 || pal.fog2 || world.fog || "rgba(0,0,0,0.35)");
+  fogGrad.addColorStop(0.6, fogCol);
+  fogGrad.addColorStop(1, world.fog2 || fogCol);
   ctx.fillStyle = fogGrad;
   ctx.fillRect(0, GROUND - 30, CW, 50);
 }
@@ -1376,6 +1444,7 @@ function renderWorldAtmosphere(world) {
 // ============================================
 
 function attack() {
+  if (game.waveIntro || !game.combatReady) return;
   const cls = CLASSES[game.classKey];
   const now = performance.now();
   if (now - game.lastShot < cls.attackRate) return;
@@ -1515,7 +1584,7 @@ function mageShoot(cls) {
 
 function useSpecial() {
   const h = game.hero;
-  if (h.specialTimer < h.specialCd || game.isPaused) return;
+  if (h.specialTimer < h.specialCd || game.isPaused || game.waveIntro || !game.combatReady) return;
   const st = heroStats();
   const cls = CLASSES[game.classKey];
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
@@ -1621,18 +1690,22 @@ function updateFrame(dt) {
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
 
-  // A/D Bewegung – nur horizontal (klassenabhängige Geschwindigkeit)
-  const spd = CLASSES[game.classKey].moveSpeed;
-  if (keys.a) { h.x -= spd * dt; h.facing = -1; }
-  if (keys.d) { h.x += spd * dt; h.facing = 1; }
-  h.x = Math.max(10, Math.min(CW * 0.45, h.x));
+  // A/D Bewegung – nur links im Kampfbereich
+  if (game.combatReady && !game.waveIntro) {
+    const spd = CLASSES[game.classKey].moveSpeed;
+    if (keys.a) { h.x -= spd * dt; h.facing = -1; }
+    if (keys.d) { h.x += spd * dt; h.facing = 1; }
+    h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(COMBAT_LAYOUT.heroMaxX, h.x));
+  }
   h.y = GROUND - h.h;
 
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
 
+  if (game.waveIntro) updateWaveIntro(dt);
+
   // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
-  if (mouse.onCanvas) attack();
+  if (mouse.onCanvas && game.combatReady && !game.waveIntro) attack();
 
   // Ambient-Partikel (Parallax-Welt)
   updateWorldAmbient(dt, getWorld());
@@ -1642,8 +1715,7 @@ function updateFrame(dt) {
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
   game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
 
-  // Gegner bewegen, stoppen & angreifen
-  const stopLine = h.x + h.w + 32;
+  // Gegner – feste Kampfpositionen, Mitte frei für Projektile
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0) return;
     e.anim += dt * 6;
@@ -1651,14 +1723,14 @@ function updateFrame(dt) {
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    // Zum Held laufen bis Stopplinie
-    if (e.x > stopLine) {
-      e.x -= e.speed * 50 * dt;
+    if (!game.waveIntro && !e.walkingIn && e.targetX != null) {
+      e.x = e.targetX;
     }
-    // Nicht durch den Held laufen!
-    if (e.x < stopLine) e.x = stopLine;
 
-    const inRange = e.x < h.x + h.w + 70 && e.x + e.w > h.x;
+    if (!game.combatReady || game.waveIntro) return;
+
+    const hx = h.x + h.w / 2, ex = e.x + e.w / 2;
+    const inRange = Math.abs(ex - hx) < CW * 0.42;
 
     if (inRange) {
       e.attackTimer += dt;
@@ -1765,7 +1837,7 @@ function onEnemyKill(e) {
   const newWorld = getWorld();
   if (newWorld.name !== oldWorld.name) {
     initWorldBackground();
-    startWorldTransition(newWorld, game.dungeonLevel);
+    startWorldTransition(newWorld);
     addLog("⚠ NEUE WELT: " + newWorld.name + " – viel schwerer!", "boss");
     const ambKey = WAVE_DATA?.worldAmbient?.[newWorld.name];
     if (ambKey) playSound(ambKey);
