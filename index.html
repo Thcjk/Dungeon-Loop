@@ -10,7 +10,7 @@
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Maus drüber = kämpfen | Taste 1 = Spezial</p>
+    <p class="subtitle">Maus drüber = kämpfen | 1 = Spezial | U = Upgrades</p>
   </header>
 
   <main class="container">
@@ -78,6 +78,7 @@
             <kbd>WASD</kbd> Bewegen &nbsp;|&nbsp;
             <kbd>Maus</kbd> drüber = Auto-Angriff &nbsp;|&nbsp;
             <kbd>1</kbd> Spezial &nbsp;|&nbsp;
+            <kbd>U</kbd> Upgrades &nbsp;|&nbsp;
             <kbd>P</kbd> Pause &nbsp;|&nbsp;
             <kbd>F</kbd> Vollbild
           </div>
@@ -114,6 +115,7 @@
           <div class="controls">
             <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
             <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
+            <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades (U)</button>
             <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
           </div>
 
@@ -124,21 +126,20 @@
         </aside>
       </div>
 
+      <div class="upgrade-overlay hidden" id="upgrade-section">
+        <div class="upgrade-panel card">
+          <div class="upgrade-header">
+            <h2>Permanente Upgrades</h2>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
+          </div>
+          <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
+          <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
+          <div class="upgrade-grid" id="upgrade-grid"></div>
+        </div>
+      </div>
     </section>
 
-    <section class="card upgrade-card hidden" id="upgrade-section">
-      <h2>Permanente Upgrades</h2>
-      <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
-      <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
-      <div class="upgrade-grid" id="upgrade-grid"></div>
-    </section>
-
-    <section class="card log-card hidden" id="log-section">
-      <h2>Kampflog (Vollansicht)</h2>
-      <ul class="combat-log combat-log-full" id="combat-log-full"></ul>
-    </section>
-
-    <section class="card leaderboard-card">
+    <section class="card leaderboard-card hidden" id="leaderboard-section">
       <h2>Online-Rangliste</h2>
       <button type="button" class="btn btn-secondary btn-small" id="btn-reload-leaderboard">Rangliste neu laden</button>
       <ol class="leaderboard" id="leaderboard"><li class="loading">Lade Rangliste...</li></ol>

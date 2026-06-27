@@ -247,7 +247,7 @@ const BALANCE = {
   waveCooldown: 2.2,
   minWaveCooldown: 0.9
 };
-let enemyId = 0;
+let upgradePause = false;
 
 const game = {
   playerName: "", classKey: "warrior", playerId: null,
@@ -312,7 +312,6 @@ document.addEventListener("DOMContentLoaded", () => {
   drawPreviews();
   bindEvents();
   renderUpgradeButtons();
-  loadLeaderboard();
   initSupabase();
   loadGameData();
 });
@@ -471,6 +470,8 @@ function bindEvents() {
   bind("btn-save-score", saveScore);
   bind("btn-gameover-run", startRun);
   bind("btn-gameover-upgrade", goToUpgrades);
+  bind("btn-open-upgrades", toggleUpgrades);
+  bind("btn-close-upgrades", hideUpgrades);
   bind("btn-reload-leaderboard", loadLeaderboard);
   bind("btn-fullscreen", toggleFullscreen);
 
@@ -485,6 +486,13 @@ function bindEvents() {
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
     if (e.key === "1" && game.isRunning) useSpecial();
     if (e.key.toLowerCase() === "f") toggleFullscreen();
+    if (e.key.toLowerCase() === "u" && !$("game-section").classList.contains("hidden")) {
+      if (document.activeElement?.tagName === "INPUT") return;
+      toggleUpgrades();
+    }
+    if (e.key === "Escape" && $("upgrade-section") && !$("upgrade-section").classList.contains("hidden")) {
+      hideUpgrades();
+    }
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
   updateClassHint();
@@ -495,11 +503,11 @@ function updateClassHint() {
   const hint = $("controls-hint");
   if (!hint || !cls) return;
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   }
 }
 
@@ -580,7 +588,8 @@ async function loadPlayer() {
 }
 
 function enterGame(msg) {
-  ["game-section","upgrade-section","log-section"].forEach((id) => $(id).classList.remove("hidden"));
+  $("game-section").classList.remove("hidden");
+  hideUpgrades();
   $("setup-section").classList.add("collapsed");
   updateTotalGold(); renderUpgradeButtons();
   $("load-hint").textContent = msg;
@@ -604,6 +613,7 @@ async function savePlayer() {
 
 function startRun() {
   if (game.isRunning && !game.isDead) return;
+  hideUpgrades();
   stopLoop();
   resetRun();
   createHero();
@@ -642,13 +652,46 @@ function restartRun() {
   addLog("Run zurückgesetzt.");
 }
 
-function goToUpgrades() {
+function showUpgrades() {
   $("gameover-panel").classList.add("hidden");
   const sec = $("upgrade-section");
-  if (!sec) return;
+  if (!sec || !$("game-section") || $("game-section").classList.contains("hidden")) return;
+  sec.classList.remove("hidden");
   sec.classList.add("highlight-pulse");
-  sec.scrollIntoView({ behavior: "smooth", block: "start" });
+  updateTotalGold(); renderUpgradeButtons();
+  if (game.isRunning && !game.isDead && !game.isPaused) {
+    upgradePause = true;
+    game.isPaused = true;
+    stopLoop();
+    $("btn-pause").textContent = "Weiter (P)";
+  }
   setTimeout(() => sec.classList.remove("highlight-pulse"), 2400);
+}
+
+function hideUpgrades() {
+  const sec = $("upgrade-section");
+  if (!sec) return;
+  sec.classList.add("hidden");
+  if (upgradePause) {
+    upgradePause = false;
+    if (game.isRunning && !game.isDead) {
+      game.isPaused = false;
+      $("btn-pause").textContent = "Pause (P)";
+      startLoop();
+    }
+  }
+  if (canvas) canvas.focus();
+}
+
+function toggleUpgrades() {
+  const sec = $("upgrade-section");
+  if (!sec || $("game-section").classList.contains("hidden")) return;
+  if (sec.classList.contains("hidden")) showUpgrades();
+  else hideUpgrades();
+}
+
+function goToUpgrades() {
+  showUpgrades();
 }
 
 function togglePause() {
@@ -1596,7 +1639,7 @@ async function loadLeaderboard() {
 function addLog(msg, css) {
   game.combatLog.push({ text: msg, css: css||"" });
   if (game.combatLog.length > 12) game.combatLog.shift();
-  ["combat-log", "combat-log-full"].forEach((id) => {
+  ["combat-log"].forEach((id) => {
     const ul = $(id);
     if (!ul) return;
     ul.innerHTML = "";
