@@ -171,35 +171,40 @@ const BOSS_MONSTERS = ["Ork-Champion","Schattenritter","Feuerdämon","Drachenwä
 
 const WORLDS = [
   {
-    name: "Dunkler Wald", min: 1,
+    name: "Dunkler Wald", min: 1, danger: 1,
+    hpMult: 1, atkMult: 1, speedMult: 1,
     bg: "#030308", sky: "#08081a", hill: "#0c1820",
     ground: "#142838", tile1: "#1e3d52", tile2: "#2a5870", tile3: "#1a3348",
     accent: "#3dba8c", star: "#4a9a7a", fog: "rgba(10,30,24,0.4)",
     decor: ["tree", "tree", "grave", "bush", "cross"]
   },
   {
-    name: "Verfluchte Höhle", min: 10,
+    name: "Verfluchte Höhle", min: 10, danger: 2,
+    hpMult: 1.6, atkMult: 1.45, speedMult: 1.15,
     bg: "#04040c", sky: "#0a0a1e", hill: "#12122a",
     ground: "#1a1a32", tile1: "#2a2a48", tile2: "#3a3a62", tile3: "#22224a",
     accent: "#9b59b6", star: "#7d5ea8", fog: "rgba(20,10,40,0.5)",
     decor: ["rock", "rock", "crystal", "grave", "cross"]
   },
   {
-    name: "Schlossruine", min: 20,
+    name: "Schlossruine", min: 20, danger: 3,
+    hpMult: 2.2, atkMult: 1.85, speedMult: 1.25,
     bg: "#060510", sky: "#100c1a", hill: "#1a1428",
     ground: "#282038", tile1: "#3a3050", tile2: "#4a4060", tile3: "#322848",
     accent: "#95a5a6", star: "#708090", fog: "rgba(30,25,40,0.45)",
     decor: ["grave", "grave", "rock", "cross", "tree"]
   },
   {
-    name: "Feuervulkan", min: 30,
+    name: "Feuervulkan", min: 30, danger: 4,
+    hpMult: 3.0, atkMult: 2.3, speedMult: 1.35,
     bg: "#0a0204", sky: "#180608", hill: "#280a08",
     ground: "#3a1208", tile1: "#5a1a10", tile2: "#7a2818", tile3: "#4a150c",
     accent: "#e74c3c", star: "#f39c12", fog: "rgba(60,15,5,0.5)",
     decor: ["rock", "rock", "crystal", "cross"]
   },
   {
-    name: "Drachenland", min: 40,
+    name: "Drachenland", min: 40, danger: 5,
+    hpMult: 4.0, atkMult: 2.9, speedMult: 1.45,
     bg: "#05020a", sky: "#0c0618", hill: "#180a28",
     ground: "#220e38", tile1: "#3a1860", tile2: "#502080", tile3: "#2a1048",
     accent: "#f39c12", star: "#d4a017", fog: "rgba(40,10,60,0.5)",
@@ -220,18 +225,27 @@ const LOOT_EFFECTS = [
   { key: "goldBonus", label: "Gold" }, { key: "magicDamage", label: "Magie" }, { key: "mana", label: "Mana" }
 ];
 const UPGRADES = [
-  { key: "upgrade_attack", label: "Angriff", baseCost: 50 },
-  { key: "upgrade_health", label: "Leben", baseCost: 50 },
-  { key: "upgrade_defense", label: "Verteidigung", baseCost: 50 },
-  { key: "upgrade_crit", label: "Krit-Chance", baseCost: 80 },
-  { key: "upgrade_gold", label: "Gold-Bonus", baseCost: 60 },
-  { key: "upgrade_xp", label: "XP-Bonus", baseCost: 60 },
-  { key: "upgrade_magic", label: "Magieschaden", baseCost: 70 },
-  { key: "upgrade_mana", label: "Mana", baseCost: 70 },
-  { key: "upgrade_cooldown", label: "Cooldown", baseCost: 100 }
+  { key: "upgrade_health",   label: "Leben",        baseCost: 100, bonus: 20,  bonusText: "+20 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
+  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 90,  bonus: 1,   bonusText: "+1 DEF",       tip: "Weniger Schaden. Krieger & Magier zuerst.", forClass: "warrior,mage" },
+  { key: "upgrade_attack",   label: "Angriff",      baseCost: 110, bonus: 3,   bonusText: "+3 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
+  { key: "upgrade_magic",    label: "Magieschaden", baseCost: 130, bonus: 5,   bonusText: "+5 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
+  { key: "upgrade_mana",     label: "Mana",         baseCost: 120, bonus: 15,  bonusText: "+15 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
+  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 140, bonus: 0.008, bonusText: "+0.8% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
+  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 150, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
+  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 130, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 180, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Öfter Spezial = mehr Überleben.",           forClass: "all" }
 ];
 
-const LOOT_CHANCE = 0.25, XP_PER_LEVEL = 100;
+// Balance – Spiel soll über viele Runs mit Upgrades geschafft werden
+const BALANCE = {
+  upgradeCostPow: 1.72,
+  upgradeMax: 25,
+  lootChance: 0.10,
+  xpPerLevel: 200,
+  levelScalePow: 1.15,
+  waveCooldown: 2.2,
+  minWaveCooldown: 0.9
+};
 let enemyId = 0;
 
 const game = {
@@ -494,16 +508,24 @@ function togglePause() {
 
 function createHero() {
   const cls = CLASSES[game.classKey], u = game.upgrades;
+  const ub = (key) => {
+    const up = UPGRADES.find((x) => x.key === key);
+    return (u[key] || 0) * up.bonus;
+  };
   game.hero = {
     x: 70, y: GROUND - 40, vx: 0, vy: 0,
     w: spriteW(SPRITES[game.classKey]), h: spriteH(SPRITES[game.classKey]),
-    maxHp: cls.hp + u.upgrade_health * 15, hp: cls.hp + u.upgrade_health * 15,
-    attack: cls.attack + u.upgrade_attack * 2, defense: cls.defense + u.upgrade_defense,
-    crit: cls.crit + u.upgrade_crit * 0.01,
-    magicDamage: cls.magicDamage + u.upgrade_magic * 3,
-    maxMana: cls.mana + u.upgrade_mana * 10, mana: cls.mana + u.upgrade_mana * 10,
-    goldBonus: 1 + u.upgrade_gold * 0.05, xpBonus: 1 + u.upgrade_xp * 0.05,
-    specialCd: Math.max(2, cls.specialCd - u.upgrade_cooldown * 0.4),
+    maxHp: cls.hp + ub("upgrade_health"),
+    hp: cls.hp + ub("upgrade_health"),
+    attack: cls.attack + ub("upgrade_attack"),
+    defense: cls.defense + ub("upgrade_defense"),
+    crit: cls.crit + ub("upgrade_crit"),
+    magicDamage: cls.magicDamage + ub("upgrade_magic"),
+    maxMana: cls.mana + ub("upgrade_mana"),
+    mana: cls.mana + ub("upgrade_mana"),
+    goldBonus: 1 + ub("upgrade_gold"),
+    xpBonus: 1 + ub("upgrade_xp"),
+    specialCd: Math.max(2.5, cls.specialCd - ub("upgrade_cooldown")),
     specialTimer: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
     facing: 1, anim: 0
@@ -528,36 +550,85 @@ function getWorld() {
   return w;
 }
 
+// Schwierigkeit skaliert exponentiell – ein Run reicht NIE für alles
+function getDifficultyScale() {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  const levelMult = Math.pow(BALANCE.levelScalePow, lv);
+  return levelMult * world.hpMult;
+}
+
+function getAttackScale() {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  return Math.pow(BALANCE.levelScalePow - 0.02, lv) * world.atkMult;
+}
+
+function getEnemyStats(isBoss) {
+  const lv = game.dungeonLevel;
+  const world = getWorld();
+  const hpScale = getDifficultyScale();
+  const atkScale = getAttackScale();
+  const bossHp = isBoss ? 5.5 : 1;
+  const bossAtk = isBoss ? 2.8 : 1;
+  const bossRew = isBoss ? 3.5 : 1;
+
+  return {
+    hp: Math.floor((28 + lv * 5) * hpScale * bossHp),
+    attack: Math.floor((5 + lv * 1.8) * atkScale * bossAtk),
+    gold: Math.floor((3 + lv * 1.2) * bossRew * (1 + lv * 0.05)),
+    xp: Math.floor((8 + lv * 2.5) * bossRew),
+    speed: (isBoss ? 0.55 : 0.75) * world.speedMult + lv * 0.012,
+    attackInterval: Math.max(0.45, 0.9 - lv * 0.008 - world.danger * 0.05)
+  };
+}
+
+function getWaveSize() {
+  const lv = game.dungeonLevel;
+  return Math.min(7, 2 + Math.floor(lv / 2) + getWorld().danger);
+}
+
+function getUpgradeTip() {
+  const tips = {
+    warrior: "Krieger: Leben → Verteidigung → Angriff → Spezial-CD",
+    ranger:  "Waldläufer: Angriff → Krit → Leben → Gold-Farm",
+    mage:    "Magier: Magieschaden → Mana → Leben → Spezial-CD"
+  };
+  return tips[game.classKey] || "";
+}
+
 // ============================================
 // GEGNER & WELLEN
 // ============================================
 
 function spawnWave() {
-  const count = Math.min(4, 2 + Math.floor(game.dungeonLevel / 5));
+  const count = getWaveSize();
   const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
+  const world = getWorld();
   for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
-  if (isBoss) addLog("⚠ BOSS-WELLE!", "boss");
-  else addLog(count + " Gegner erscheinen!");
+  if (isBoss) addLog("⚠ BOSS! Gefahr " + world.danger + "/5", "boss");
+  else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "death");
+  else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
 }
 
 function spawnEnemy(isBoss, index) {
-  const lv = game.dungeonLevel;
   const names = isBoss ? BOSS_MONSTERS : NORMAL_MONSTERS;
   const name = names[Math.floor(Math.random() * names.length)];
   const spKey = MONSTER_SPRITE[name];
   const sp = SPRITES[spKey];
-  const hpM = isBoss ? 3.5 : 1, atkM = isBoss ? 2 : 1, rewM = isBoss ? 2.5 : 1;
+  const stats = getEnemyStats(isBoss);
   const idx = index || 0;
 
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
-    x: CW - 40 - idx * 55 - Math.random() * 20,
+    x: CW - 40 - idx * 50 - Math.random() * 15,
     y: GROUND - spriteH(sp) - 4,
     w: spriteW(sp), h: spriteH(sp),
-    maxHp: Math.floor((18 + lv * 6) * hpM), hp: Math.floor((18 + lv * 6) * hpM),
-    attack: Math.floor((4 + lv * 1.2) * atkM),
-    goldReward: Math.floor((3 + lv * 2) * rewM), xpReward: Math.floor((6 + lv * 3) * rewM),
-    speed: (isBoss ? 0.5 : 0.8) + lv * 0.015,
+    maxHp: stats.hp, hp: stats.hp,
+    attack: stats.attack,
+    goldReward: stats.gold, xpReward: stats.xp,
+    speed: stats.speed,
+    attackInterval: stats.attackInterval,
     hitFlash: 0, anim: Math.random() * 6, dead: false, attackTimer: 0
   });
 }
@@ -803,13 +874,13 @@ function update(dt) {
 
     if (inRange && yClose) {
       e.attackTimer += dt;
-      if (e.attackTimer >= 0.7) {
+      const interval = e.attackInterval || 0.75;
+      if (e.attackTimer >= interval) {
         e.attackTimer = 0;
         const dmg = Math.max(1, e.attack - st.defense);
         h.hp -= dmg;
         spawnDamage(h.x + h.w / 2, h.y - 5, dmg, false, true);
         e.hitFlash = 5;
-        addLog(e.name + " greift an! -" + dmg + " LP");
         if (h.hp <= 0) { h.hp = 0; onDeath(); }
       }
     }
@@ -865,7 +936,8 @@ function update(dt) {
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead);
   if (alive.length === 0) {
     game.waveCooldown += dt;
-    if (game.waveCooldown >= 1.5) {
+    const cd = Math.max(BALANCE.minWaveCooldown, BALANCE.waveCooldown - game.dungeonLevel * 0.04);
+    if (game.waveCooldown >= cd) {
       game.waveCooldown = 0;
       game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
       spawnWave();
@@ -889,18 +961,21 @@ function onEnemyKill(e) {
   game.runGold += gold; game.runXp += xp;
   game.monstersDefeated++; game.dungeonLevel++;
   const newWorld = getWorld().name;
-  if (newWorld !== oldWorld) { initDecor(); addLog("Neue Welt: " + newWorld + "!", "boss"); }
+  if (newWorld !== oldWorld) {
+    initDecor();
+    addLog("⚠ NEUE WELT: " + newWorld + " – viel schwerer!", "boss");
+  }
   addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "");
   game.coins.push({ x: e.x+e.w/2, y: e.y, val: gold, life: 3 });
   for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
 
-  while (game.runXp >= game.playerLevel * XP_PER_LEVEL) {
-    game.runXp -= game.playerLevel * XP_PER_LEVEL;
+  while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
+    game.runXp -= game.playerLevel * BALANCE.xpPerLevel;
     game.playerLevel++;
-    game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * 0.2));
+    game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * 0.12));
     addLog("Level Up! Held " + game.playerLevel);
   }
-  if (Math.random() < LOOT_CHANCE) generateLoot();
+  if (Math.random() < BALANCE.lootChance) generateLoot();
 }
 
 function onDeath() {
@@ -909,9 +984,14 @@ function onDeath() {
   game.totalGold += game.runGold;
   savePlayer();
   addLog("Game Over!", "death");
+
+  const world = getWorld();
   $("gameover-panel").classList.remove("hidden");
-  $("gameover-summary").textContent = "Level " + game.dungeonLevel + " | " + game.monstersDefeated + " Monster";
+  $("gameover-summary").textContent =
+    "Level " + game.dungeonLevel + " (" + world.name + ") | " +
+    game.monstersDefeated + " Monster | " + game.runGold + " Gold";
   $("final-score").textContent = calcScore();
+  $("save-hint").textContent = "Tipp: " + getUpgradeTip();
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons();
@@ -1086,12 +1166,12 @@ function updateHUD() {
   const world = getWorld();
   $("hud-hp-fill").style.width = (h.hp / st.maxHp * 100) + "%";
   $("hud-hp-text").textContent = Math.floor(h.hp) + " / " + st.maxHp;
-  const xpNeed = game.playerLevel * XP_PER_LEVEL;
+  const xpNeed = game.playerLevel * BALANCE.xpPerLevel;
   $("hud-xp-fill").style.width = (game.runXp / xpNeed * 100) + "%";
   $("hud-xp-text").textContent = Math.floor(game.runXp / xpNeed * 100) + "%";
   $("hud-gold").textContent = game.runGold;
   $("hud-level").textContent = game.dungeonLevel;
-  $("hud-world").textContent = world.name;
+  $("hud-world").textContent = world.name + " ☠" + world.danger;
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
   const hudEn = $("hud-enemies");
   if (hudEn) hudEn.textContent = alive;
@@ -1147,16 +1227,40 @@ function applyLoot(loot) {
   }
 }
 
-function getUpgradeCost(k) { return Math.floor(UPGRADES.find(u=>u.key===k).baseCost * Math.pow(1.5, game.upgrades[k]||0)); }
+function getUpgradeCost(k) {
+  const up = UPGRADES.find((u) => u.key === k);
+  const lv = game.upgrades[k] || 0;
+  if (lv >= BALANCE.upgradeMax) return Infinity;
+  return Math.floor(up.baseCost * Math.pow(BALANCE.upgradeCostPow, lv));
+}
+
+function isUpgradeRelevant(up) {
+  if (up.forClass === "all") return true;
+  return up.forClass.split(",").includes(game.classKey);
+}
 
 function renderUpgradeButtons() {
   const grid = $("upgrade-grid"); if (!grid) return;
   grid.innerHTML = "";
+
+  const tipEl = $("upgrade-tip");
+  if (tipEl) tipEl.textContent = getUpgradeTip();
+
   UPGRADES.forEach((up) => {
-    const lv = game.upgrades[up.key]||0, cost = getUpgradeCost(up.key);
+    const lv = game.upgrades[up.key] || 0;
+    const cost = getUpgradeCost(up.key);
+    const maxed = lv >= BALANCE.upgradeMax;
+    const relevant = isUpgradeRelevant(up);
     const btn = document.createElement("button");
-    btn.className = "upgrade-btn"; btn.disabled = game.totalGold < cost;
-    btn.innerHTML = '<span class="upgrade-name">' + up.label + '</span><span class="upgrade-level">Stufe ' + lv + '</span><span class="upgrade-cost">' + cost + ' 🪙</span>';
+    btn.className = "upgrade-btn" + (relevant ? " relevant" : "") + (maxed ? " maxed" : "");
+    btn.disabled = maxed || game.totalGold < cost;
+    btn.innerHTML =
+      '<span class="upgrade-info">' +
+        '<span class="upgrade-name">' + up.label + (relevant ? " ★" : "") + '</span>' +
+        '<span class="upgrade-level">Stufe ' + lv + (maxed ? " MAX" : "") + ' – ' + up.bonusText + '</span>' +
+        '<span class="upgrade-tip-text">' + up.tip + '</span>' +
+      '</span>' +
+      '<span class="upgrade-cost">' + (maxed ? "MAX" : cost + " 🪙") + '</span>';
     btn.onclick = () => buyUpgrade(up.key);
     grid.appendChild(btn);
   });
@@ -1164,8 +1268,10 @@ function renderUpgradeButtons() {
 
 async function buyUpgrade(k) {
   const cost = getUpgradeCost(k);
-  if (game.totalGold < cost) return;
-  game.totalGold -= cost; game.upgrades[k] = (game.upgrades[k]||0) + 1;
+  if (game.totalGold < cost || (game.upgrades[k] || 0) >= BALANCE.upgradeMax) return;
+  game.totalGold -= cost;
+  game.upgrades[k] = (game.upgrades[k] || 0) + 1;
+  addLog("Upgrade: " + UPGRADES.find(u => u.key === k).label + " Stufe " + game.upgrades[k]);
   await savePlayer(); updateTotalGold(); renderUpgradeButtons();
 }
 
