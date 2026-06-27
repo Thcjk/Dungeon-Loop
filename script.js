@@ -328,6 +328,20 @@ function bindEvents() {
     if (e.key.toLowerCase() === "f") toggleFullscreen();
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+  updateClassHint();
+}
+
+function updateClassHint() {
+  const cls = CLASSES[game.classKey];
+  const hint = $("controls-hint");
+  if (!hint || !cls) return;
+  if (cls.attackType === "melee") {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Schwert</strong> (kurz) | <kbd>Q</kbd> Schildschlag | <kbd>F</kbd> Vollbild";
+  } else if (cls.attackType === "ranged") {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Pfeile</strong> (weit) | <kbd>Q</kbd> 7 Pfeile | <kbd>F</kbd> Vollbild";
+  } else {
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Zauber</strong> (Mana) | <kbd>Q</kbd> Feuerball | <kbd>F</kbd> Vollbild";
+  }
 }
 
 function onMouseMove(e) {
@@ -442,7 +456,8 @@ function startRun() {
   $("btn-restart").disabled = false;
   canvas.focus();
   spawnWave();
-  addLog("Run gestartet – Maus zielen, halten zum Schießen!");
+  addLog("Run gestartet – " + CLASSES[game.classKey].desc);
+  updateClassHint();
   startLoop();
 }
 
