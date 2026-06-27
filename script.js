@@ -1,7 +1,7 @@
 /* ============================================
    Dungeon Loop – Pixel Canvas Edition
    Maus über Canvas = Auto-Angriff | 1 = Spezial
-   WASD = Bewegen | P = Pause
+   A/D = Vor/Zurück | P = Pause
    ============================================ */
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
@@ -867,11 +867,11 @@ function updateClassHint() {
   const hint = $("controls-hint");
   if (!hint || !cls) return;
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   }
 }
 
@@ -1774,14 +1774,12 @@ function updateFrame(dt) {
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
 
-  // WASD Bewegung (klassenabhängige Geschwindigkeit)
+  // A/D Bewegung – nur horizontal (klassenabhängige Geschwindigkeit)
   const spd = CLASSES[game.classKey].moveSpeed;
-  if (keys.w) h.y -= spd * dt;
-  if (keys.s) h.y += spd * dt;
   if (keys.a) { h.x -= spd * dt; h.facing = -1; }
   if (keys.d) { h.x += spd * dt; h.facing = 1; }
   h.x = Math.max(10, Math.min(CW * 0.45, h.x));
-  h.y = Math.max(GROUND - 95, Math.min(GROUND - h.h + 5, h.y));
+  h.y = GROUND - h.h;
 
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
@@ -1812,9 +1810,6 @@ function updateFrame(dt) {
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    // Auf gleiche Höhe wie Held
-    e.y += (h.y - e.y) * Math.min(1, dt * 5);
-
     // Zum Held laufen bis Stopplinie
     if (e.x > stopLine) {
       e.x -= e.speed * 50 * dt;
@@ -1823,9 +1818,8 @@ function updateFrame(dt) {
     if (e.x < stopLine) e.x = stopLine;
 
     const inRange = e.x < h.x + h.w + 70 && e.x + e.w > h.x;
-    const yClose = Math.abs((e.y + e.h / 2) - (h.y + h.h / 2)) < 40;
 
-    if (inRange && yClose) {
+    if (inRange) {
       e.attackTimer += dt;
       const interval = e.attackInterval || 0.75;
       const windup = 0.22;
