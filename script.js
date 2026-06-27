@@ -27,9 +27,11 @@ const COMBAT_LAYOUT = {
   enemyBossReach: 68,
   introSpeed: 82,
   introOffscreen: 55,
-  enemyChaseSpeed: 96,
-  enemyBossChaseSpeed: 78,
-  enemySeparation: 22
+  enemyChaseSpeed: 88,
+  enemyBossChaseSpeed: 72,
+  enemySeparation: 22,
+  screenEdgePad: 8,
+  minVisiblePx: 14
 };
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
@@ -335,15 +337,15 @@ const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
     hp: 165, attack: 24, defense: 11, crit: 0.06, mana: 0, magicDamage: 0,
-    range: 95, attackRate: 420, moveSpeed: 125,
-    special: "Schildschlag", specialCd: 7, specialRange: 105,
+    range: 88, attackRate: 420, moveSpeed: 125,
+    special: "Schildschlag", specialCd: 7, specialRange: 98,
     desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
   },
   ranger: {
     name: "Waldläufer", attackType: "ranged",
     hp: 95, attack: 17, defense: 3, crit: 0.18, mana: 0, magicDamage: 0,
-    range: 330, attackRate: 200, moveSpeed: 158,
-    closeRange: 55, meleePenalty: 0.3,
+    range: 245, attackRate: 200, moveSpeed: 158,
+    closeRange: 50, meleePenalty: 0.3,
     proj: "projectile_arrow", projSpeed: 14,
     special: "Präzisionsschuss", specialCd: 5,
     desc: "Bogen, große Reichweite, schwach im Nahkampf"
@@ -351,7 +353,7 @@ const CLASSES = {
   mage: {
     name: "Magier", attackType: "magic",
     hp: 72, attack: 7, defense: 2, crit: 0.12, mana: 120, magicDamage: 28,
-    range: 280, attackRate: 300, moveSpeed: 108, manaPerShot: 5,
+    range: 210, attackRate: 300, moveSpeed: 108, manaPerShot: 5,
     proj: "projectile_fire", projSpeed: 8,
     special: "Feuerball", specialCd: 6, manaCost: 30,
     desc: "Zauber, mittlere Reichweite, braucht Mana"
@@ -524,7 +526,7 @@ const UPGRADES = [
 const BALANCE = {
   upgradeCostPow: 1.64,
   upgradeMax: 25,
-  lootChance: 0.14,
+  lootChance: 0.15,
   xpPerLevel: 175,
   levelScalePow: 1.082,
   levelUpHealPct: 0.15,
@@ -1101,17 +1103,41 @@ function countAliveEnemies() {
   return game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
 }
 
-function getNearestEnemy() {
+function getEnemyVisibleWidth(e) {
+  const left = Math.max(e.x, COMBAT_LAYOUT.screenEdgePad);
+  const right = Math.min(e.x + e.w, CW - COMBAT_LAYOUT.screenEdgePad);
+  return Math.max(0, right - left);
+}
+
+function isEnemyOnScreen(e) {
+  if (e.dead || e.hp <= 0) return false;
+  return getEnemyVisibleWidth(e) >= COMBAT_LAYOUT.minVisiblePx;
+}
+
+function isEnemyTargetable(e, maxRange) {
+  if (!isEnemyOnScreen(e)) return false;
+  if (e.walkingIn) return false;
+  if (maxRange == null || !game.hero) return true;
+  const h = game.hero;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  return Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy) <= maxRange;
+}
+
+function getNearestEnemy(maxRange) {
   const h = game.hero;
   if (!h) return null;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   let best = null, bestD = Infinity;
   game.enemies.forEach((e) => {
-    if (e.dead || e.hp <= 0) return;
+    if (!isEnemyTargetable(e, maxRange)) return;
     const d = Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy);
     if (d < bestD) { bestD = d; best = e; }
   });
   return best;
+}
+
+function hasTargetableEnemy(maxRange) {
+  return game.enemies.some((e) => isEnemyTargetable(e, maxRange));
 }
 
 function getCombatAim() {
@@ -1120,17 +1146,26 @@ function getCombatAim() {
   if (!h) return aim;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const cls = CLASSES[game.classKey];
-  const maxR = cls.range || 520;
+  const maxR = cls.range || 245;
 
   const aimAt = (tx, ty) => ({ x: tx, y: ty, onCanvas: true, down: mouse.down });
 
-  if (aim.onCanvas && Math.hypot(aim.x - hx, aim.y - hy) <= maxR) return aim;
+  if (aim.onCanvas) {
+    const d = Math.hypot(aim.x - hx, aim.y - hy);
+    if (d <= maxR) {
+      const hovered = game.enemies.find((e) => {
+        if (!isEnemyTargetable(e, maxR)) return false;
+        return aim.x >= e.x && aim.x <= e.x + e.w && aim.y >= e.y && aim.y <= e.y + e.h;
+      });
+      if (hovered || d <= maxR) return aim;
+    }
+  }
 
-  const target = getNearestEnemy();
+  const target = getNearestEnemy(maxR);
   if (target) return aimAt(target.x + target.w / 2, target.y + target.h / 2);
 
   if (aim.onCanvas) return aim;
-  return aimAt(hx + 220, hy);
+  return aimAt(hx + Math.min(maxR * 0.55, 180), hy);
 }
 
 function enemyInCombatRange(e, h) {
@@ -1413,7 +1448,7 @@ function getEnemyStats(isBoss) {
   const atkScale = getAttackScale();
   const boss = getBossMult(isBoss);
   const worldEase = world.danger === 1 ? 0.76 : world.danger === 2 ? 0.88 : world.danger === 3 ? 0.95 : world.danger === 4 ? 0.98 : 1;
-  const lvEase = lv <= 12 ? 0.8 : lv <= 24 ? 0.88 : lv <= 38 ? 0.94 : 1;
+  const lvEase = lv <= 14 ? 0.78 : lv <= 26 ? 0.86 : lv <= 40 ? 0.93 : 1;
 
   return {
     hp: Math.floor((24 + lv * 3.8) * hpScale * boss.hp),
@@ -1537,6 +1572,7 @@ function attack() {
   const cls = CLASSES[game.classKey];
   const now = performance.now();
   if (now - game.lastShot < cls.attackRate) return;
+  if (!hasTargetableEnemy(cls.range)) return;
 
   if (cls.attackType === "melee") {
     if (warriorMeleeAttack()) game.lastShot = now;
@@ -1558,7 +1594,7 @@ function warriorMeleeAttack() {
 
   let hitAny = false;
   game.enemies.forEach((e) => {
-    if (e.dead || e.hp <= 0) return;
+    if (!isEnemyTargetable(e, cls.range)) return;
     const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
     const dist = Math.hypot(ex - hx, ey - hy);
     if (dist > cls.range) return;
@@ -1584,26 +1620,22 @@ function warriorMeleeAttack() {
   emitCombatEvent("player_melee");
   if (hitAny) emitCombatEvent("player_melee_hit");
   if (hitAny) addLog("Schwerttreffer!", "crit");
-  return true;
+  return hitAny;
 }
 
 function rangerShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const aim = getCombatAim();
-  let dx = aim.x - hx, dy = aim.y - hy;
+  const near = getNearestEnemy(cls.range);
+  if (!near) return false;
+
+  let dx = near.x + near.w / 2 - hx;
+  let dy = near.y + near.h / 2 - hy;
   let dist = Math.hypot(dx, dy);
-  if (dist > cls.range) {
-    const near = getNearestEnemy();
-    if (!near) return false;
-    dx = near.x + near.w / 2 - hx;
-    dy = near.y + near.h / 2 - hy;
-    dist = Math.hypot(dx, dy);
-    if (dist > cls.range) return false;
-  }
+  if (dist > cls.range) return false;
 
   let dmgMult = 1;
-  const tooClose = game.enemies.some((e) => !e.dead && e.hp > 0 &&
+  const tooClose = game.enemies.some((e) => isEnemyTargetable(e, cls.closeRange) &&
     Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy) < cls.closeRange);
   if (tooClose) { dmgMult = cls.meleePenalty; }
 
@@ -1627,17 +1659,13 @@ function rangerShoot(cls) {
 function mageShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const aim = getCombatAim();
-  let dx = aim.x - hx, dy = aim.y - hy;
+  const near = getNearestEnemy(cls.range);
+  if (!near) return false;
+
+  let dx = near.x + near.w / 2 - hx;
+  let dy = near.y + near.h / 2 - hy;
   let dist = Math.hypot(dx, dy);
-  if (dist > cls.range) {
-    const near = getNearestEnemy();
-    if (!near) return false;
-    dx = near.x + near.w / 2 - hx;
-    dy = near.y + near.h / 2 - hy;
-    dist = Math.hypot(dx, dy);
-    if (dist > cls.range) return false;
-  }
+  if (dist > cls.range) return false;
 
   const angle = Math.atan2(dy, dx);
   h.facing = dx >= 0 ? 1 : -1;
@@ -1646,8 +1674,9 @@ function mageShoot(cls) {
     let dmg = Math.floor(st.attack * 0.4);
     const isCrit = Math.random() < st.crit;
     if (isCrit) dmg *= 2;
+    let hitAny = false;
     game.enemies.forEach((e) => {
-      if (e.dead || e.hp <= 0) return;
+      if (!isEnemyTargetable(e, 55)) return;
       const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
       if (Math.hypot(ex - hx, ey - hy) > 55) return;
       let diff = Math.atan2(ey - hy, ex - hx) - angle;
@@ -1659,13 +1688,14 @@ function mageShoot(cls) {
       spawnImpactRing(ex, ey, 14, "#9b59b6", 8);
       emitCombatEvent("enemy_hit");
       if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+      hitAny = true;
     });
     spawnMeleeSlash(hx, hy, angle, { life: 10, range: 55, owner: "player" });
     spawnBurst(hx, hy, "#8e44ad", 4, 2);
     h.attackAnim = 0.12;
     emitCombatEvent("player_staff");
-    addLog("Kein Mana – Stab-Schlag!");
-    return true;
+    if (hitAny) addLog("Kein Mana – Stab-Schlag!");
+    return hitAny;
   }
 
   h.mana -= cls.manaPerShot;
@@ -1693,13 +1723,14 @@ function useSpecial() {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
 
   if (game.classKey === "warrior") {
+    if (!hasTargetableEnemy(cls.specialRange)) return;
     h.specialTimer = 0;
     h.attackAnim = 0.2;
     const aim = getCombatAim();
     const angle = Math.atan2(aim.y - hy, aim.x - hx);
     spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
     game.enemies.forEach((e) => {
-      if (e.dead) return;
+      if (!isEnemyTargetable(e, cls.specialRange)) return;
       const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
       const dist = Math.hypot(ex - hx, ey - hy);
       if (dist > cls.specialRange) return;
@@ -1720,6 +1751,7 @@ function useSpecial() {
     emitCombatEvent("player_special_warrior");
 
   } else if (game.classKey === "ranger") {
+    if (!hasTargetableEnemy(cls.range)) return;
     h.specialTimer = 0;
     h.attackAnim = 0.15;
     const aim = getCombatAim();
@@ -1737,6 +1769,7 @@ function useSpecial() {
     emitCombatEvent("player_special_ranger");
 
   } else if (game.classKey === "mage") {
+    if (!hasTargetableEnemy(cls.range)) return;
     if (h.mana < cls.manaCost) { addLog("Nicht genug Mana!"); return; }
     h.mana -= cls.manaCost;
     h.specialTimer = 0;
@@ -1870,7 +1903,7 @@ function updateFrame(dt) {
     if (p.life <= 0) return false;
     if (p.owner === "player") {
       for (const e of game.enemies) {
-        if (e.hp <= 0) continue;
+        if (!isEnemyOnScreen(e) || e.walkingIn || e.hp <= 0) continue;
         if (p.x > e.x && p.x < e.x+e.w && p.y > e.y && p.y < e.y+e.h) {
           e.hp -= p.dmg; e.hitFlash = 6;
           spawnDamage(e.x+e.w/2, e.y, p.dmg, p.crit);
@@ -1879,7 +1912,7 @@ function updateFrame(dt) {
           if (p.explosive) {
             spawnExplosion(p.x, p.y, 90);
             game.enemies.forEach((o) => {
-              if (o.dead || o.hp <= 0) return;
+              if (!isEnemyOnScreen(o) || o.walkingIn || o.dead || o.hp <= 0) return;
               if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < 90) {
                 o.hp -= Math.floor(p.dmg * 0.45); o.hitFlash = 5;
                 if (o.hp <= 0 && !o.dead) { o.dead = true; onEnemyKill(o); }
