@@ -20,9 +20,11 @@ const CAM_ZOOM = 1.15;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
   heroMinX: 20,
-  heroMaxX: 300,
-  enemyRightMargin: 92,
+  heroMaxX: 340,
+  enemyRightMargin: 168,
   enemySpacing: 54,
+  enemyMeleeReach: 78,
+  enemyBossReach: 98,
   introSpeed: 82,
   introOffscreen: 55
 };
