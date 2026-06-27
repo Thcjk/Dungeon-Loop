@@ -357,6 +357,30 @@ const WORLDS = [
   }
 ];
 
+// Welt-Integration für Charaktere (Schatten, Licht, Farbton)
+const WORLD_CHAR_STYLE = {
+  forest: {
+    shadow: "rgba(3,12,6,0.52)", contact: "rgba(18,42,24,0.42)",
+    tint: "#2d6a4f", tintA: 0.13, fog: "rgba(8,28,18,0.55)"
+  },
+  cave: {
+    shadow: "rgba(6,3,16,0.58)", contact: "rgba(45,28,65,0.38)",
+    tint: "#6c3483", tintA: 0.17, fog: "rgba(30,10,50,0.5)", rim: "rgba(187,134,252,0.22)"
+  },
+  ruins: {
+    shadow: "rgba(10,8,16,0.52)", contact: "rgba(40,36,48,0.36)",
+    tint: "#5a6a5a", tintA: 0.11, fog: "rgba(25,20,35,0.45)", rim: "rgba(189,195,199,0.14)"
+  },
+  volcano: {
+    shadow: "rgba(22,5,0,0.62)", contact: "rgba(160,50,12,0.48)",
+    tint: "#922b21", tintA: 0.19, fog: "rgba(80,20,5,0.45)", rim: "rgba(243,156,18,0.25)"
+  },
+  dragon: {
+    shadow: "rgba(10,3,20,0.56)", contact: "rgba(55,22,75,0.4)",
+    tint: "#6a2080", tintA: 0.15, fog: "rgba(50,15,70,0.45)", rim: "rgba(241,196,15,0.16)"
+  }
+};
+
 const DECOR_META = {
   pine_tree:       { parallax: 0.35 },
   pine_silhouette: { parallax: 0.12 },
@@ -482,6 +506,73 @@ function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
 function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
 function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
 
+function getCharStyle(world) {
+  return WORLD_CHAR_STYLE[world?.theme] || WORLD_CHAR_STYLE.forest;
+}
+
+function drawCharShadow(c, cx, footY, w, style, bob, big) {
+  const sy = footY + 1 - (bob || 0) * 0.25;
+  const sw = Math.max(16, w * (big ? 0.52 : 0.44));
+  c.save();
+  c.fillStyle = style.shadow;
+  c.beginPath();
+  c.ellipse(cx, sy, sw, 4.5 + (big ? 2 : 0), 0, 0, Math.PI * 2);
+  c.fill();
+  if (style.contact) {
+    c.fillStyle = style.contact;
+    c.globalAlpha = 0.9;
+    c.beginPath();
+    c.ellipse(cx, sy - 1, sw * 0.62, 2.5, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.restore();
+}
+
+function applyWorldCharTint(c, x, y, w, h, world) {
+  const style = getCharStyle(world);
+  if (style.tint && style.tintA > 0) {
+    c.save();
+    c.globalCompositeOperation = "multiply";
+    c.globalAlpha = style.tintA;
+    c.fillStyle = style.tint;
+    c.fillRect(x - 2, y - 1, w + 4, h + 2);
+    c.restore();
+  }
+  if (style.rim) {
+    c.save();
+    const g = c.createLinearGradient(x, y, x, y + h * 0.38);
+    g.addColorStop(0, style.rim);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.globalCompositeOperation = "screen";
+    c.fillStyle = g;
+    c.fillRect(x - 2, y - 1, w + 4, h * 0.35);
+    c.restore();
+  }
+}
+
+function drawCharFeetFog(c, x, y, w, h, world) {
+  const style = getCharStyle(world);
+  const fogCol = style.fog || world.fog || "rgba(0,0,0,0.3)";
+  c.save();
+  const g = c.createLinearGradient(x, y + h * 0.5, x, y + h + 5);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(0.55, fogCol);
+  g.addColorStop(1, fogCol);
+  c.globalAlpha = 0.4;
+  c.fillStyle = g;
+  c.fillRect(x - 4, y + h * 0.48, w + 8, h * 0.55 + 6);
+  c.restore();
+}
+
+function drawLivingChar(c, sprite, x, y, w, h, flip, world, bob, big) {
+  const groundY = y + h - (bob || 0);
+  const cx = x + w / 2;
+  drawCharShadow(c, cx, groundY, w, getCharStyle(world), bob, big);
+  drawCharSprite(c, sprite, x, y, flip);
+  applyWorldCharTint(c, x, y, w, h, world);
+  drawCharFeetFog(c, x, y, w, h, world);
+}
+
 const HERO_WEAPON = {
   warrior: { idle: "sword", attack: "sword_heavy", offhand: "shield" },
   ranger:  { idle: "bow", attack: "bow_aim" },
@@ -508,7 +599,7 @@ function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
   c.restore();
 }
 
-function drawHero(c, h, bob, atkOff, hurtOff) {
+function drawHero(c, h, bob, atkOff, hurtOff, world) {
   const x = h.x + atkOff + hurtOff;
   const y = h.y + bob;
   const flip = h.facing < 0;
@@ -519,6 +610,8 @@ function drawHero(c, h, bob, atkOff, hurtOff) {
   let angle = Math.atan2(mouse.y - cy, mouse.x - cx);
   if (!mouse.onCanvas && !attacking) angle = flip ? Math.PI - 0.4 : -0.4;
 
+  drawCharShadow(c, cx, h.y + h.h, h.w, getCharStyle(world), bob, false);
+
   if (game.classKey === "warrior") {
     c.save();
     c.translate(cx, cy);
@@ -528,6 +621,10 @@ function drawHero(c, h, bob, atkOff, hurtOff) {
 
   drawCharSprite(c, body, x, y, flip);
   drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
+
+  const pad = game.classKey === "warrior" ? 14 : game.classKey === "mage" ? 10 : 8;
+  applyWorldCharTint(c, x - pad, y - 2, h.w + pad * 2, h.h + 4, world);
+  drawCharFeetFog(c, x - 4, y, h.w + 8, h.h, world);
 }
 
 function drawPreviews() {
@@ -1019,7 +1116,7 @@ function createHero() {
   };
   const heroSp = SPRITES[game.classKey];
   game.hero = {
-    x: 70, y: GROUND - spriteCharH(heroSp) - 2, vx: 0, vy: 0,
+    x: 70, y: GROUND - spriteCharH(heroSp), vx: 0, vy: 0,
     w: spriteCharW(heroSp), h: spriteCharH(heroSp),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
@@ -1133,7 +1230,7 @@ function spawnEnemy(isBoss, index) {
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
     x: CW - 40 - idx * 50 - Math.random() * 15,
-    y: GROUND - spriteCharH(sp) - 2,
+    y: GROUND - spriteCharH(sp),
     w: spriteCharW(sp), h: spriteCharH(sp),
     maxHp: stats.hp, hp: stats.hp,
     attack: stats.attack,
@@ -1962,7 +2059,7 @@ function render() {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
-    drawCharSprite(ctx, SPRITES[e.sprite], drawX, e.y + bob, true);
+    drawLivingChar(ctx, SPRITES[e.sprite], drawX, e.y + bob, e.w, e.h, true, world, bob, e.isBoss);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -2013,7 +2110,7 @@ function render() {
     ctx.fillStyle = "rgba(231,76,60,0.25)";
     ctx.fillRect(h.x - 4, h.y - 8, h.w + 8, h.h + 12);
   }
-  drawHero(ctx, h, bob, atkOff, hurtOff);
+  drawHero(ctx, h, bob, atkOff, hurtOff, world);
   ctx.globalAlpha = 1;
   ctx.restore();
 
