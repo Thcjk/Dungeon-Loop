@@ -15,6 +15,8 @@ const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 290;
+const PATH_TOP = 268;
+const PATH_H = 22;
 let canvas, ctx;
 let mouse = { x: CW / 2, y: CH / 2, down: false, onCanvas: false };
 let keys = {};
@@ -309,6 +311,7 @@ const WORLDS = [
     accent: "#52b788", star: "#74c69d", fog: "rgba(8,28,18,0.55)",
     fog2: "rgba(20,50,30,0.35)", moonTint: "#95e1a3",
     particleColor: "#95e1a3", hasMoon: true, hasStars: false,
+    path: { x: 32, w: 576, center: "#5c4a32", edge: "#3d2e1a", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" },
     decor: ["pine_tree", "pine_tree", "pine_silhouette", "dead_tree", "mushroom", "stump", "bush_dark", "grave", "bones", "bush"]
   },
   {
@@ -320,6 +323,7 @@ const WORLDS = [
     accent: "#bb86fc", star: "#9b59b6", fog: "rgba(30,10,50,0.5)",
     fog2: "rgba(60,20,90,0.25)", moonTint: "#9b59b6",
     particleColor: "#bb86fc", hasMoon: false, hasStars: false,
+    path: { x: 48, w: 544, center: "#2a2438", edge: "#1a1430", verge: "#120e1e", wall: "#0a0814", border: "#3a3250" },
     decor: ["stalactite", "stalactite", "cave_crystal", "skull_rock", "rock", "rock", "grave", "bones", "crystal"]
   },
   {
@@ -331,6 +335,7 @@ const WORLDS = [
     accent: "#bdc3c7", star: "#95a5a6", fog: "rgba(25,20,35,0.45)",
     fog2: "rgba(40,35,50,0.3)", moonTint: "#ecf0f1",
     particleColor: "#f39c12", hasMoon: true, hasStars: true,
+    path: { x: 40, w: 560, center: "#4a4458", edge: "#3a3448", verge: "#2a2430", wall: "#1c1628", border: "#5a6a5a" },
     decor: ["pillar_ruin", "pillar_ruin", "rubble", "rubble", "torch", "banner", "grave", "grave", "rock", "cross"]
   },
   {
@@ -342,6 +347,7 @@ const WORLDS = [
     accent: "#e74c3c", star: "#f39c12", fog: "rgba(80,20,5,0.45)",
     fog2: "rgba(120,40,10,0.3)", moonTint: "#f39c12",
     particleColor: "#f39c12", hasMoon: false, hasStars: false,
+    path: { x: 44, w: 552, center: "#4a1008", edge: "#2a0804", verge: "#3a0c08", wall: "#280808", border: "#922b21" },
     decor: ["lava_rock", "lava_rock", "rock", "rock", "crystal", "smoke_puff", "bones", "rubble"]
   },
   {
@@ -353,6 +359,7 @@ const WORLDS = [
     accent: "#f1c40f", star: "#d4a017", fog: "rgba(50,15,70,0.45)",
     fog2: "rgba(80,30,100,0.25)", moonTint: "#f1c40f",
     particleColor: "#f1c40f", hasMoon: true, hasStars: true,
+    path: { x: 38, w: 564, center: "#2a1048", edge: "#1a0c28", verge: "#201038", wall: "#10081a", border: "#6a2080" },
     decor: ["dragon_bone", "obsidian", "obsidian", "cave_crystal", "pillar_ruin", "crystal", "grave", "rock", "banner"]
   }
 ];
@@ -1243,41 +1250,69 @@ function spawnEnemy(isBoss, index) {
   if (game.currentWave) game.currentWave.enemies.push({ name, isBoss });
 }
 
+function getPath(world) {
+  return world.path || { x: 40, w: CW - 80, center: "#3d2e1a", edge: "#2a1f12", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" };
+}
+
+function decorScreenX(d) {
+  const raw = ((d.x - game.scrollX * d.parallax) % (CW + 220)) - 40;
+  if (d.lane === "left") return 8 + (raw % 148);
+  if (d.lane === "right") return CW - 156 + (raw % 148);
+  const path = getPath(getWorld());
+  return path.x + 24 + (raw % Math.max(80, path.w - 48));
+}
+
+const LANE_TYPES = {
+  left:  ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "pillar_ruin", "stalactite", "rock", "lava_rock", "obsidian"],
+  right: ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "pillar_ruin", "torch", "banner", "dragon_bone", "cave_crystal"],
+  path:  ["mushroom", "stump", "bones", "bush", "rubble", "grave", "cross", "crystal", "skull_rock", "smoke_puff"]
+};
+
 function initDecor() {
   const world = getWorld();
   game.decor = [];
-  const types = world.decor;
-  for (let i = 0; i < 22; i++) {
-    const type = types[Math.floor(Math.random() * types.length)];
-    const meta = DECOR_META[type] || { parallax: 0.3 };
-    const sp = SPRITES[type];
-    const sh = sp ? spriteDecorH(sp) : 50;
-    const y = meta.ceiling
-      ? 4 + Math.random() * 55
-      : GROUND - sh - Math.floor(Math.random() * 8);
-    game.decor.push({
-      x: i * 78 + Math.random() * 40,
-      type,
-      y,
-      parallax: meta.parallax + (Math.random() - 0.5) * 0.06,
-      flip: Math.random() < 0.45
-    });
-  }
+  const themeTypes = world.decor;
+  const pick = (lane) => {
+    const pool = LANE_TYPES[lane].filter((t) => themeTypes.includes(t));
+    const src = pool.length ? pool : themeTypes;
+    return src[Math.floor(Math.random() * src.length)];
+  };
+  const parallaxFor = (lane) => (lane === "left" ? 0.26 : lane === "right" ? 0.34 : 0.5);
+
+  [["left", 14], ["right", 14], ["path", 12]].forEach(([lane, count]) => {
+    for (let i = 0; i < count; i++) {
+      const type = pick(lane);
+      const meta = DECOR_META[type] || { parallax: 0.3 };
+      const sp = SPRITES[type];
+      const sh = sp ? spriteDecorH(sp) : 40;
+      const y = meta.ceiling
+        ? 2 + (i % 5) * 18 + Math.random() * 8
+        : GROUND - sh - (lane === "path" ? 0 : Math.floor(Math.random() * 6));
+      game.decor.push({
+        x: i * 74 + Math.random() * 28,
+        lane,
+        type,
+        y,
+        parallax: parallaxFor(lane) + (Math.random() - 0.5) * 0.05,
+        flip: Math.random() < 0.4
+      });
+    }
+  });
   initWorldParticles();
 }
 
 function initWorldParticles() {
   const world = getWorld();
   game.worldParticles = [];
-  const n = world.theme === "forest" ? 28 : world.theme === "volcano" ? 22 : 16;
+  const n = world.theme === "forest" ? 32 : world.theme === "volcano" ? 24 : 20;
   for (let i = 0; i < n; i++) {
     game.worldParticles.push({
       x: Math.random() * CW,
-      y: 20 + Math.random() * (GROUND - 40),
+      y: 95 + Math.random() * (PATH_TOP - 110),
       phase: Math.random() * Math.PI * 2,
       speed: 0.4 + Math.random() * 1.2,
       size: world.theme === "volcano" ? 2 + Math.random() * 2 : 1 + Math.random() * 1.5,
-      drift: (Math.random() - 0.5) * 12
+      drift: (Math.random() - 0.5) * 14
     });
   }
 }
@@ -1285,96 +1320,315 @@ function initWorldParticles() {
 function renderWorldSky(world) {
   const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
   grad.addColorStop(0, world.sky);
-  grad.addColorStop(0.55, world.bg);
-  grad.addColorStop(1, world.hill);
+  grad.addColorStop(0.35, world.bg);
+  grad.addColorStop(0.72, world.hill);
+  grad.addColorStop(1, world.hill2 || world.hill);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CW, GROUND);
+}
+
+function renderWorldDepth(world) {
+  const path = getPath(world);
 
   if (world.theme === "cave") {
-    ctx.fillStyle = world.hill2 || world.hill;
-    for (let i = 0; i < 7; i++) {
-      const cx = ((i * 130 - game.scrollX * 0.04) % (CW + 180)) - 50;
-      ctx.beginPath();
-      ctx.moveTo(cx, 0);
-      ctx.lineTo(cx + 65, 0);
-      ctx.lineTo(cx + 32, 75 + i * 8);
-      ctx.closePath();
-      ctx.fill();
+    ctx.fillStyle = world.hill3 || world.hill;
+    ctx.fillRect(0, 0, CW, PATH_TOP - 8);
+    ctx.fillStyle = path.wall || world.hill;
+    ctx.fillRect(0, 0, path.x - 6, GROUND);
+    ctx.fillRect(path.x + path.w + 6, 0, CW - path.x - path.w - 6, GROUND);
+    for (let i = 0; i < 10; i++) {
+      const wx = ((i * 95 - game.scrollX * 0.06) % (CW + 60)) - 20;
+      ctx.fillStyle = world.hill2 || world.hill;
+      ctx.fillRect(wx, 40 + (i % 4) * 22, 28, GROUND - 50 - (i % 3) * 15);
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.08;
+      ctx.fillRect(wx + 4, 60 + (i % 4) * 22, 8, GROUND - 90);
+      ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = world.fog2 || world.fog;
-    ctx.fillRect(0, 0, CW, 85);
     return;
   }
 
   const hills = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
   hills.forEach((col, layer) => {
     ctx.fillStyle = col;
-    const parallax = 0.05 + layer * 0.04;
-    for (let i = 0; i < 6; i++) {
-      const hx = ((i * 165 - game.scrollX * parallax) % (CW + 200)) - 55;
-      const hh = 68 + layer * 28;
-      const hy = GROUND - hh - layer * 16;
+    const parallax = 0.06 + layer * 0.05;
+    for (let i = 0; i < 7; i++) {
+      const hx = ((i * 148 - game.scrollX * parallax) % (CW + 190)) - 48;
+      const hh = 95 + layer * 32;
+      const hy = GROUND - hh - layer * 10;
       ctx.beginPath();
       ctx.moveTo(hx, GROUND);
-      ctx.quadraticCurveTo(hx + 95, hy - 32, hx + 175, GROUND);
+      ctx.quadraticCurveTo(hx + 88, hy - 28, hx + 168, GROUND);
       ctx.fill();
     }
   });
 
+  // Weg-Ränder: dichte Vegetation / Felswände
+  ctx.fillStyle = world.verge || world.moss;
+  ctx.fillRect(0, PATH_TOP - 18, path.x, GROUND - PATH_TOP + 18);
+  ctx.fillRect(path.x + path.w, PATH_TOP - 18, CW - path.x - path.w, GROUND - PATH_TOP + 18);
+
   if (world.theme === "forest") {
-    ctx.fillStyle = world.hill3 || "#123824";
     const sp = SPRITES.pine_silhouette;
-    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 72;
-    for (let i = 0; i < 9; i++) {
-      const sx = ((i * 88 - game.scrollX * 0.05) % (CW + 120)) - 25;
-      if (sp) drawBgSprite(ctx, sp, sx, GROUND - sh - 6 - (i % 3) * 10, false);
+    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 84;
+    for (let i = 0; i < 11; i++) {
+      const side = i % 2 === 0;
+      const raw = ((i * 76 - game.scrollX * (side ? 0.07 : 0.09)) % (CW + 100)) - 20;
+      const sx = side ? raw % 130 : CW - 140 + (raw % 130);
+      if (sp) drawBgSprite(ctx, sp, sx, GROUND - sh - 4 - (i % 3) * 8, !side);
+    }
+    ctx.fillStyle = path.wall || world.hill3;
+    for (let i = 0; i < 16; i++) {
+      const bx = ((i * 62 - game.scrollX * 0.12) % (CW + 40)) - 10;
+      const onLeft = bx < path.x - 10;
+      const onRight = bx > path.x + path.w + 10;
+      if (!onLeft && !onRight) continue;
+      ctx.globalAlpha = 0.35 + (i % 3) * 0.12;
+      ctx.fillRect(bx, PATH_TOP - 40 - (i % 4) * 12, 14 + (i % 3) * 6, GROUND - PATH_TOP + 36);
+      ctx.globalAlpha = 1;
     }
   }
 
   if (world.theme === "ruins") {
-    ctx.fillStyle = "rgba(30,25,40,0.75)";
-    for (let i = 0; i < 5; i++) {
-      const rx = ((i * 185 - game.scrollX * 0.05) % (CW + 140)) - 35;
-      const ph = 125 + i * 8;
-      ctx.fillRect(rx, GROUND - ph, 26, ph);
-      ctx.fillRect(rx + 38, GROUND - 85, 52, 10);
-      ctx.fillRect(rx + 8, GROUND - ph - 8, 10, 8);
+    ctx.fillStyle = "rgba(30,25,40,0.82)";
+    for (let i = 0; i < 7; i++) {
+      const rx = ((i * 168 - game.scrollX * 0.05) % (CW + 120)) - 30;
+      const side = rx < CW / 2;
+      const px = side ? Math.min(rx, path.x - 18) : Math.max(rx, path.x + path.w + 4);
+      const ph = 110 + (i % 4) * 18;
+      ctx.fillRect(px, GROUND - ph, 22, ph);
+      ctx.fillRect(px + (side ? 18 : -14), GROUND - ph - 6, 12, 8);
+      if (i % 2 === 0) {
+        ctx.fillStyle = "rgba(60,55,70,0.5)";
+        ctx.fillRect(px - 4, GROUND - ph + 20, 30, 6);
+        ctx.fillStyle = "rgba(30,25,40,0.82)";
+      }
     }
   }
 
   if (world.theme === "volcano") {
-    ctx.fillStyle = world.hill3 || "#5a180a";
-    for (let i = 0; i < 4; i++) {
-      const vx = ((i * 200 - game.scrollX * 0.03) % (CW + 100)) + 30;
-      const vh = 135 + i * 18;
+    ctx.fillStyle = path.wall || world.hill3;
+    for (let i = 0; i < 6; i++) {
+      const vx = ((i * 185 - game.scrollX * 0.04) % (CW + 80)) + 10;
+      const vh = 145 + (i % 3) * 20;
       ctx.beginPath();
       ctx.moveTo(vx, GROUND);
-      ctx.lineTo(vx + 75, GROUND - vh);
-      ctx.lineTo(vx + 150, GROUND);
+      ctx.lineTo(vx + 70, GROUND - vh);
+      ctx.lineTo(vx + 140, GROUND);
       ctx.fill();
+    }
+    ctx.fillStyle = "rgba(231,76,60,0.25)";
+    for (let i = 0; i < 8; i++) {
+      const lx = path.x + 20 + ((i * 48 - game.scrollX * 0.45) % (path.w - 40));
+      ctx.fillRect(lx, GROUND - 3, 6, 3);
     }
   }
 
   if (world.theme === "dragon") {
     const sp = SPRITES.dragon_bone;
-    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 54;
-    for (let i = 0; i < 4; i++) {
-      const dx = ((i * 220 - game.scrollX * 0.04) % (CW + 120)) - 25;
-      if (sp) drawBgSprite(ctx, sp, dx, GROUND - sh - 4, i % 2 === 0);
+    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 66;
+    for (let i = 0; i < 6; i++) {
+      const dx = ((i * 200 - game.scrollX * 0.05) % (CW + 100)) - 20;
+      if (sp) drawBgSprite(ctx, sp, dx, GROUND - sh - 2, i % 2 === 0);
+    }
+    ctx.fillStyle = path.wall || world.hill3;
+    for (let i = 0; i < 8; i++) {
+      const cx = ((i * 88 - game.scrollX * 0.08) % (CW + 60)) - 15;
+      const tall = cx < path.x - 8 || cx > path.x + path.w;
+      if (!tall) continue;
+      ctx.fillRect(cx, 55 + (i % 5) * 16, 20, GROUND - 60 - (i % 4) * 10);
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.1;
+      ctx.fillRect(cx + 3, 70 + (i % 5) * 16, 6, 12);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = path.wall || world.hill3;
+    }
+  }
+}
+
+function renderWorldWalkway(world) {
+  const path = getPath(world);
+  const scroll = game.scrollX * 0.55;
+  const tileW = 18;
+
+  // Untergrund unter dem Weg
+  ctx.fillStyle = world.ground;
+  ctx.fillRect(0, PATH_TOP, CW, GROUND - PATH_TOP);
+
+  // Seitenstreifen (Wald: Gras, Höhle: Gestein …)
+  ctx.fillStyle = path.verge;
+  ctx.fillRect(0, PATH_TOP, path.x, PATH_H + 4);
+  ctx.fillRect(path.x + path.w, PATH_TOP, CW - path.x - path.w, PATH_H + 4);
+
+  // Wegrand
+  ctx.fillStyle = path.border;
+  ctx.fillRect(path.x, PATH_TOP, 3, PATH_H);
+  ctx.fillRect(path.x + path.w - 3, PATH_TOP, 3, PATH_H);
+
+  // Weg-Oberfläche (scrollend)
+  for (let tx = 0; tx < path.w / tileW + 2; tx++) {
+    const ox = path.x + tx * tileW - (scroll % tileW);
+    const shade = (tx + Math.floor(scroll / tileW)) % 3;
+    ctx.fillStyle = shade === 0 ? path.center : shade === 1 ? path.edge : path.center;
+    ctx.fillRect(ox, PATH_TOP, tileW - 1, PATH_H);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(ox, PATH_TOP + PATH_H - 3, tileW - 1, 2);
+    if (world.theme === "forest" && tx % 4 === 1) {
+      ctx.fillStyle = world.leaf || world.accent;
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(ox + 4, PATH_TOP + 2, 3, 2);
+      ctx.globalAlpha = 1;
+    }
+    if (world.theme === "ruins" && tx % 3 === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillRect(ox, PATH_TOP, tileW - 1, 2);
+    }
+    if (world.theme === "volcano" && tx % 5 === 2) {
+      ctx.fillStyle = "#f39c12";
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(ox + 6, PATH_TOP + 8, 3, 2);
+      ctx.globalAlpha = 1;
+    }
+    if (world.theme === "dragon" && tx % 4 === 0) {
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.15;
+      ctx.fillRect(ox + 2, PATH_TOP + 4, tileW - 5, 2);
+      ctx.globalAlpha = 1;
+    }
+    if (world.theme === "cave" && tx % 4 === 2) {
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.12;
+      ctx.fillRect(ox + 3, PATH_TOP + 5, 5, 3);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Weg-Tiefe / Schatten an den Rändern
+  const edgeGrad = ctx.createLinearGradient(path.x, PATH_TOP, path.x + 28, PATH_TOP);
+  edgeGrad.addColorStop(0, "rgba(0,0,0,0.35)");
+  edgeGrad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = edgeGrad;
+  ctx.fillRect(path.x, PATH_TOP, 28, PATH_H);
+  const edgeGradR = ctx.createLinearGradient(path.x + path.w, PATH_TOP, path.x + path.w - 28, PATH_TOP);
+  edgeGradR.addColorStop(0, "rgba(0,0,0,0.35)");
+  edgeGradR.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = edgeGradR;
+  ctx.fillRect(path.x + path.w - 28, PATH_TOP, 28, PATH_H);
+}
+
+function renderWorldCanopy(world) {
+  const path = getPath(world);
+
+  if (world.theme === "forest") {
+    ctx.fillStyle = world.hill3 || "#123824";
+    for (let i = 0; i < 14; i++) {
+      const cx = (i * 52 - game.scrollX * 0.03) % (CW + 40);
+      const cy = 8 + (i % 4) * 14;
+      const r = 18 + (i % 5) * 5;
+      ctx.globalAlpha = 0.55 + (i % 3) * 0.12;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 0.65, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = world.leaf || "#2d6a4f";
+    for (let i = 0; i < 20; i++) {
+      const lx = (i * 37 + game.scrollX * 0.02) % CW;
+      ctx.globalAlpha = 0.25 + (i % 4) * 0.08;
+      ctx.fillRect(lx, 4 + (i % 6) * 10, 6 + (i % 3) * 3, 4);
+    }
+    ctx.globalAlpha = 1;
+    const vineGrad = ctx.createLinearGradient(0, 0, 0, 90);
+    vineGrad.addColorStop(0, "rgba(8,28,18,0.75)");
+    vineGrad.addColorStop(1, "rgba(8,28,18,0)");
+    ctx.fillStyle = vineGrad;
+    ctx.fillRect(0, 0, CW, 90);
+    for (let i = 0; i < 8; i++) {
+      const vx = path.x - 20 + (i * 80) % (path.w + 40);
+      ctx.fillStyle = world.moss;
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(vx, 0, 2, 35 + (i % 4) * 12);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  if (world.theme === "cave") {
+    ctx.fillStyle = world.hill || "#120e1e";
+    ctx.fillRect(0, 0, CW, 100);
+    for (let i = 0; i < 14; i++) {
+      const cx = ((i * 88 - game.scrollX * 0.02) % (CW + 60)) - 20;
+      ctx.fillStyle = world.hill2 || world.hill;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx + 55, 0);
+      ctx.lineTo(cx + 27, 55 + (i % 4) * 14);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const ceilGrad = ctx.createLinearGradient(0, 0, 0, 110);
+    ceilGrad.addColorStop(0, "rgba(0,0,0,0.5)");
+    ceilGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = ceilGrad;
+    ctx.fillRect(0, 0, CW, 110);
+  }
+
+  if (world.theme === "ruins") {
+    const gapGrad = ctx.createRadialGradient(CW / 2, 50, 10, CW / 2, 50, 120);
+    gapGrad.addColorStop(0, world.bg);
+    gapGrad.addColorStop(1, "rgba(12,10,20,0)");
+    ctx.fillStyle = gapGrad;
+    ctx.fillRect(CW / 2 - 120, 0, 240, 100);
+    ctx.fillStyle = "rgba(20,16,28,0.85)";
+    ctx.fillRect(0, 0, path.x - 10, 95);
+    ctx.fillRect(path.x + path.w + 10, 0, CW - path.x - path.w - 10, 95);
+    for (let i = 0; i < 6; i++) {
+      const ax = i % 2 === 0 ? path.x - 35 : path.x + path.w + 8;
+      ctx.fillRect(ax, 20 + i * 10, 28, 8);
+      ctx.fillRect(ax + 6, 0, 6, 28 + i * 8);
+    }
+  }
+
+  if (world.theme === "volcano") {
+    ctx.fillStyle = "rgba(40,8,4,0.65)";
+    ctx.fillRect(0, 0, CW, 88);
+    for (let i = 0; i < 10; i++) {
+      const sx = (i * 71 - game.scrollX * 0.04) % (CW + 30);
+      ctx.fillStyle = i % 2 ? "rgba(120,40,10,0.4)" : "rgba(80,20,5,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(sx, 25 + (i % 3) * 12, 22 + (i % 4) * 8, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (world.theme === "dragon") {
+    ctx.fillStyle = "rgba(16,8,28,0.7)";
+    ctx.fillRect(0, 0, CW, 92);
+    for (let i = 0; i < 8; i++) {
+      const ax = path.x - 30 + (i % 2) * (path.w + 20);
+      ctx.strokeStyle = world.accent;
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(ax, 85);
+      ctx.quadraticCurveTo(ax + 40, 30 + i * 5, ax + 80, 10);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
   }
 }
 
 function renderWorldAtmosphere(world) {
-  if (world.hasStars !== false && world.theme !== "cave" && world.theme !== "volcano") {
-    for (let i = 0; i < 35; i++) {
-      const sx = (i * 67 + game.scrollX * 0.05) % CW;
-      const sy = 12 + (i * 43) % (GROUND - 90);
+  const path = getPath(world);
+
+  if (world.hasStars && world.theme !== "cave" && world.theme !== "volcano") {
+    for (let i = 0; i < 28; i++) {
+      const sx = (i * 67 + game.scrollX * 0.04) % CW;
+      const sy = 18 + (i * 31) % 72;
       ctx.fillStyle = world.star;
-      if (i % 6 === 0 && world.theme === "ruins") {
+      if (i % 7 === 0 && world.theme === "ruins") {
         drawSprite(ctx, SPRITES.cross, sx, sy, false);
       } else {
-        ctx.globalAlpha = 0.4 + (i % 5) * 0.12;
+        ctx.globalAlpha = 0.35 + (i % 5) * 0.14;
         ctx.fillRect(sx, sy, 2, 2);
         ctx.globalAlpha = 1;
       }
@@ -1383,147 +1637,79 @@ function renderWorldAtmosphere(world) {
 
   if (world.hasMoon) {
     ctx.save();
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.8;
+    const mx = world.theme === "ruins" ? CW / 2 - 14 : CW - 68;
+    const my = world.theme === "ruins" ? 42 : 48;
+    drawSprite(ctx, SPRITES.moon, mx, my, false);
     if (world.moonTint) {
-      ctx.filter = "none";
-      drawSprite(ctx, SPRITES.moon, CW - 72, 22, false);
       ctx.fillStyle = world.moonTint;
-      ctx.globalAlpha = 0.25;
-      ctx.fillRect(CW - 78, 16, 30, 30);
-    } else {
-      drawSprite(ctx, SPRITES.moon, CW - 72, 22, false);
+      ctx.globalAlpha = 0.22;
+      ctx.fillRect(mx - 4, my - 4, 28, 28);
     }
     ctx.restore();
   }
 
   if (world.theme === "forest") {
     game.worldParticles.forEach((p) => {
-      const fx = (p.x + game.scrollX * 0.02 + Math.sin(p.phase) * 8) % CW;
-      const fy = p.y + Math.cos(p.phase * 1.3) * 6;
+      const fx = (p.x + game.scrollX * 0.03 + Math.sin(p.phase) * 6) % CW;
+      const fy = p.y + Math.cos(p.phase * 1.3) * 5;
+      if (fx < path.x - 10 || fx > path.x + path.w + 10) return;
       ctx.fillStyle = world.particleColor || "#95e1a3";
-      ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.25;
+      ctx.globalAlpha = 0.3 + Math.sin(p.phase) * 0.25;
       ctx.fillRect(fx, fy, p.size, p.size);
-      if (p.size > 1.5) ctx.fillRect(fx - 1, fy, 1, 1);
     });
     ctx.globalAlpha = 1;
   } else if (world.theme === "volcano") {
     game.worldParticles.forEach((p) => {
-      const fx = (p.x + game.scrollX * 0.08) % CW;
-      const fy = p.y - ((game.scrollX * 0.02 + p.phase * 10) % 80);
+      const fx = (p.x + game.scrollX * 0.06) % CW;
+      const fy = p.y - ((game.scrollX * 0.015 + p.phase * 8) % 60);
       ctx.fillStyle = p.phase % 2 > 1 ? "#f39c12" : "#e74c3c";
-      ctx.globalAlpha = 0.5 + Math.sin(p.phase) * 0.3;
+      ctx.globalAlpha = 0.45 + Math.sin(p.phase) * 0.3;
       ctx.fillRect(fx, fy, p.size, p.size);
     });
     ctx.globalAlpha = 1;
   } else if (world.theme === "cave" || world.theme === "dragon") {
     game.worldParticles.forEach((p) => {
-      const fx = (p.x + Math.sin(p.phase) * 5) % CW;
-      const fy = p.y + Math.cos(p.phase) * 4;
+      const fx = (p.x + Math.sin(p.phase) * 4) % CW;
+      const fy = p.y + Math.cos(p.phase) * 3;
       ctx.fillStyle = world.particleColor || world.accent;
-      ctx.globalAlpha = 0.25 + Math.sin(p.phase * 2) * 0.2;
+      ctx.globalAlpha = 0.2 + Math.sin(p.phase * 2) * 0.18;
       ctx.fillRect(fx, fy, 2, 2);
     });
     ctx.globalAlpha = 1;
   }
 
-  ctx.fillStyle = world.fog;
-  ctx.fillRect(0, GROUND - 85, CW, 65);
-  if (world.fog2) {
-    ctx.fillStyle = world.fog2;
-    ctx.fillRect(0, GROUND - 55, CW, 42);
-  }
+  // Bodennebel nur am Weg – Perspektive „man geht durch“
+  const fogGrad = ctx.createLinearGradient(0, PATH_TOP - 20, 0, GROUND);
+  fogGrad.addColorStop(0, "rgba(0,0,0,0)");
+  fogGrad.addColorStop(0.45, world.fog);
+  fogGrad.addColorStop(1, world.fog2 || world.fog);
+  ctx.fillStyle = fogGrad;
+  ctx.fillRect(path.x - 12, PATH_TOP - 18, path.w + 24, GROUND - PATH_TOP + 22);
 }
 
 function renderWorldGround(world) {
   ctx.fillStyle = world.ground;
   ctx.fillRect(0, GROUND, CW, CH - GROUND);
 
-  if (world.theme === "forest") {
-    const tileW = 20, tileH = 10;
-    for (let row = 0; row < 4; row++) {
-      for (let tx = 0; tx < CW / tileW + 2; tx++) {
-        const ox = tx * tileW - (game.scrollX % tileW);
-        const oy = GROUND + row * tileH;
-        const colors = [world.tile1, world.tile2, world.tile3, world.moss];
-        ctx.fillStyle = colors[(tx + row) % colors.length];
-        ctx.fillRect(ox, oy, tileW - 1, tileH - 1);
-        if (row === 0 && tx % 3 === 0) {
-          ctx.fillStyle = world.leaf || world.accent;
-          ctx.fillRect(ox + 4, oy - 2, 3, 2);
-          ctx.fillRect(ox + 10, oy - 1, 2, 2);
-        }
-      }
-    }
-    ctx.fillStyle = world.moss;
-    for (let i = 0; i < 12; i++) {
-      const mx = ((i * 55 - game.scrollX * 0.5) % (CW + 30)) - 5;
-      ctx.fillRect(mx, GROUND - 2, 8, 3);
-      ctx.fillRect(mx + 2, GROUND - 4, 4, 2);
-    }
-    return;
-  }
+  const path = getPath(world);
+  const tileW = world.theme === "forest" ? 20 : 16;
+  const tileH = 10;
+  const scroll = game.scrollX * 0.55;
 
-  if (world.theme === "cave") {
-    const tileW = 18, tileH = 11;
-    for (let row = 0; row < 3; row++) {
-      for (let tx = 0; tx < CW / tileW + 2; tx++) {
-        const ox = tx * tileW - (game.scrollX % tileW);
-        const oy = GROUND + row * tileH;
-        ctx.fillStyle = [world.tile1, world.tile2, world.tile3][(tx + row) % 3];
-        ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
-        if ((tx + row) % 4 === 0) {
-          ctx.fillStyle = world.accent;
-          ctx.globalAlpha = 0.15;
-          ctx.fillRect(ox + 2, oy + 2, tileW - 6, tileH - 6);
-          ctx.globalAlpha = 1;
-        }
-      }
-    }
-    return;
-  }
-
-  if (world.theme === "volcano") {
-    const tileW = 16, tileH = 12;
-    for (let row = 0; row < 3; row++) {
-      for (let tx = 0; tx < CW / tileW + 2; tx++) {
-        const ox = tx * tileW - (game.scrollX % tileW);
-        const oy = GROUND + row * tileH;
-        ctx.fillStyle = [world.tile1, world.tile2, world.tile3][(tx + row) % 3];
-        ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
-        if ((tx * 7 + row * 3) % 5 === 0) {
-          ctx.fillStyle = "#f39c12";
-          ctx.globalAlpha = 0.6;
-          ctx.fillRect(ox + 4, oy + 2, 4, 2);
-          ctx.globalAlpha = 1;
-        }
-      }
-    }
-    ctx.fillStyle = "rgba(231,76,60,0.35)";
-    for (let i = 0; i < 6; i++) {
-      const lx = ((i * 90 - game.scrollX * 0.3) % (CW + 40)) - 10;
-      ctx.fillRect(lx, GROUND - 1, 20, 3);
-    }
-    return;
-  }
-
-  const tileW = 16, tileH = 12;
   for (let row = 0; row < 3; row++) {
     for (let tx = 0; tx < CW / tileW + 2; tx++) {
-      const ox = tx * tileW - (game.scrollX % tileW);
+      const ox = tx * tileW - (scroll % tileW);
       const oy = GROUND + row * tileH;
+      const onPath = ox + tileW > path.x && ox < path.x + path.w;
+      if (onPath && row === 0) continue;
       const colors = [world.tile1, world.tile2, world.tile3];
       ctx.fillStyle = colors[(tx + row) % 3];
       ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.fillRect(ox, oy + tileH - 4, tileW - 2, 2);
-      if (world.theme === "ruins" && row === 0 && tx % 2 === 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.04)";
-        ctx.fillRect(ox, oy, tileW - 2, 2);
-      }
-      if (world.theme === "dragon" && (tx + row) % 3 === 0) {
-        ctx.fillStyle = world.accent;
-        ctx.globalAlpha = 0.12;
-        ctx.fillRect(ox + 1, oy + 1, tileW - 4, tileH - 4);
+      if (row === 0) {
+        ctx.fillStyle = world.moss || world.verge;
+        ctx.globalAlpha = 0.35;
+        ctx.fillRect(ox, oy - 2, tileW - 2, 2);
         ctx.globalAlpha = 1;
       }
     }
@@ -1981,19 +2167,20 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  // Himmel, Landschaft & Atmosphäre (welt-spezifisch)
+  // Welt: Himmel → Tiefe → Weg → Dekor → Boden → Kronendach → Atmosphäre
   renderWorldSky(world);
-  renderWorldAtmosphere(world);
+  renderWorldDepth(world);
+  renderWorldWalkway(world);
 
-  // Dekoration Parallax (größer als Charaktere)
   game.decor.forEach((d) => {
-    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 180)) - 45;
+    const dx = decorScreenX(d);
     const sp = SPRITES[d.type];
     if (sp) drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
   });
 
-  // Boden (welt-spezifisch)
   renderWorldGround(world);
+  renderWorldCanopy(world);
+  renderWorldAtmosphere(world);
 
   if (!game.hero) {
     ctx.restore();
