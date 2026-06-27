@@ -26,7 +26,10 @@ const COMBAT_LAYOUT = {
   enemyMeleeReach: 52,
   enemyBossReach: 68,
   introSpeed: 82,
-  introOffscreen: 55
+  introOffscreen: 55,
+  enemyChaseSpeed: 96,
+  enemyBossChaseSpeed: 78,
+  enemySeparation: 22
 };
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
@@ -1131,9 +1134,68 @@ function getCombatAim() {
 }
 
 function enemyInCombatRange(e, h) {
-  const gap = e.x - (h.x + h.w);
-  const reach = e.isBoss ? COMBAT_LAYOUT.enemyBossReach : COMBAT_LAYOUT.enemyMeleeReach;
+  const gap = getEnemyGap(e, h);
+  const reach = getEnemyReach(e);
   return gap <= reach && gap >= -24 && e.x + e.w > h.x;
+}
+
+function getEnemyReach(e) {
+  return e.isBoss ? COMBAT_LAYOUT.enemyBossReach : COMBAT_LAYOUT.enemyMeleeReach;
+}
+
+function getEnemyGap(e, h) {
+  return e.x - (h.x + h.w);
+}
+
+function getEnemyChaseX(e, h) {
+  const reach = getEnemyReach(e);
+  const idx = e.index || 0;
+  return h.x + h.w + Math.max(8, reach - 6) + idx * 14;
+}
+
+function getEnemyMoveSpeed(e) {
+  if (e.walkingIn) return COMBAT_LAYOUT.introSpeed * 0.92;
+  const base = e.isBoss ? COMBAT_LAYOUT.enemyBossChaseSpeed : COMBAT_LAYOUT.enemyChaseSpeed;
+  return base + (e.speed || 0) * 38;
+}
+
+function separateEnemies(e, dt) {
+  game.enemies.forEach((other) => {
+    if (other === e || other.dead || other.hp <= 0) return;
+    const dx = (e.x + e.w * 0.5) - (other.x + other.w * 0.5);
+    const dist = Math.abs(dx);
+    const minDist = COMBAT_LAYOUT.enemySeparation + (e.w + other.w) * 0.22;
+    if (dist < minDist && dist > 0.1) {
+      const push = (minDist - dist) * 2.8 * dt;
+      e.x += dx > 0 ? push : -push;
+    }
+  });
+}
+
+function updateEnemyMovement(e, h, dt) {
+  if (e.dead || e.hp <= 0) return;
+
+  const reach = getEnemyReach(e);
+  const gap = getEnemyGap(e, h);
+  const chaseX = getEnemyChaseX(e, h);
+  let speed = getEnemyMoveSpeed(e);
+
+  if (e.attackWindup > 0.35) speed *= 0.25;
+  else if (e.attackAnim > 0) speed *= 0.45;
+
+  const inRange = gap <= reach && gap >= -24 && e.x + e.w > h.x;
+
+  if (!inRange && e.x > chaseX + 1) {
+    e.x -= speed * dt;
+  } else if (inRange && gap < -12) {
+    e.x += Math.min(speed * dt * 0.6, -gap - 8);
+  }
+
+  const minX = h.x + h.w - e.w * 0.25;
+  const maxX = CW + COMBAT_LAYOUT.introOffscreen + (e.index || 0) * 40;
+  e.x = Math.max(minX, Math.min(maxX, e.x));
+
+  separateEnemies(e, dt);
 }
 
 function safeSpawnWave() {
@@ -1383,28 +1445,18 @@ function getUpgradeTip() {
 // GEGNER & WELLEN
 // ============================================
 
-function getEnemyTargetX(index, enemyW) {
-  return CW - COMBAT_LAYOUT.enemyRightMargin - enemyW - index * COMBAT_LAYOUT.enemySpacing;
-}
-
 function startWaveIntro() {
   game.waveIntro = true;
   game.combatReady = true;
 }
 
-function updateWaveIntro(dt) {
-  const spd = COMBAT_LAYOUT.introSpeed * dt;
+function updateWaveIntro() {
   let pending = false;
 
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0 || !e.walkingIn) return;
-    if (e.x > e.targetX + 0.5) {
-      e.x -= spd * 0.9;
-      pending = true;
-    } else {
-      e.x = e.targetX;
-      e.walkingIn = false;
-    }
+    if (e.x > CW - 58) pending = true;
+    else e.walkingIn = false;
   });
 
   if (!pending) game.waveIntro = false;
@@ -1437,12 +1489,10 @@ function spawnEnemy(isBoss, index) {
   const stats = getEnemyStats(isBoss);
   const idx = index || 0;
   const ew = spriteCharW(sp);
-  const targetX = getEnemyTargetX(idx, ew);
 
   game.enemies.push({
-    id: ++enemyId, name, sprite: spKey, isBoss,
+    id: ++enemyId, name, sprite: spKey, isBoss, index: idx,
     x: CW + COMBAT_LAYOUT.introOffscreen + idx * 62 + Math.random() * 18,
-    targetX,
     walkingIn: true,
     y: GROUND - spriteCharH(sp),
     w: ew, h: spriteCharH(sp),
@@ -1756,7 +1806,7 @@ function updateFrame(dt) {
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
 
-  if (game.waveIntro) updateWaveIntro(dt);
+  if (game.waveIntro) updateWaveIntro();
 
   // Auto-Angriff solange Gegner leben (Maus optional zum Zielen)
   if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
@@ -1769,7 +1819,7 @@ function updateFrame(dt) {
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
   game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
 
-  // Gegner – feste Kampfpositionen, Mitte frei für Projektile
+  // Gegner – verfolgen den Helden und greifen in Nahreichweite an
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0) return;
     e.anim += dt * 6;
@@ -1777,17 +1827,16 @@ function updateFrame(dt) {
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    if (!e.walkingIn && e.targetX != null && !game.waveIntro) {
-      e.x = e.targetX;
-    }
+    updateEnemyMovement(e, h, dt);
 
-    if (e.walkingIn) {
+    if (e.walkingIn && e.x > CW - 58) {
       e.attackWindup = 0;
       return;
     }
 
     if (!enemyInCombatRange(e, h)) {
       e.attackWindup = 0;
+      e.attackTimer = Math.max(0, (e.attackTimer || 0) - dt * 0.5);
       return;
     }
 
