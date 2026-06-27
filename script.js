@@ -1171,6 +1171,7 @@ function startRun() {
   $("btn-restart").disabled = false;
   $("btn-pause").textContent = "Pause (P)";
   safeSpawnWave();
+  game.combatReady = true;
   addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
   updateClassHint();
   requestAnimationFrame(() => {
@@ -1646,7 +1647,7 @@ function useSpecial() {
   } else if (game.classKey === "ranger") {
     h.specialTimer = 0;
     h.attackAnim = 0.15;
-    const aim = getAim();
+    const aim = getCombatAim();
     const baseAngle = Math.atan2(aim.y - hy, aim.x - hx);
     for (let a = -3; a <= 3; a++) {
       const ang = baseAngle + a * 0.12;
@@ -1665,7 +1666,7 @@ function useSpecial() {
     h.mana -= cls.manaCost;
     h.specialTimer = 0;
     h.attackAnim = 0.18;
-    const aim = getAim();
+    const aim = getCombatAim();
     const ang = Math.atan2(aim.y - hy, aim.x - hx);
     game.projectiles.push({
       x: hx, y: hy, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6,
