@@ -1140,6 +1140,29 @@ function hasTargetableEnemy(maxRange) {
   return game.enemies.some((e) => isEnemyTargetable(e, maxRange));
 }
 
+function getHeroCenter() {
+  const h = game.hero;
+  if (!h) return { hx: 0, hy: 0 };
+  return { hx: h.x + h.w / 2, hy: h.y + h.h / 2 };
+}
+
+function forEachEnemyInRange(range, fn) {
+  const { hx, hy } = getHeroCenter();
+  game.enemies.forEach((e) => {
+    if (!isEnemyTargetable(e, range)) return;
+    const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+    if (Math.hypot(ex - hx, ey - hy) > range) return;
+    fn(e, ex, ey);
+  });
+}
+
+function getPrimaryMeleeAngle(fallback) {
+  const { hx, hy } = getHeroCenter();
+  const near = getNearestEnemy(Infinity);
+  if (near) return Math.atan2(near.y + near.h / 2 - hy, near.x + near.w / 2 - hx);
+  return fallback;
+}
+
 function getCombatAim() {
   const aim = getAim();
   const h = game.hero;
@@ -1591,23 +1614,14 @@ function attack() {
 function warriorMeleeAttack() {
   const h = game.hero, st = heroStats();
   const cls = CLASSES.warrior;
-  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const { hx, hy } = getHeroCenter();
   const aim = getCombatAim();
-  const angle = Math.atan2(aim.y - hy, aim.x - hx);
+  const angle = getPrimaryMeleeAngle(Math.atan2(aim.y - hy, aim.x - hx));
   h.facing = Math.cos(angle) >= 0 ? 1 : -1;
   h.attackAnim = 0.14;
 
   let hitAny = false;
-  game.enemies.forEach((e) => {
-    if (!isEnemyTargetable(e, cls.range)) return;
-    const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
-    const dist = Math.hypot(ex - hx, ey - hy);
-    if (dist > cls.range) return;
-    let diff = Math.atan2(ey - hy, ex - hx) - angle;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    if (Math.abs(diff) > 1.1) return;
-
+  forEachEnemyInRange(cls.range, (e, ex, ey) => {
     let dmg = st.attack;
     const isCrit = Math.random() < st.crit;
     if (isCrit) dmg *= 2;
@@ -1621,6 +1635,8 @@ function warriorMeleeAttack() {
   });
 
   spawnMeleeSlash(hx, hy, angle, { life: 14, range: cls.range, owner: "player" });
+  const backAngle = angle + Math.PI;
+  if (hitAny) spawnMeleeSlash(hx, hy, backAngle, { life: 10, range: cls.range * 0.85, owner: "player" });
   spawnBurst(hx + Math.cos(angle) * 30, hy + Math.sin(angle) * 30, "#bdc3c7", 4, 2.5);
   emitCombatEvent("player_melee");
   if (hitAny) emitCombatEvent("player_melee_hit");
@@ -1672,22 +1688,15 @@ function mageShoot(cls) {
   let dist = Math.hypot(dx, dy);
   if (dist > cls.range) return false;
 
-  const angle = Math.atan2(dy, dx);
   h.facing = dx >= 0 ? 1 : -1;
 
   if (h.mana < cls.manaPerShot) {
     let dmg = Math.floor(st.attack * 0.4);
     const isCrit = Math.random() < st.crit;
     if (isCrit) dmg *= 2;
+    const angle = getPrimaryMeleeAngle(Math.atan2(dy, dx));
     let hitAny = false;
-    game.enemies.forEach((e) => {
-      if (!isEnemyTargetable(e, 55)) return;
-      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
-      if (Math.hypot(ex - hx, ey - hy) > 55) return;
-      let diff = Math.atan2(ey - hy, ex - hx) - angle;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      if (Math.abs(diff) > 1.2) return;
+    forEachEnemyInRange(55, (e, ex, ey) => {
       e.hp -= dmg; e.hitFlash = 6;
       spawnDamage(ex, e.y, dmg, isCrit);
       spawnImpactRing(ex, ey, 14, "#9b59b6", 8);
@@ -1696,6 +1705,7 @@ function mageShoot(cls) {
       hitAny = true;
     });
     spawnMeleeSlash(hx, hy, angle, { life: 10, range: 55, owner: "player" });
+    spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 8, range: 48, owner: "player" });
     spawnBurst(hx, hy, "#8e44ad", 4, 2);
     h.attackAnim = 0.12;
     emitCombatEvent("player_staff");
@@ -1731,18 +1741,11 @@ function useSpecial() {
     if (!hasTargetableEnemy(cls.specialRange)) return;
     h.specialTimer = 0;
     h.attackAnim = 0.2;
-    const aim = getCombatAim();
-    const angle = Math.atan2(aim.y - hy, aim.x - hx);
+    const angle = getPrimaryMeleeAngle(Math.atan2(getCombatAim().y - hy, getCombatAim().x - hx));
+    h.facing = Math.cos(angle) >= 0 ? 1 : -1;
     spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
-    game.enemies.forEach((e) => {
-      if (!isEnemyTargetable(e, cls.specialRange)) return;
-      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
-      const dist = Math.hypot(ex - hx, ey - hy);
-      if (dist > cls.specialRange) return;
-      let diff = Math.atan2(ey - hy, ex - hx) - angle;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      if (Math.abs(diff) > 1.4) return;
+    spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 16, range: cls.specialRange * 0.9, owner: "player", big: true });
+    forEachEnemyInRange(cls.specialRange, (e, ex, ey) => {
       const dmg = Math.floor(st.attack * 2.8);
       e.hp -= dmg; e.hitFlash = 10;
       spawnDamage(ex, e.y, dmg, true);
@@ -2130,8 +2133,7 @@ function render() {
       ctx.strokeStyle = "rgba(231,76,60,0.35)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      const a = Math.atan2(aim.y - hy, aim.x - hx);
-      ctx.arc(hx, hy, cls.range, a - 1.1, a + 1.1);
+      ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
       ctx.stroke();
     } else {
       ctx.strokeStyle = cls.attackType === "ranged" ? "rgba(46,204,113,0.2)" : "rgba(155,89,182,0.25)";
