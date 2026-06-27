@@ -10,6 +10,7 @@ let supabase = null;
 
 // --- Canvas ---
 const PIXEL = 3;
+const CHAR_PIXEL = 4;
 const CW = 640, CH = 360;
 const GROUND = 290;
 let canvas, ctx;
@@ -40,93 +41,109 @@ const PAL = {
 
 const SPRITES = {
   warrior: [
-    "....KKKK....","...KHHHHK...","..KHyyHyK..","..KHwSwHK..",
-    "..KHHHHHK..","..KHoHoHK..","...KDDDk...","...KD..DK..",
-    "...KD..DK..","...KK..KK..."
+    ".....KKKKKK.....","....KHHHHHHK....","...KHyyyyyyHK...","...KHsyyySsyHK..",
+    "...KHyyyyyyHK...","...KHHHooHHHK...","....KHDDDDHK....","....KHDGGDHK....",
+    "....KHo..oHK....","....KDGGGGDK....","....KDGGGGDK....","....KD...DK.....",
+    "....KD...DK.....","....KK...KK....."
   ],
   ranger: [
-    "....KKKK....","...KlGlGK...","..KlGGGGlK..","..KlsSSslK..",
-    "..KlGGGGlK..","..KlGllGlK..","...KlGGlK...","...Kg..gK..",
-    "...Kg..gK...","...KK..KK..."
+    "....KKKKKK....","...KlGGGGlK...","..KlGGGGGGlK..","..KlGssSSslK..",
+    "..KlGGGGGGlK..","..KlGGllGGlK..","...KlGGGGlK...","...KlGooGlK...",
+    "....KlGGlK....","....KgGGgK....","....Kg..gK....","....Kg..gK....",
+    "....KK..KK...."
   ],
   mage: [
-    "....KKKK....","...KuPuPK...","..KuPPPPuK..","..KPsSSsPK..",
-    "..KuPPPPuK..","..KuPBBPuK..","...KuPPuK...","...Kp..pK..",
-    "...Kp..pK...","...KK..KK..."
+    "....KKKKKK....","...KuPPPPuK...","..KuPPPPPPuK..","..KuPssSSPuK..",
+    "..KuPPPPPPuK..","..KuPPBBPPuK..","...KuPPPPuK...","...KuPooPuK...",
+    "....KuPPuK....","....KpBBpK....","....Kp..pK....","....Kp..pK....",
+    "....KK..KK...."
   ],
   shield: [
-    "..KKKK..",".KWwwWK.","KWwSSwWK","KWwwwwWK",".KWwwWK.","..KKKK.."
+    "...KKKK....","..KWWWWWk..",".KWwwSSwwK.","KWwwSSSwwWK",
+    "KWwwwwwwwWK",".KWwwSSwwK.","..KWWWWWk..","...KKKK...."
   ],
   sword: [
-    "...K...","..KwWK..","..KWWWK.","..KWWWK.","..KWWK..","...KWk..","...KWk.."
+    "....K....","...KwWK...","...KWWWK..","...KWWWWK.","...KWWWWK.",
+    "...KWWWK..","....KWWK...","....KWk....","....KWk....","....KkK...."
   ],
   sword_heavy: [
-    "....K....","...KwWK...","..KWWWWK.","..KWWWWK.","...KWWK..","....KWk..","....KWk.."
+    ".....K.....","....KwWK....","...KWWWWK...","...KWWWWWK..",
+    "...KWWWWWWK.","....KWWWWK...",".....KWWK....",".....KWk.....",
+    ".....KWk.....",".....KkK....."
   ],
   bow: [
-    "....K....","...KyK...","..Ky..K..",".Ky....K.","..Ky..K..","...KyK...","....K...."
+    ".....K.....","....KyK....","...Ky..K...","..Ky....K..",
+    ".Ky......K.","..Ky....K..","...Ky..K...","....KyK....",
+    ".....K....."
   ],
   bow_aim: [
-    "....K....","...KyK...","..KyyyyK.",".Ky....yK","..KyyyyK.","...KyK...","....K...."
+    ".....K.....","....KyK....","...KyyyyK..","..Ky....yK.",
+    ".Ky......yK","..Ky....yK.","...KyyyyK..","....KyK....",
+    ".....K....."
   ],
   staff: [
-    "...K...","...YWk..","...YWk..","...YWk..","...YWk..","..KiBK..",".KiBBiK.","..KiBK.."
+    "....K....","....YWk...","....YWk...","....YWk...",
+    "....YWk...","...KiBK...","..KiBBiK..","..KiBBiK..",
+    "...KiBK....","....KkK...."
   ],
   orb_glow: [
-    "...KiK...","..KiBiK..",".KiBBiBK.","..KiBiK..","...KkK..."
+    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK.",
+    "..KiBBiBK..","...KiBiK...","....KkK...."
   ],
   goblin: [
-    "....KKKK....","...KmmGGK...","..KmGGGGmK..","..KmGGGGmK..",
-    "..KmGGGGmK..","...KGGGGK...","...Kg..gK...","...Kg..gK...",
-    "...KK..KK..."
+    "....KKKKKK....","...KmGGGGmK...","..KmGGGGGGmK..","..KmGeGGemK...",
+    "..KmGGGGGGmK..","...KmGGGGmK...","...KmGmmGmK...","....KmGGmK....",
+    "....Kg..gK....","....Kg..gK....","....KK..KK...."
   ],
   skelett: [
-    "....KKKK....","...KWWWWK...","..KWWWWWWK..","..KWsWWsWK..",
-    "..KWWWWWWK..","...KWWWWK...","...Kw..wK...","...Kw..wK...",
-    "...KK..KK..."
+    "....KKKKKK....","...KWWWWWWK...","..KWWWWWWWWK..","..KWWsWWWsWK..",
+    "..KWWWWWWWWK..","...KWWWKWKK...","...KWWWwWWK...","....Kw..wK....",
+    "....Kw..wK....","....KK..KK...."
   ],
   schleim: [
-    "....KKKK....","...KmmZmK...","..KmZZZZmK..","..KmZZZZmK..",
-    "..KmZZZZmK..","...KZZZZK...","...KZZZZK...","...KKKKKK..."
+    "....KKKKKK....","...KmZZZZmK...","..KmZZZZZZmK..","..KmZeZZemK...",
+    "..KmZZZZZZmK..","...KmZZZZmK...","...KmZZZZmK...","....KmZZmK....",
+    "....KKKKKK...."
   ],
   bandit: [
-    "....KKKK....","...KyyDDK...","..KyDDDDyK..","..KyDsSDyK..",
-    "..KyDDDDyK..","...KyDDyK...","...Ky..yK...","...Ky..yK...",
-    "...KK..KK..."
+    "....KKKKKK....","...KyyDDDDK...","..KyDDDDDDyK..","..KyDsSSSDyK..",
+    "..KyDDDDDDyK..","...KyDDDDyK...","...KyDooDyK...","....KyDDyK....",
+    "....Ky..yK....","....Ky..yK....","....KK..KK...."
   ],
   wolf: [
-    "....KKKK....","...KddDDK...","..KddDDddK..",".KddDsSDdK.",
-    "..KddDDddK..","...KddDdK...","...Kd..dK...","...Kd..dK...",
-    "...KK..KK..."
+    "...KKKKKKKK...","..KddDDDDdK..",".KddDsSSdDdK.",".KddDDDDDDdK.",
+    ".KddDDDDDDdK.","..KddDDDDdK..","...KdD..DdK...","...KdD..DdK...",
+    "...KK....KK..."
   ],
   spinne: [
-    "....KKKK....","...KuPuPK...","..KuPPPPuK..",".KuPuPPuPuK.",
-    "..KuPPPPuK..","...KuPPuK...",".KuK.K.K.uK.","...KK..KK..."
+    "....KKKKKK....","...KuPPPPuK...","..KuPPPPPPuK..",".KuPuPPuPuK...",
+    "..KuPPPPPPuK..","...KuPPPPuK...","..KuK.KPPK.KuK.","..KuK.K..K.KuK.",
+    "....KK....KK...."
   ],
   boss_ork: [
-    "..KKKKKKKK..",".KHHHHHHHK.","KHHHHHHHHHK","KHHsHHsHHHK",
-    "KHHHHHHHHHK",".KHHHHHHHK.",".KHo..oHK.",".KHo..oHK.",
-    "..KKK..KKK.."
+    "...KKKKKKKKKK...","..KHHHHHHHHHK..",".KHHHHHHHHHHHK.",".KHHsHHHHsHHHK.",
+    ".KHHHHHHHHHHHK.",".KHHHHoHHoHHHK.","..KHHHHHHHHHK..","..KHo....oHK...",
+    "..KHo....oHK...","..KDGGGGGGDK...","..KDGGGGGGDK...","..KKK....KKK..."
   ],
   boss_schatten: [
-    "..KKKKKKKK..",".KaaaaaaaK.","KaaaaaaaaaK","KaaKaaKaaaK",
-    "KaaaaaaaaaK",".KaaaaaaaK.",".KaK..KaK.",".KaK..KaK.",
-    "..KKK..KKK.."
+    "...KKKKKKKKKK...","..KaaaaaaaaaK..",".KaaaaaaaaaaaK.",".KaaKaaaaKaaaK.",
+    ".KaaaaaaaaaaaK.",".KaaaaaooaaaaK.","..KaaaaaaaaaK..","..KaK....KaK...",
+    "..KaK....KaK...","..KKK....KKK..."
   ],
   boss_feuer: [
-    "..KKKKKKKK..",".KeeeeeeeK.","KeeffffeeK","KeefSSfeeK",
-    "KeeffffeeK",".KeeeeeeeK.",".KeK..KeK.",".KeK..KeK.",
-    "..KKK..KKK.."
+    "...KKKKKKKKKK...","..KeeeeeeeeeK..",".KeeffffffffeK.",".KeefSSSSfeeK.",
+    ".KeeffffffffeK.",".KeeeeeooeeeeK.","..KeeeeeeeeeK..","..KeK....KeK...",
+    "..KeK....KeK...","..KKK....KKK..."
   ],
   boss_drache: [
-    ".KKKKKKKKKK.","KRRRRRRRRRK","KRRfRRfRRRK","KRRRRRRRRRK",
-    "KRRRRRRRRRK",".KRRRRRRRK.",".KRo..oRK.",".KRo..oRK.",
-    "..KKK..KKK.."
+    "..KKKKKKKKKKKK..",".KRRRRRRRRRRRK.","KRRRRRRRRRRRRRK","KRRfRRRRRfRRRRK",
+    "KRRRRRRRRRRRRRK",".KRRRRoRRoRRRRK.",".KRRRRRRRRRRRK.",".KRo......oRK..",
+    ".KRo......oRK..",".KKK......KKK.."
   ],
   boss_nekro: [
-    "..KKKKKKKK..",".KPPPPPPPK.","KPPPPPPPPPK","KPPsPPsPPPK",
-    "KPPPPPPPPPK",".KPPPPPPPK.",".KpK..KpK.",".KpK..KpK.",
-    "..KKK..KKK.."
+    "...KKKKKKKKKK...","..KPPPPPPPPPK..",".KPPPPPPPPPPPK.",".KPPsPPPPsPPPK.",
+    ".KPPPPPPPPPPPK.",".KPPPPooPPPPK.","..KPPPPPPPPPK..","..KpK....KpK...",
+    "..KpK....KpK...","..KKK....KKK..."
   ],
   tree: [
     "....KK....","...KGGK...","..KGGGGK..","..KGGGGK..",
@@ -402,7 +419,14 @@ const $ = (id) => document.getElementById(id);
 // ============================================
 
 function drawSprite(c, rows, x, y, flip) {
-  const sc = PIXEL;
+  drawSpriteScaled(c, rows, x, y, flip, PIXEL);
+}
+
+function drawCharSprite(c, rows, x, y, flip, sc) {
+  drawSpriteScaled(c, rows, x, y, flip, sc || CHAR_PIXEL);
+}
+
+function drawSpriteScaled(c, rows, x, y, flip, sc) {
   for (let r = 0; r < rows.length; r++) {
     for (let col = 0; col < rows[r].length; col++) {
       const ch = rows[r][col];
@@ -417,6 +441,8 @@ function drawSprite(c, rows, x, y, flip) {
 
 function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
+function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
+function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
 
 const HERO_WEAPON = {
   warrior: { idle: "sword", attack: "sword_heavy", offhand: "shield" },
@@ -433,12 +459,12 @@ function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
   c.save();
   c.translate(cx, cy);
   c.rotate(angle);
-  const gripX = classKey === "mage" ? -3 : classKey === "ranger" ? -2 : 4;
-  const gripY = classKey === "mage" ? -18 : classKey === "ranger" ? -10 : -10;
-  drawSprite(c, sp, gripX, gripY, false);
+  const gripX = classKey === "mage" ? -6 : classKey === "ranger" ? -5 : 10;
+  const gripY = classKey === "mage" ? -32 : classKey === "ranger" ? -20 : -20;
+  drawCharSprite(c, sp, gripX, gripY, false);
   if (classKey === "mage" && attacking && w.glow) {
     c.globalAlpha = 0.55 + Math.sin(performance.now() * 0.02) * 0.25;
-    drawSprite(c, SPRITES[w.glow], gripX - 1, gripY - 20, false);
+    drawCharSprite(c, SPRITES[w.glow], gripX - 2, gripY - 28, false);
     c.globalAlpha = 1;
   }
   c.restore();
@@ -449,7 +475,7 @@ function drawHero(c, h, bob, atkOff, hurtOff) {
   const y = h.y + bob;
   const flip = h.facing < 0;
   const cx = x + h.w / 2;
-  const cy = y + h.h / 2 + 4;
+  const cy = y + h.h / 2 + 6;
   const body = SPRITES[game.classKey];
   const attacking = h.attackAnim > 0.04;
   let angle = Math.atan2(mouse.y - cy, mouse.x - cx);
@@ -458,25 +484,44 @@ function drawHero(c, h, bob, atkOff, hurtOff) {
   if (game.classKey === "warrior") {
     c.save();
     c.translate(cx, cy);
-    drawSprite(c, SPRITES.shield, flip ? 12 : -20, -4, flip);
+    drawCharSprite(c, SPRITES.shield, flip ? 22 : -36, -8, flip);
     c.restore();
   }
 
-  drawSprite(c, body, x, y, flip);
+  drawCharSprite(c, body, x, y, flip);
   drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
 }
 
 function drawPreviews() {
+  const PSC = 4;
   document.querySelectorAll(".preview-sprite").forEach((cv) => {
     const c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
-    c.clearRect(0, 0, 48, 48);
+    c.clearRect(0, 0, cv.width, cv.height);
     const key = cv.dataset.preview;
     const body = SPRITES[key];
     if (!body) return;
-    if (key === "warrior") drawSprite(c, SPRITES.shield, 0, 14, false);
-    drawSprite(c, body, 8, 6, false);
-    drawHeroWeaponLayer(c, key, 22, 28, -0.55, key !== "warrior");
+    const bw = body[0].length * PSC;
+    const bh = body.length * PSC;
+    const ox = Math.floor((cv.width - bw) / 2) - 4;
+    const oy = Math.floor((cv.height - bh) / 2) + 2;
+    const cx = ox + bw / 2;
+    const cy = oy + bh / 2 + 4;
+    if (key === "warrior") drawCharSprite(c, SPRITES.shield, ox - 14, oy + 12, false, PSC);
+    drawCharSprite(c, body, ox, oy, false, PSC);
+    const w = HERO_WEAPON[key];
+    if (w) {
+      const wKey = key === "ranger" ? w.attack : w.idle;
+      const sp = SPRITES[wKey];
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(-0.55);
+      const gx = key === "mage" ? -5 : key === "ranger" ? -4 : 8;
+      const gy = key === "mage" ? -26 : key === "ranger" ? -16 : -16;
+      drawCharSprite(c, sp, gx, gy, false, PSC);
+      if (key === "mage") drawCharSprite(c, SPRITES.orb_glow, gx - 2, gy - 22, false, PSC);
+      c.restore();
+    }
   });
 }
 
@@ -934,9 +979,10 @@ function createHero() {
     const up = UPGRADES.find((x) => x.key === key);
     return (u[key] || 0) * up.bonus;
   };
+  const heroSp = SPRITES[game.classKey];
   game.hero = {
-    x: 70, y: GROUND - 40, vx: 0, vy: 0,
-    w: spriteW(SPRITES[game.classKey]), h: spriteH(SPRITES[game.classKey]),
+    x: 70, y: GROUND - spriteCharH(heroSp) - 2, vx: 0, vy: 0,
+    w: spriteCharW(heroSp), h: spriteCharH(heroSp),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
     attack: cls.attack + ub("upgrade_attack"),
@@ -1049,8 +1095,8 @@ function spawnEnemy(isBoss, index) {
   game.enemies.push({
     id: ++enemyId, name, sprite: spKey, isBoss,
     x: CW - 40 - idx * 50 - Math.random() * 15,
-    y: GROUND - spriteH(sp) - 4,
-    w: spriteW(sp), h: spriteH(sp),
+    y: GROUND - spriteCharH(sp) - 2,
+    w: spriteCharW(sp), h: spriteCharH(sp),
     maxHp: stats.hp, hp: stats.hp,
     attack: stats.attack,
     goldReward: stats.gold, xpReward: stats.xp,
@@ -1593,7 +1639,7 @@ function updateFrame(dt) {
   if (keys.a) { h.x -= spd * dt; h.facing = -1; }
   if (keys.d) { h.x += spd * dt; h.facing = 1; }
   h.x = Math.max(10, Math.min(CW * 0.45, h.x));
-  h.y = Math.max(GROUND - 80, Math.min(GROUND - h.h + 5, h.y));
+  h.y = Math.max(GROUND - 95, Math.min(GROUND - h.h + 5, h.y));
 
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
@@ -1871,7 +1917,7 @@ function render() {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
-    drawSprite(ctx, SPRITES[e.sprite], drawX, e.y + bob, true);
+    drawCharSprite(ctx, SPRITES[e.sprite], drawX, e.y + bob, true);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
