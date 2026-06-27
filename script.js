@@ -11,6 +11,8 @@ let supabase = null;
 // --- Canvas ---
 const PIXEL = 3;
 const CHAR_PIXEL = 4;
+const DECOR_PIXEL = 5;
+const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 290;
 let canvas, ctx;
@@ -146,82 +148,108 @@ const SPRITES = {
     "..KpK....KpK...","..KKK....KKK..."
   ],
   tree: [
-    "....KK....","...KGGK...","..KGGGGK..","..KGGGGK..",
-    "...KGGK...","....GK....","....GK....","...KGGK..."
+    ".....KK.....","....KGGK....","...KGGGGK...","...KGGGGGK..",
+    "..KGGGGGGK..","...KGGGGK...","....KGGK....",".....GK.....",
+    ".....GK.....",".....GK.....","....KGGK....","...KAAAK....",
+    "..KAAAAAK...","..KAAAAAK..."
   ],
   pine_tree: [
-    "....KK....","...KLLK...","..KJMJK..",".KJMMJK.",
-    "..KJMJK..","...KJJk...","....Jk....","...KAAK...","..KAAAK.."
+    ".....KK.....","....KLLK....","...KJMJK....","..KJMMJK....",
+    ".KJMMMMJK...","..KJMMJK....","...KJMJK....","....KJJk....",
+    ".....Jk.....",".....Jk.....","....KAAK....","...KAAEAK...",
+    "..KAAAAAK...","..KAAAAAK...","...KAAAK...."
   ],
   pine_silhouette: [
-    "...KKK...","..KLLLK..",".KJJMJK.","KJJMMJJK",
-    ".KJJMJK.","..KJJJK..","...KJK..."
+    "....KKKK....","...KLLLLK...","..KJJMJJk..",".KJJMMJJJK.",
+    "KJJMMMMJJKK","KJJMMMMMJJJK",".KJJMMJJJK.","..KJJMJJk..",
+    "...KJJJK....","....KJK.....",".....Jk.....","....KAAK....",
+    "...KAAAK....","..KAAAAK...."
   ],
   dead_tree: [
-    "....KK....","...KAAK...","..KAEAK..",".Kk..kK.",
-    "..K...K..","...K.K....","...K.K....","..K...K.."
+    ".....KK.....","....KAAK....","...KAEAEK...","..Kk...kK..",
+    "..K.....K..","...K...K....","....K.K.....","....K.K.....",
+    "...K...K....","..K.....K..","..K.....K..","...K...K...."
   ],
   mushroom: [
-    "....KK....","..KRRRRK..",".KRWwWRK.","..KWWWK..",
-    "...KWK....","...KWK....","...KKK..."
+    ".....KK.....","...KRRRRK...","..KRWwwWRK..",".KRWwwwwWRK.",
+    "..KWWWWWWK..","...KWWWWK...","....KWWK....","....KWWK....",
+    "....KDDK....","....KDDK...."
   ],
   stump: [
-    "...KKK...","..KAAAK..",".KAAAAAK.",".KAAEAAK.","..KAAAK.."
+    "....KKK....","...KAAAK...","..KAAAAAK..",".KAAAAAAAK.",
+    ".KAAEEAAK.","..KAAAAAK..","...KAAAK..."
   ],
   bush_dark: [
-    "....KK....","..KvVvK..",".KvNNVvk.",".KvNNVvk.",
-    "..KvVVk..","...KVK..."
+    ".....KK.....","...KvVVvK...","..KvNNNVvk..",".KvNNNNNVvk.",
+    ".KvNNNNNVvk.","..KvVVVVk...","....KvVk...."
   ],
   bones: [
-    "....KK....","..KWWWK..",".KW.K.WK.","..KWWWK..","...KKK..."
+    ".....KK.....","...KWWWWK...","..KW.K.KWK..","..KWWWWWk...",
+    "...KWWWK....","....KKK....."
   ],
   firefly: ["..K..",".QyQ.","..K.."],
   stalactite: [
-    "...KKK...","..KXXXk..",".KXXxXXK.","..KXXK...","...KXK..."
+    "....KKK....","...KXXXk...","..KXXxXXK..","..KXXxXXK..",
+    ".KXXxXXXK..","..KXXXXK...","...KXXK....","....KXK...."
   ],
   skull_rock: [
-    "...KKK...","..KWWWk..",".KWsWsWK.",".KWWWWWK.","..KXXXK.."
+    "....KKK....","...KWWWk...","..KWsWsWK..",".KWWWWWWWK.",
+    ".KWWWWWWWK.","..KXXXXXK..","...KXXXK..."
   ],
   torch: [
-    "....KK....","...KffK...","..KffffK..","...KyyK...","...KDDK...","...KDDK..."
+    ".....KK.....","....KffK....","...KffffK...","..KffffffK..",
+    "...KffffK...","....KyyK....","....KDDK....","....KDDK....",
+    "....KDDK...."
   ],
   pillar_ruin: [
-    "...KKK...","..KXXXK..",".KXXXXXK.",".KXXXXXK.",".KXXxXXK.","..KXXXK.."
+    "....KKK....","...KXXXK...","..KXXXXXK..",".KXXXXXXXK.",
+    ".KXXXXXXXK.",".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.",
+    ".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.","..KXXXXXK..",
+    "...KXXXXK..","....KXXXK...",".....KKK...."
   ],
   rubble: [
-    "....KK....","..KXXXK..",".KxX.XxK.","..KXXXK.."
+    ".....KK.....","...KXXXK....","..KxX.XxXK..",".KXXXXXXXK.",
+    "..KXXXXXK...","...KXXXK...."
   ],
   banner: [
-    "....KK....","...KRRK...","..KRRRRK..","..KRRRRK..","...KDDK...","...KDDK..."
+    ".....KK.....","....KRRK....","...KRRRRK...","..KRRRRRRK..",
+    "..KRRRRRRK..","...KRRRRK...","....KDDK....","....KDDK....",
+    "....KDDK....","....KDDK...."
   ],
   lava_rock: [
-    "...KKK...","..KHHHk..",".KHffHHK.",".KHHHHHK.","..KHHHK.."
+    "....KKK....","...KHHHk...","..KHffHHK..",".KHffffHHK.",
+    ".KHHHHHHHK.","..KHHHHHK..","...KHHHK..."
   ],
   smoke_puff: ["..K..",".KXK.","..K.."],
   dragon_bone: [
-    "....KKKK....","..KYYYYK..",".KYYYYYYK.","..KYY.YK..","...KYYK...","....YK...."
+    ".....KKKK.....","....KYYYYK....","...KYYYYYYK...","..KYYYYYYYYK..",
+    "..KYYYYYYYYYK.",".KYY.....YYK..","..KYY....YK...","...KYY..YK....",
+    "....KYYYYK....",".....KYYK.....","......YK......"
   ],
   obsidian: [
-    "...KKK...","..Kuuuk..",".KuPPuPK.",".KuPPuPK.","..KuuuK.."
+    "....KKK....","...Kuuuk...","..KuPPuPK..",".KuPPPPuPK.",
+    ".KuPPPPuPK.","..KuuuuK...","...KKKK...."
   ],
   cave_crystal: [
-    "...KiK...","..KiBiK..",".KiBBiBK.",".KiBiBiK.","..KiBK..."
+    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
+    ".KiBiBiBiK.","..KiBBiBK..","...KiBK...."
   ],
   grave: [
-    "...KKK...","..KWWWk..",".KWWWWWK.",".KWWWWWK.",
-    ".KWWWWWK.","..KWWWK..","...KKK..."
+    "....KKK....","...KWWWk...","..KWWWWWK..",".KWWWWWWWK.",
+    ".KWWWWWWWK.",".KWWWWWWWK.","..KWWWWWK..","...KWWWK...",
+    "....KKK...."
   ],
   bush: [
-    "....KK....","..KmZmK..",".KmZZZmk.",".KmZZZmk.",
-    "..KZZZK..","...KZK..."
+    ".....KK.....","...KmZmZK...","..KmZZZZmk..",".KmZZZZZZmk.",
+    ".KmZZZZZZmk.","..KmZZZZK...","....KmZK...."
   ],
   rock: [
-    "...KKK...","..KXXXk..",".KXXXXXK.",".KXXxXXK.",
-    "..KXXXK..","...KKK..."
+    "....KKK....","...KXXXk...","..KXXXXXK..",".KXXxXXXxXK",
+    ".KXXXXXXXK.","..KXXXXXK..","...KXXXK..."
   ],
   crystal: [
-    "...KiK...","..KiBiK..",".KiBBiBK.","..KiBiK..",
-    "...KkK..."
+    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
+    "..KiBBiBK..","...KiBiK...","....KkK...."
   ],
   cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
   moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
@@ -330,30 +358,30 @@ const WORLDS = [
 ];
 
 const DECOR_META = {
-  pine_tree:       { h: 52, parallax: 0.35 },
-  pine_silhouette: { h: 38, parallax: 0.12 },
-  dead_tree:       { h: 44, parallax: 0.3 },
-  mushroom:        { h: 28, parallax: 0.4 },
-  stump:           { h: 18, parallax: 0.45 },
-  bush_dark:       { h: 22, parallax: 0.42 },
-  bones:           { h: 16, parallax: 0.5 },
-  tree:            { h: 36, parallax: 0.35 },
-  bush:            { h: 20, parallax: 0.42 },
-  grave:           { h: 30, parallax: 0.4 },
-  cross:           { h: 18, parallax: 0.38 },
-  rock:            { h: 22, parallax: 0.4 },
-  crystal:         { h: 20, parallax: 0.38 },
-  stalactite:      { h: 28, parallax: 0.15, ceiling: true },
-  cave_crystal:    { h: 24, parallax: 0.35 },
-  skull_rock:      { h: 26, parallax: 0.42 },
-  torch:           { h: 32, parallax: 0.45 },
-  pillar_ruin:     { h: 48, parallax: 0.28 },
-  rubble:          { h: 16, parallax: 0.48 },
-  banner:          { h: 38, parallax: 0.32 },
-  lava_rock:       { h: 24, parallax: 0.4 },
-  smoke_puff:      { h: 12, parallax: 0.08, ceiling: true },
-  dragon_bone:     { h: 34, parallax: 0.3 },
-  obsidian:        { h: 22, parallax: 0.4 }
+  pine_tree:       { parallax: 0.35 },
+  pine_silhouette: { parallax: 0.12 },
+  dead_tree:       { parallax: 0.3 },
+  mushroom:        { parallax: 0.4 },
+  stump:           { parallax: 0.45 },
+  bush_dark:       { parallax: 0.42 },
+  bones:           { parallax: 0.5 },
+  tree:            { parallax: 0.35 },
+  bush:            { parallax: 0.42 },
+  grave:           { parallax: 0.4 },
+  cross:           { parallax: 0.38 },
+  rock:            { parallax: 0.4 },
+  crystal:         { parallax: 0.38 },
+  stalactite:      { parallax: 0.15, ceiling: true },
+  cave_crystal:    { parallax: 0.35 },
+  skull_rock:      { parallax: 0.42 },
+  torch:           { parallax: 0.45 },
+  pillar_ruin:     { parallax: 0.28 },
+  rubble:          { parallax: 0.48 },
+  banner:          { parallax: 0.32 },
+  lava_rock:       { parallax: 0.4 },
+  smoke_puff:      { parallax: 0.08, ceiling: true },
+  dragon_bone:     { parallax: 0.3 },
+  obsidian:        { parallax: 0.4 }
 };
 
 const LOOT_TYPES = ["Waffe","Rüstung","Amulett","Zauberbuch"];
@@ -422,6 +450,14 @@ function drawSprite(c, rows, x, y, flip) {
   drawSpriteScaled(c, rows, x, y, flip, PIXEL);
 }
 
+function drawDecorSprite(c, rows, x, y, flip, sc) {
+  drawSpriteScaled(c, rows, x, y, flip, sc || DECOR_PIXEL);
+}
+
+function drawBgSprite(c, rows, x, y, flip) {
+  drawSpriteScaled(c, rows, x, y, flip, BG_PIXEL);
+}
+
 function drawCharSprite(c, rows, x, y, flip, sc) {
   drawSpriteScaled(c, rows, x, y, flip, sc || CHAR_PIXEL);
 }
@@ -441,6 +477,8 @@ function drawSpriteScaled(c, rows, x, y, flip, sc) {
 
 function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
+function spriteDecorW(rows, sc) { return rows[0].length * (sc || DECOR_PIXEL); }
+function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
 function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
 function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
 
@@ -1112,14 +1150,16 @@ function initDecor() {
   const world = getWorld();
   game.decor = [];
   const types = world.decor;
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 22; i++) {
     const type = types[Math.floor(Math.random() * types.length)];
-    const meta = DECOR_META[type] || { h: 30, parallax: 0.3 };
+    const meta = DECOR_META[type] || { parallax: 0.3 };
+    const sp = SPRITES[type];
+    const sh = sp ? spriteDecorH(sp) : 50;
     const y = meta.ceiling
-      ? 6 + Math.random() * 45
-      : GROUND - meta.h - Math.floor(Math.random() * 12);
+      ? 4 + Math.random() * 55
+      : GROUND - sh - Math.floor(Math.random() * 8);
     game.decor.push({
-      x: i * 58 + Math.random() * 35,
+      x: i * 78 + Math.random() * 40,
       type,
       y,
       parallax: meta.parallax + (Math.random() - 0.5) * 0.06,
@@ -1155,17 +1195,17 @@ function renderWorldSky(world) {
 
   if (world.theme === "cave") {
     ctx.fillStyle = world.hill2 || world.hill;
-    for (let i = 0; i < 6; i++) {
-      const cx = ((i * 140 - game.scrollX * 0.04) % (CW + 160)) - 40;
+    for (let i = 0; i < 7; i++) {
+      const cx = ((i * 130 - game.scrollX * 0.04) % (CW + 180)) - 50;
       ctx.beginPath();
       ctx.moveTo(cx, 0);
-      ctx.lineTo(cx + 50, 0);
-      ctx.lineTo(cx + 25, 55 + i * 6);
+      ctx.lineTo(cx + 65, 0);
+      ctx.lineTo(cx + 32, 75 + i * 8);
       ctx.closePath();
       ctx.fill();
     }
     ctx.fillStyle = world.fog2 || world.fog;
-    ctx.fillRect(0, 0, CW, 70);
+    ctx.fillRect(0, 0, CW, 85);
     return;
   }
 
@@ -1174,51 +1214,56 @@ function renderWorldSky(world) {
     ctx.fillStyle = col;
     const parallax = 0.05 + layer * 0.04;
     for (let i = 0; i < 6; i++) {
-      const hx = ((i * 150 - game.scrollX * parallax) % (CW + 180)) - 50;
-      const hh = 45 + layer * 18;
-      const hy = GROUND - hh - layer * 12;
+      const hx = ((i * 165 - game.scrollX * parallax) % (CW + 200)) - 55;
+      const hh = 68 + layer * 28;
+      const hy = GROUND - hh - layer * 16;
       ctx.beginPath();
       ctx.moveTo(hx, GROUND);
-      ctx.quadraticCurveTo(hx + 70, hy - 20, hx + 140, GROUND);
+      ctx.quadraticCurveTo(hx + 95, hy - 32, hx + 175, GROUND);
       ctx.fill();
     }
   });
 
   if (world.theme === "forest") {
     ctx.fillStyle = world.hill3 || "#123824";
-    for (let i = 0; i < 8; i++) {
-      const sx = ((i * 95 - game.scrollX * 0.06) % (CW + 100)) - 20;
-      const sp = SPRITES.pine_silhouette;
-      if (sp) drawSprite(ctx, sp, sx, GROUND - spriteH(sp) - 8 - (i % 3) * 6, false);
+    const sp = SPRITES.pine_silhouette;
+    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 72;
+    for (let i = 0; i < 9; i++) {
+      const sx = ((i * 88 - game.scrollX * 0.05) % (CW + 120)) - 25;
+      if (sp) drawBgSprite(ctx, sp, sx, GROUND - sh - 6 - (i % 3) * 10, false);
     }
   }
 
   if (world.theme === "ruins") {
-    ctx.fillStyle = "rgba(30,25,40,0.7)";
-    for (let i = 0; i < 4; i++) {
-      const rx = ((i * 200 - game.scrollX * 0.05) % (CW + 120)) - 30;
-      ctx.fillRect(rx, GROUND - 90 - i * 5, 18, 90);
-      ctx.fillRect(rx + 30, GROUND - 60, 40, 8);
+    ctx.fillStyle = "rgba(30,25,40,0.75)";
+    for (let i = 0; i < 5; i++) {
+      const rx = ((i * 185 - game.scrollX * 0.05) % (CW + 140)) - 35;
+      const ph = 125 + i * 8;
+      ctx.fillRect(rx, GROUND - ph, 26, ph);
+      ctx.fillRect(rx + 38, GROUND - 85, 52, 10);
+      ctx.fillRect(rx + 8, GROUND - ph - 8, 10, 8);
     }
   }
 
   if (world.theme === "volcano") {
     ctx.fillStyle = world.hill3 || "#5a180a";
-    for (let i = 0; i < 3; i++) {
-      const vx = ((i * 220 - game.scrollX * 0.03) % (CW + 80)) + 40;
+    for (let i = 0; i < 4; i++) {
+      const vx = ((i * 200 - game.scrollX * 0.03) % (CW + 100)) + 30;
+      const vh = 135 + i * 18;
       ctx.beginPath();
       ctx.moveTo(vx, GROUND);
-      ctx.lineTo(vx + 60, GROUND - 100 - i * 15);
-      ctx.lineTo(vx + 120, GROUND);
+      ctx.lineTo(vx + 75, GROUND - vh);
+      ctx.lineTo(vx + 150, GROUND);
       ctx.fill();
     }
   }
 
   if (world.theme === "dragon") {
-    for (let i = 0; i < 3; i++) {
-      const dx = ((i * 250 - game.scrollX * 0.04) % (CW + 100)) - 20;
-      const sp = SPRITES.dragon_bone;
-      if (sp) drawSprite(ctx, sp, dx, GROUND - spriteH(sp) - 5, i % 2 === 0);
+    const sp = SPRITES.dragon_bone;
+    const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 54;
+    for (let i = 0; i < 4; i++) {
+      const dx = ((i * 220 - game.scrollX * 0.04) % (CW + 120)) - 25;
+      if (sp) drawBgSprite(ctx, sp, dx, GROUND - sh - 4, i % 2 === 0);
     }
   }
 }
@@ -1285,10 +1330,10 @@ function renderWorldAtmosphere(world) {
   }
 
   ctx.fillStyle = world.fog;
-  ctx.fillRect(0, GROUND - 70, CW, 55);
+  ctx.fillRect(0, GROUND - 85, CW, 65);
   if (world.fog2) {
     ctx.fillStyle = world.fog2;
-    ctx.fillRect(0, GROUND - 45, CW, 35);
+    ctx.fillRect(0, GROUND - 55, CW, 42);
   }
 }
 
@@ -1849,11 +1894,11 @@ function render() {
   renderWorldSky(world);
   renderWorldAtmosphere(world);
 
-  // Dekoration Parallax
+  // Dekoration Parallax (größer als Charaktere)
   game.decor.forEach((d) => {
-    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 140)) - 35;
+    const dx = ((d.x - game.scrollX * d.parallax) % (CW + 180)) - 45;
     const sp = SPRITES[d.type];
-    if (sp) drawSprite(ctx, sp, dx, d.y, !!d.flip);
+    if (sp) drawDecorSprite(ctx, sp, dx, d.y, !!d.flip);
   });
 
   // Boden (welt-spezifisch)
