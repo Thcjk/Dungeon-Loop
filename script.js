@@ -11,6 +11,7 @@ let supabase = null;
 // --- Canvas ---
 const PIXEL = 3;
 const CHAR_PIXEL = 4;
+const WEAPON_PIXEL = 5;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
@@ -63,36 +64,40 @@ const SPRITES = {
     "....KK..KK...."
   ],
   shield: [
-    "...KKKK....","..KWWWWWk..",".KWwwSSwwK.","KWwwSSSwwWK",
-    "KWwwwwwwwWK",".KWwwSSwwK.","..KWWWWWk..","...KKKK...."
+    "....KKKKKK....","...KWWWWWWK...","..KWwSSSSwWK..",".KWwwSSSSwwWK.",
+    "KWwwSSyySSwwWK","KWwwSSyySSwwWK",".KWwwwwwwwwWK.","..KWwSSSSwWK..",
+    "...KWWWWWWK...","....KKDDKK....",".....KDDK.....","......KK......"
   ],
   sword: [
-    "....K....","...KwWK...","...KWWWK..","...KWWWWK.","...KWWWWK.",
-    "...KWWWK..","....KWWK...","....KWk....","....KWk....","....KkK...."
+    ".....K.....","....KwWK....","....KWWK....","...KWWWWK...",
+    "...KWWWWK...","...KWWWWK...","...KWwwWK...","....KWWK....",
+    "...KDDDDK...","....KDDK....",".....KK....."
   ],
   sword_heavy: [
-    ".....K.....","....KwWK....","...KWWWWK...","...KWWWWWK..",
-    "...KWWWWWWK.","....KWWWWK...",".....KWWK....",".....KWk.....",
-    ".....KWk.....",".....KkK....."
+    ".....K......","....KwWWK....","...KWWWWWK...","...KWWWWWWK..",
+    "..KWWWWWWWK.","..KWWWWWWWK.","...KWWWWWWK..","....KWWWWK...",
+    "....KWwwWK...","....KDDDDK...",".....KDDK....","......KK....."
   ],
   bow: [
-    ".....K.....","....KyK....","...Ky..K...","..Ky....K..",
-    ".Ky......K.","..Ky....K..","...Ky..K...","....KyK....",
+    ".....K.....","....KyK....","...Ky.wyK...","..Ky...wyK..",
+    ".Ky.....wyK.","..Ky...wyK..","...Ky.wyK...","....KyK....",
     ".....K....."
   ],
   bow_aim: [
-    ".....K.....","....KyK....","...KyyyyK..","..Ky....yK.",
-    ".Ky......yK","..Ky....yK.","...KyyyyK..","....KyK....",
+    ".....K.....","....KyK....","...KyywyK...","..KyyyyyK..",
+    ".KyyywyyyyK.","..KyyyyyK..","...KyywyK...","....KyK....",
     ".....K....."
   ],
   staff: [
-    "....K....","....YWk...","....YWk...","....YWk...",
-    "....YWk...","...KiBK...","..KiBBiK..","..KiBBiK..",
-    "...KiBK....","....KkK...."
+    "....KiBiK....","...KiBBiBK...","..KiBwwBiBK..","...KiBBiBK...",
+    "....KiBiK....",".....YWk.....",".....YWk.....",".....YWk.....",
+    ".....YWk.....",".....YWk.....",".....YWk.....","....KDDK.....",
+    ".....KK......"
   ],
   orb_glow: [
-    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK.",
-    "..KiBBiBK..","...KiBiK...","....KkK...."
+    ".....KiK.....","....KiBiK....","...KiBBiBK...","..KiBBBBiBK..",
+    ".KiBBwwBBiBK.","..KiBBBBiBK..","...KiBBiBK...","....KiBiK....",
+    ".....KkK....."
   ],
   goblin: [
     "....KKKKKK....","...KmGGGGmK...","..KmGGGGGGmK..","..KmGeGGemK...",
@@ -253,12 +258,42 @@ const SPRITES = {
     "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
     "..KiBBiBK..","...KiBiK...","....KkK...."
   ],
+  glow_mushroom: [
+    ".....KK.....","....KQQQK....","...KQQQQQK...","..KQQwwQQK..",
+    ".KQQwwwwQQK.","..KQQwwQQK..","...KWWWWK...","....KDDK....",
+    "....KDDK...."
+  ],
+  glow_pod: [
+    ".....KK.....","....KiBiK....","...KiBBiBK...","..KiBBBBiBK..",
+    "...KiBBiBK...","....KiBiK....","....KDDK....."
+  ],
+  hanging_vine: [
+    "....KK....","...KGGK...","...KGGK...","..KGGGGK..",
+    "..KGGGGK..","...KGGK...","...KGGK...","....GK...."
+  ],
+  fern: [
+    ".....KK.....","....KGGK....","...KGGGGK...","..KGGGGGK..",
+    ".KGGGGGGGK.","..KGGGGGK..","...KGGGGK...","....KGGK....",
+    "....KDDK...."
+  ],
+  stone_lantern: [
+    ".....KK.....","....KXXXK....","...KXXyXXK...","..KXXyyyXK..",
+    "...KXXyXK...","....KDDK....","....KDDK....","....KDDK...."
+  ],
+  root_cluster: [
+    "....KKKK....","...KAAAK...","..KAEAEAK..",".Kk...kK..",
+    "..K.....K..","...KAAAK...","....KKK...."
+  ],
+  branch_fg: [
+    "...KKKKK...","..KJJMJJk..",".KJJMMJJJK.","KJJMMMMJJKK",
+    ".KJJMMJJJK.","..KJJMJJk..","...KJJJK..."
+  ],
   cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
   moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
   slash: ["...K...","..KRK..",".KRRRK.","..KRK..","...K..."],
   enemy_slash: ["...o...","..fof..",".foooof.","..fof..","...o..."],
   projectile_sword: ["..K..",".KRK.",".KRK.","..K.."],
-  projectile_arrow: ["..K..",".KyK.","KyyyK","..K.."],
+  projectile_arrow: ["...K..","..KyK.",".KyyyK","KyyyyK",".KyyyK","..KyK.","...K.."],
   projectile_fire:  ["..f..",".fef.",".fff.","..f.."],
   coin: ["..K..",".KyK.","KyKyK",".KyK.","..K.."]
 };
@@ -312,7 +347,7 @@ const WORLDS = [
     fog2: "rgba(20,50,30,0.35)", moonTint: "#95e1a3",
     particleColor: "#95e1a3", hasMoon: true, hasStars: false,
     path: { x: 32, w: 576, center: "#5c4a32", edge: "#3d2e1a", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" },
-    decor: ["pine_tree", "pine_tree", "pine_silhouette", "dead_tree", "mushroom", "stump", "bush_dark", "grave", "bones", "bush"]
+    decor: ["pine_tree", "pine_tree", "pine_silhouette", "dead_tree", "mushroom", "glow_mushroom", "glow_pod", "fern", "stump", "bush_dark", "root_cluster", "stone_lantern", "hanging_vine", "grave", "bones", "bush"]
   },
   {
     name: "Verfluchte Höhle", min: 10, danger: 2, theme: "cave",
@@ -324,7 +359,7 @@ const WORLDS = [
     fog2: "rgba(60,20,90,0.25)", moonTint: "#9b59b6",
     particleColor: "#bb86fc", hasMoon: false, hasStars: false,
     path: { x: 48, w: 544, center: "#2a2438", edge: "#1a1430", verge: "#120e1e", wall: "#0a0814", border: "#3a3250" },
-    decor: ["stalactite", "stalactite", "cave_crystal", "skull_rock", "rock", "rock", "grave", "bones", "crystal"]
+    decor: ["stalactite", "stalactite", "cave_crystal", "glow_pod", "skull_rock", "rock", "rock", "hanging_vine", "grave", "bones", "crystal"]
   },
   {
     name: "Schlossruine", min: 20, danger: 3, theme: "ruins",
@@ -336,7 +371,7 @@ const WORLDS = [
     fog2: "rgba(40,35,50,0.3)", moonTint: "#ecf0f1",
     particleColor: "#f39c12", hasMoon: true, hasStars: true,
     path: { x: 40, w: 560, center: "#4a4458", edge: "#3a3448", verge: "#2a2430", wall: "#1c1628", border: "#5a6a5a" },
-    decor: ["pillar_ruin", "pillar_ruin", "rubble", "rubble", "torch", "banner", "grave", "grave", "rock", "cross"]
+    decor: ["pillar_ruin", "pillar_ruin", "rubble", "rubble", "torch", "stone_lantern", "banner", "grave", "grave", "rock", "cross", "fern"]
   },
   {
     name: "Feuervulkan", min: 30, danger: 4, theme: "volcano",
@@ -348,7 +383,7 @@ const WORLDS = [
     fog2: "rgba(120,40,10,0.3)", moonTint: "#f39c12",
     particleColor: "#f39c12", hasMoon: false, hasStars: false,
     path: { x: 44, w: 552, center: "#4a1008", edge: "#2a0804", verge: "#3a0c08", wall: "#280808", border: "#922b21" },
-    decor: ["lava_rock", "lava_rock", "rock", "rock", "crystal", "smoke_puff", "bones", "rubble"]
+    decor: ["lava_rock", "lava_rock", "rock", "rock", "glow_pod", "crystal", "smoke_puff", "bones", "rubble", "root_cluster"]
   },
   {
     name: "Drachenland", min: 40, danger: 5, theme: "dragon",
@@ -360,7 +395,7 @@ const WORLDS = [
     fog2: "rgba(80,30,100,0.25)", moonTint: "#f1c40f",
     particleColor: "#f1c40f", hasMoon: true, hasStars: true,
     path: { x: 38, w: 564, center: "#2a1048", edge: "#1a0c28", verge: "#201038", wall: "#10081a", border: "#6a2080" },
-    decor: ["dragon_bone", "obsidian", "obsidian", "cave_crystal", "pillar_ruin", "crystal", "grave", "rock", "banner"]
+    decor: ["dragon_bone", "obsidian", "obsidian", "cave_crystal", "glow_pod", "pillar_ruin", "crystal", "grave", "rock", "banner", "stone_lantern"]
   }
 ];
 
@@ -412,7 +447,13 @@ const DECOR_META = {
   lava_rock:       { parallax: 0.4 },
   smoke_puff:      { parallax: 0.08, ceiling: true },
   dragon_bone:     { parallax: 0.3 },
-  obsidian:        { parallax: 0.4 }
+  obsidian:        { parallax: 0.4 },
+  glow_mushroom:   { parallax: 0.48 },
+  glow_pod:        { parallax: 0.44 },
+  hanging_vine:    { parallax: 0.1, ceiling: true },
+  fern:            { parallax: 0.46 },
+  stone_lantern:   { parallax: 0.42 },
+  root_cluster:    { parallax: 0.47 }
 };
 
 const LOOT_TYPES = ["Waffe","Rüstung","Amulett","Zauberbuch"];
@@ -510,6 +551,25 @@ function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
 function spriteDecorW(rows, sc) { return rows[0].length * (sc || DECOR_PIXEL); }
 function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
+function spriteWeaponW(rows) { return rows[0].length * WEAPON_PIXEL; }
+function spriteWeaponH(rows) { return rows.length * WEAPON_PIXEL; }
+
+function drawWeaponSprite(c, rows, x, y, flip, glowColor) {
+  if (glowColor) {
+    c.save();
+    c.globalAlpha = 0.35;
+    c.shadowColor = glowColor;
+    c.shadowBlur = 8;
+    drawSpriteScaled(c, rows, x - 1, y - 1, flip, WEAPON_PIXEL);
+    c.restore();
+  }
+  drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
+  c.save();
+  c.globalCompositeOperation = "lighter";
+  c.globalAlpha = 0.18;
+  drawSpriteScaled(c, rows, x, y, flip, WEAPON_PIXEL);
+  c.restore();
+}
 function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
 function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
 
@@ -592,15 +652,22 @@ function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
   const wKey = attacking ? (w.attack || w.idle) : w.idle;
   const sp = SPRITES[wKey];
   if (!sp) return;
+  const glow = classKey === "mage" ? "#5dade2" : classKey === "ranger" ? "#f1c40f" : "#ecf0f1";
   c.save();
   c.translate(cx, cy);
   c.rotate(angle);
-  const gripX = classKey === "mage" ? -6 : classKey === "ranger" ? -5 : 10;
-  const gripY = classKey === "mage" ? -32 : classKey === "ranger" ? -20 : -20;
-  drawCharSprite(c, sp, gripX, gripY, false);
-  if (classKey === "mage" && attacking && w.glow) {
-    c.globalAlpha = 0.55 + Math.sin(performance.now() * 0.02) * 0.25;
-    drawCharSprite(c, SPRITES[w.glow], gripX - 2, gripY - 28, false);
+  const gripX = classKey === "mage" ? -7 : classKey === "ranger" ? -6 : 12;
+  const gripY = classKey === "mage" ? -38 : classKey === "ranger" ? -24 : -22;
+  drawWeaponSprite(c, sp, gripX, gripY, false, glow);
+  if (classKey === "mage") {
+    const pulse = 0.5 + Math.sin(performance.now() * 0.02) * 0.3;
+    c.globalAlpha = pulse;
+    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 3, gripY - 34, false, "#85c1e9");
+    c.globalAlpha = 1;
+  }
+  if (classKey === "ranger" && attacking) {
+    c.globalAlpha = 0.7;
+    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 14, gripY - 2, false, "#f1c40f");
     c.globalAlpha = 1;
   }
   c.restore();
@@ -622,7 +689,7 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   if (game.classKey === "warrior") {
     c.save();
     c.translate(cx, cy);
-    drawCharSprite(c, SPRITES.shield, flip ? 22 : -36, -8, flip);
+    drawWeaponSprite(c, SPRITES.shield, flip ? 26 : -42, -10, flip, "#bdc3c7");
     c.restore();
   }
 
@@ -649,7 +716,7 @@ function drawPreviews() {
     const oy = Math.floor((cv.height - bh) / 2) + 2;
     const cx = ox + bw / 2;
     const cy = oy + bh / 2 + 4;
-    if (key === "warrior") drawCharSprite(c, SPRITES.shield, ox - 14, oy + 12, false, PSC);
+    if (key === "warrior") drawWeaponSprite(c, SPRITES.shield, ox - 18, oy + 10, false, "#bdc3c7");
     drawCharSprite(c, body, ox, oy, false, PSC);
     const w = HERO_WEAPON[key];
     if (w) {
@@ -658,10 +725,11 @@ function drawPreviews() {
       c.save();
       c.translate(cx, cy);
       c.rotate(-0.55);
-      const gx = key === "mage" ? -5 : key === "ranger" ? -4 : 8;
-      const gy = key === "mage" ? -26 : key === "ranger" ? -16 : -16;
-      drawCharSprite(c, sp, gx, gy, false, PSC);
-      if (key === "mage") drawCharSprite(c, SPRITES.orb_glow, gx - 2, gy - 22, false, PSC);
+      const gx = key === "mage" ? -6 : key === "ranger" ? -5 : 10;
+      const gy = key === "mage" ? -30 : key === "ranger" ? -18 : -18;
+      const glow = key === "mage" ? "#5dade2" : key === "ranger" ? "#f1c40f" : "#ecf0f1";
+      drawWeaponSprite(c, sp, gx, gy, false, glow);
+      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 3, gy - 28, false, "#85c1e9");
       c.restore();
     }
   });
@@ -1263,9 +1331,9 @@ function decorScreenX(d) {
 }
 
 const LANE_TYPES = {
-  left:  ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "pillar_ruin", "stalactite", "rock", "lava_rock", "obsidian"],
-  right: ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "pillar_ruin", "torch", "banner", "dragon_bone", "cave_crystal"],
-  path:  ["mushroom", "stump", "bones", "bush", "rubble", "grave", "cross", "crystal", "skull_rock", "smoke_puff"]
+  left:  ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "fern", "root_cluster", "glow_mushroom", "pillar_ruin", "stalactite", "rock", "lava_rock", "obsidian"],
+  right: ["pine_tree", "dead_tree", "pine_tree", "bush_dark", "tree", "fern", "glow_pod", "stone_lantern", "pillar_ruin", "torch", "banner", "dragon_bone", "cave_crystal"],
+  path:  ["mushroom", "glow_mushroom", "glow_pod", "stump", "bones", "bush", "rubble", "grave", "cross", "crystal", "skull_rock", "fern", "root_cluster"]
 };
 
 function initDecor() {
@@ -1279,7 +1347,7 @@ function initDecor() {
   };
   const parallaxFor = (lane) => (lane === "left" ? 0.26 : lane === "right" ? 0.34 : 0.5);
 
-  [["left", 14], ["right", 14], ["path", 12]].forEach(([lane, count]) => {
+  [["left", 20], ["right", 20], ["path", 16]].forEach(([lane, count]) => {
     for (let i = 0; i < count; i++) {
       const type = pick(lane);
       const meta = DECOR_META[type] || { parallax: 0.3 };
@@ -1289,7 +1357,7 @@ function initDecor() {
         ? 2 + (i % 5) * 18 + Math.random() * 8
         : GROUND - sh - (lane === "path" ? 0 : Math.floor(Math.random() * 6));
       game.decor.push({
-        x: i * 74 + Math.random() * 28,
+        x: i * 68 + Math.random() * 24,
         lane,
         type,
         y,
@@ -1298,13 +1366,25 @@ function initDecor() {
       });
     }
   });
+  if (themeTypes.includes("hanging_vine")) {
+    for (let i = 0; i < 10; i++) {
+      game.decor.push({
+        x: i * 64 + Math.random() * 20,
+        lane: i % 2 === 0 ? "left" : "right",
+        type: "hanging_vine",
+        y: 4 + (i % 4) * 16,
+        parallax: 0.08 + (Math.random() - 0.5) * 0.03,
+        flip: Math.random() < 0.3
+      });
+    }
+  }
   initWorldParticles();
 }
 
 function initWorldParticles() {
   const world = getWorld();
   game.worldParticles = [];
-  const n = world.theme === "forest" ? 32 : world.theme === "volcano" ? 24 : 20;
+  const n = world.theme === "forest" ? 48 : world.theme === "volcano" ? 32 : 28;
   for (let i = 0; i < n; i++) {
     game.worldParticles.push({
       x: Math.random() * CW,
@@ -1371,14 +1451,32 @@ function renderWorldDepth(world) {
   if (world.theme === "forest") {
     const sp = SPRITES.pine_silhouette;
     const sh = sp ? spriteDecorH(sp, BG_PIXEL) : 84;
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 16; i++) {
       const side = i % 2 === 0;
-      const raw = ((i * 76 - game.scrollX * (side ? 0.07 : 0.09)) % (CW + 100)) - 20;
+      const raw = ((i * 68 - game.scrollX * (side ? 0.07 : 0.09)) % (CW + 100)) - 20;
       const sx = side ? raw % 130 : CW - 140 + (raw % 130);
       if (sp) drawBgSprite(ctx, sp, sx, GROUND - sh - 4 - (i % 3) * 8, !side);
     }
+    // Leuchtende Waldboden-Akzente (Hades-artig)
+    for (let i = 0; i < 24; i++) {
+      const gx = ((i * 47 - game.scrollX * 0.35) % (CW + 30)) - 8;
+      const gy = PATH_TOP + 4 + (i % 5) * 3;
+      const onPath = gx > path.x + 8 && gx < path.x + path.w - 8;
+      if (!onPath && gx > path.x - 40 && gx < path.x + path.w + 40) {
+        ctx.fillStyle = i % 3 === 0 ? world.particleColor : world.accent;
+        ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
+        ctx.fillRect(gx, gy, 2 + (i % 2), 2);
+        if (i % 5 === 0) {
+          ctx.globalAlpha = 0.15;
+          ctx.beginPath();
+          ctx.arc(gx + 1, gy + 1, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
     ctx.fillStyle = path.wall || world.hill3;
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 22; i++) {
       const bx = ((i * 62 - game.scrollX * 0.12) % (CW + 40)) - 10;
       const onLeft = bx < path.x - 10;
       const onRight = bx > path.x + path.w + 10;
@@ -1516,39 +1614,133 @@ function renderWorldWalkway(world) {
   ctx.fillRect(path.x + path.w - 28, PATH_TOP, 28, PATH_H);
 }
 
+function renderWorldMidScatter(world) {
+  const path = getPath(world);
+  const scroll = game.scrollX;
+
+  for (let i = 0; i < 40; i++) {
+    const seed = i * 97;
+    const px = ((seed * 1.7 - scroll * (0.25 + (i % 5) * 0.06)) % (CW + 60)) - 20;
+    const side = px < path.x ? "left" : px > path.x + path.w ? "right" : "path";
+    const py = PATH_TOP - 8 - (seed % 55);
+    if (side === "path" && i % 3 !== 0) continue;
+
+    if (world.theme === "forest") {
+      ctx.fillStyle = i % 4 === 0 ? world.accent : world.moss;
+      ctx.globalAlpha = 0.2 + (i % 5) * 0.08;
+      if (i % 7 === 0) {
+        drawDecorSprite(ctx, SPRITES.fern, px, GROUND - spriteDecorH(SPRITES.fern) + (seed % 8), i % 2 === 0);
+      } else if (i % 11 === 0) {
+        drawDecorSprite(ctx, SPRITES.glow_mushroom, px, GROUND - spriteDecorH(SPRITES.glow_mushroom), false);
+      } else {
+        ctx.fillRect(px, py + 60, 3 + (i % 3), 2);
+        ctx.fillRect(px + 2, py + 58, 2, 2);
+      }
+    } else if (world.theme === "cave") {
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.12 + (i % 4) * 0.06;
+      ctx.fillRect(px, py + 50, 2, 2);
+      if (i % 9 === 0) drawDecorSprite(ctx, SPRITES.cave_crystal, px, GROUND - spriteDecorH(SPRITES.cave_crystal) - 2, false);
+    } else if (world.theme === "ruins") {
+      ctx.fillStyle = "rgba(180,180,190,0.15)";
+      ctx.fillRect(px, py + 55, 4, 2);
+      if (i % 8 === 0) drawDecorSprite(ctx, SPRITES.rubble, px, GROUND - spriteDecorH(SPRITES.rubble), i % 2 === 0);
+    } else if (world.theme === "volcano") {
+      ctx.fillStyle = i % 2 ? "#f39c12" : "#e74c3c";
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(px, py + 58, 2, 2);
+    } else if (world.theme === "dragon") {
+      ctx.fillStyle = world.accent;
+      ctx.globalAlpha = 0.15;
+      ctx.fillRect(px, py + 54, 2, 2);
+      if (i % 10 === 0) drawDecorSprite(ctx, SPRITES.glow_pod, px, GROUND - spriteDecorH(SPRITES.glow_pod), false);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Wurzeln / Steine am Wegrand
+  for (let i = 0; i < 14; i++) {
+    const rx = path.x - 8 + ((i * 52 - scroll * 0.5) % (path.w + 16));
+    const sp = world.theme === "forest" ? SPRITES.root_cluster : SPRITES.rubble;
+    if (sp && i % 2 === 0) {
+      drawDecorSprite(ctx, sp, rx, GROUND - spriteDecorH(sp) + 2, i % 3 === 0);
+    }
+  }
+}
+
+function renderWorldForegroundFrame(world) {
+  const sp = SPRITES.branch_fg;
+  if (!sp) return;
+
+  for (let i = 0; i < 5; i++) {
+    const lx = -10 + (i * 38) % 120;
+    drawDecorSprite(ctx, sp, lx, PATH_TOP - 20 + (i % 3) * 8, false);
+    drawDecorSprite(ctx, sp, CW - 90 + (i * 34) % 100, PATH_TOP - 16 + (i % 2) * 10, true);
+  }
+
+  ctx.fillStyle = world.theme === "forest" ? "rgba(4,14,10,0.55)" : "rgba(8,6,14,0.5)";
+  const fgGradL = ctx.createLinearGradient(0, 0, 90, 0);
+  fgGradL.addColorStop(0, "rgba(0,0,0,0.65)");
+  fgGradL.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = fgGradL;
+  ctx.fillRect(0, PATH_TOP - 30, 95, GROUND - PATH_TOP + 40);
+  const fgGradR = ctx.createLinearGradient(CW, 0, CW - 90, 0);
+  fgGradR.addColorStop(0, "rgba(0,0,0,0.65)");
+  fgGradR.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = fgGradR;
+  ctx.fillRect(CW - 95, PATH_TOP - 30, 95, GROUND - PATH_TOP + 40);
+
+  if (world.theme === "forest") {
+    for (let i = 0; i < 6; i++) {
+      drawDecorSprite(ctx, SPRITES.hanging_vine, 12 + i * 22, 8 + (i % 3) * 12, false);
+      drawDecorSprite(ctx, SPRITES.hanging_vine, CW - 40 - i * 24, 10 + (i % 2) * 14, true);
+    }
+  }
+}
+
 function renderWorldCanopy(world) {
   const path = getPath(world);
 
   if (world.theme === "forest") {
     ctx.fillStyle = world.hill3 || "#123824";
-    for (let i = 0; i < 14; i++) {
-      const cx = (i * 52 - game.scrollX * 0.03) % (CW + 40);
-      const cy = 8 + (i % 4) * 14;
-      const r = 18 + (i % 5) * 5;
-      ctx.globalAlpha = 0.55 + (i % 3) * 0.12;
+    for (let i = 0; i < 22; i++) {
+      const cx = (i * 44 - game.scrollX * 0.03) % (CW + 40);
+      const cy = 4 + (i % 5) * 11;
+      const r = 20 + (i % 6) * 4;
+      ctx.globalAlpha = 0.6 + (i % 3) * 0.1;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, r, r * 0.65, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, r, r * 0.62, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = world.leaf || "#2d6a4f";
-    for (let i = 0; i < 20; i++) {
-      const lx = (i * 37 + game.scrollX * 0.02) % CW;
-      ctx.globalAlpha = 0.25 + (i % 4) * 0.08;
-      ctx.fillRect(lx, 4 + (i % 6) * 10, 6 + (i % 3) * 3, 4);
+    for (let i = 0; i < 35; i++) {
+      const lx = (i * 31 + game.scrollX * 0.02) % CW;
+      ctx.globalAlpha = 0.22 + (i % 4) * 0.1;
+      ctx.fillRect(lx, 2 + (i % 7) * 8, 5 + (i % 4) * 2, 3);
     }
     ctx.globalAlpha = 1;
-    const vineGrad = ctx.createLinearGradient(0, 0, 0, 90);
-    vineGrad.addColorStop(0, "rgba(8,28,18,0.75)");
+    const vineGrad = ctx.createLinearGradient(0, 0, 0, 110);
+    vineGrad.addColorStop(0, "rgba(8,28,18,0.82)");
+    vineGrad.addColorStop(0.6, "rgba(8,28,18,0.35)");
     vineGrad.addColorStop(1, "rgba(8,28,18,0)");
     ctx.fillStyle = vineGrad;
-    ctx.fillRect(0, 0, CW, 90);
-    for (let i = 0; i < 8; i++) {
-      const vx = path.x - 20 + (i * 80) % (path.w + 40);
+    ctx.fillRect(0, 0, CW, 110);
+    for (let i = 0; i < 14; i++) {
+      const vx = (i * 52 - game.scrollX * 0.04) % CW;
       ctx.fillStyle = world.moss;
-      ctx.globalAlpha = 0.5;
-      ctx.fillRect(vx, 0, 2, 35 + (i % 4) * 12);
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(vx, 0, 2, 42 + (i % 5) * 10);
       ctx.globalAlpha = 1;
+    }
+    // Lichtstrahlen durch Blätterdach
+    for (let i = 0; i < 5; i++) {
+      const bx = path.x + 40 + i * 110 + (game.scrollX * 0.02) % 80;
+      const beam = ctx.createLinearGradient(bx, 0, bx + 30, PATH_TOP);
+      beam.addColorStop(0, "rgba(149,225,163,0.08)");
+      beam.addColorStop(1, "rgba(149,225,163,0)");
+      ctx.fillStyle = beam;
+      ctx.fillRect(bx, 0, 28, PATH_TOP - 20);
     }
   }
 
@@ -2170,6 +2362,7 @@ function render() {
   // Welt: Himmel → Tiefe → Weg → Dekor → Boden → Kronendach → Atmosphäre
   renderWorldSky(world);
   renderWorldDepth(world);
+  renderWorldMidScatter(world);
   renderWorldWalkway(world);
 
   game.decor.forEach((d) => {
@@ -2294,6 +2487,8 @@ function render() {
   drawHero(ctx, h, bob, atkOff, hurtOff, world);
   ctx.globalAlpha = 1;
   ctx.restore();
+
+  renderWorldForegroundFrame(world);
 
   game.projectiles.forEach((p) => {
     const sc = p.big ? 1.5 : 1;
