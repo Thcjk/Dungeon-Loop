@@ -247,6 +247,7 @@ const BALANCE = {
   waveCooldown: 2.2,
   minWaveCooldown: 0.9
 };
+let enemyId = 0;
 let upgradePause = false;
 
 const game = {
@@ -563,7 +564,7 @@ async function loadPlayer() {
   game.playerName = name;
   if (!supabase) {
     game.totalGold = 0; game.upgrades = emptyUpgrades();
-    enterGame("Bereit! Run starten, dann Maus zum Kämpfen.");
+    enterGame("Los geht's! Maus über das Spiel zum Kämpfen.");
     return;
   }
   const { data, error } = await supabase.from("dungeon_players").select("*").eq("name", name).maybeSingle();
@@ -594,6 +595,7 @@ function enterGame(msg) {
   updateTotalGold(); renderUpgradeButtons();
   $("load-hint").textContent = msg;
   $("game-section").scrollIntoView({ behavior: "smooth" });
+  startRun();
 }
 
 function emptyUpgrades() { const u = {}; UPGRADES.forEach((x) => u[x.key] = 0); return u; }
