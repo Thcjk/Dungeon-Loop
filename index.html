@@ -10,7 +10,7 @@
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Pixel-RPG – Maus zielen, Linksklick schießen, Q = Spezial</p>
+    <p class="subtitle">Krieger = Nahkampf | Waldläufer = Bogen | Magier = Zauber</p>
   </header>
 
   <main class="container">
@@ -24,17 +24,17 @@
         <button type="button" class="class-btn warrior selected" data-class="warrior">
           <canvas class="preview-sprite" data-preview="warrior" width="48" height="48"></canvas>
           <span class="class-name">Krieger</span>
-          <span class="class-desc">Schwerter, viel Leben</span>
+          <span class="class-desc">Nahkampf – Schwert, kurze Reichweite</span>
         </button>
         <button type="button" class="class-btn ranger" data-class="ranger">
           <canvas class="preview-sprite" data-preview="ranger" width="48" height="48"></canvas>
           <span class="class-name">Waldläufer</span>
-          <span class="class-desc">Pfeile, hohe Krit-Chance</span>
+          <span class="class-desc">Bogen – große Reichweite, schwach nah</span>
         </button>
         <button type="button" class="class-btn mage" data-class="mage">
           <canvas class="preview-sprite" data-preview="mage" width="48" height="48"></canvas>
           <span class="class-name">Magier</span>
-          <span class="class-desc">Zauber, Mana-System</span>
+          <span class="class-desc">Zauber – mittlere Reichweite, Mana</span>
         </button>
       </div>
       <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
@@ -74,9 +74,9 @@
             </div>
           </div>
 
-          <div class="controls-hint">
+          <div class="controls-hint" id="controls-hint">
             <kbd>WASD</kbd> Bewegen &nbsp;|&nbsp;
-            <kbd>Maus</kbd> Zielen + Halten = Schießen &nbsp;|&nbsp;
+            <kbd>Maus</kbd> Zielen + Halten = Angriff &nbsp;|&nbsp;
             <kbd>Q</kbd> Spezial &nbsp;|&nbsp;
             <kbd>P</kbd> Pause &nbsp;|&nbsp;
             <kbd>F</kbd> Vollbild
