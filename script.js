@@ -10,17 +10,33 @@ let supabase = null;
 
 // --- Canvas ---
 const PIXEL = 3;
-const CHAR_PIXEL = 4;
+const CHAR_PIXEL = 5;
 const WEAPON_PIXEL = 3;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
-const GROUND = 290;
-const PATH_TOP = 268;
-const PATH_H = 22;
+const GROUND = 308;
+const CAM_ZOOM = 2.0;
+const CAM_AX = CW / 2;
+const CAM_AY = GROUND;
 let canvas, ctx;
 let mouse = { x: CW / 2, y: CH / 2, down: false, onCanvas: false };
 let keys = {};
+
+function applyCamera(c) {
+  c.translate(CAM_AX, CAM_AY);
+  c.scale(CAM_ZOOM, CAM_ZOOM);
+  c.translate(-CAM_AX, -CAM_AY);
+}
+
+function getAim() {
+  return {
+    x: (mouse.x - CAM_AX) / CAM_ZOOM + CAM_AX,
+    y: (mouse.y - CAM_AY) / CAM_ZOOM + CAM_AY,
+    onCanvas: mouse.onCanvas,
+    down: mouse.down
+  };
+}
 
 // --- Paletten & Pixel-Sprites ---
 const PAL = {
@@ -649,8 +665,8 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   const cy = y + h.h / 2 + 4;
   const body = SPRITES[game.classKey];
   const attacking = h.attackAnim > 0.04;
-  let angle = Math.atan2(mouse.y - cy, mouse.x - cx);
-  if (!mouse.onCanvas && !attacking) angle = flip ? 2.4 : -0.75;
+  let angle = Math.atan2(getAim().y - cy, getAim().x - cx);
+  if (!getAim().onCanvas && !attacking) angle = flip ? 2.4 : -0.75;
 
   drawCharShadow(c, cx, h.y + h.h, h.w, getCharStyle(world), bob, false);
 
@@ -1454,7 +1470,7 @@ const BG_TREE_KEY = {
 function makeBgCanvas() {
   const c = document.createElement("canvas");
   c.width = CW;
-  c.height = GROUND;
+  c.height = CH;
   return c;
 }
 
@@ -1509,25 +1525,24 @@ function drawBgFloorScatter(c, entries) {
 
 function paintWorldScene(c, world) {
   const scene = WORLD_BG_SCENES[world.theme] || WORLD_BG_SCENES.forest;
-  const path = getPath(world);
-  const SKY_H = PATH_TOP - 55;
 
-  const skyGrad = c.createLinearGradient(0, 0, 0, SKY_H);
-  skyGrad.addColorStop(0, world.sky);
-  skyGrad.addColorStop(0.5, world.bg);
-  skyGrad.addColorStop(1, world.hill);
-  c.fillStyle = skyGrad;
-  c.fillRect(0, 0, CW, SKY_H);
-
-  c.fillStyle = world.hill2 || world.hill;
-  c.fillRect(0, SKY_H, CW, GROUND - SKY_H);
+  // Volle Fläche – kein Himmel, nur Wald/Thema
+  const baseGrad = c.createLinearGradient(0, 0, 0, CH);
+  baseGrad.addColorStop(0, world.hill3 || world.hill2 || world.hill);
+  baseGrad.addColorStop(0.25, world.hill2 || world.hill);
+  baseGrad.addColorStop(0.55, world.hill);
+  baseGrad.addColorStop(0.82, world.moss || world.verge || world.hill);
+  baseGrad.addColorStop(1, world.ground);
+  c.fillStyle = baseGrad;
+  c.fillRect(0, 0, CW, CH);
 
   const hillCols = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
   scene.hills.forEach((h, i) => {
     c.fillStyle = hillCols[i % hillCols.length];
+    const hh = h.h * 0.65;
     c.beginPath();
-    c.moveTo(h.x, GROUND);
-    c.quadraticCurveTo(h.x + h.w * 0.5, GROUND - h.h, h.x + h.w, GROUND);
+    c.moveTo(h.x, GROUND + 8);
+    c.quadraticCurveTo(h.x + h.w * 0.5, GROUND + 8 - hh, h.x + h.w, GROUND + 8);
     c.fill();
   });
 
@@ -1535,38 +1550,52 @@ function paintWorldScene(c, world) {
     c.fillStyle = world.hill3;
     scene.peaks.forEach((p) => {
       c.beginPath();
-      c.moveTo(p.x, GROUND);
-      c.lineTo(p.x + 55, GROUND - p.h);
-      c.lineTo(p.x + 110, GROUND);
+      c.moveTo(p.x, GROUND + 6);
+      c.lineTo(p.x + 55, GROUND + 6 - p.h * 0.7);
+      c.lineTo(p.x + 110, GROUND + 6);
       c.fill();
     });
   }
 
-  const canopyCol = world.hill3 || world.hill2 || world.hill;
-  c.fillStyle = canopyCol;
-  c.globalAlpha = 0.55;
-  c.fillRect(0, 0, CW, SKY_H);
-  c.globalAlpha = 1;
-
+  // Dichtes Kronendach – füllt den oberen Bereich
   (scene.canopy || []).forEach((b) => {
     c.fillStyle = world.hill2 || world.hill;
-    c.globalAlpha = 0.65;
+    c.globalAlpha = 0.72;
     c.beginPath();
-    c.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2);
+    c.ellipse(b.x, b.y + 20, b.rx, b.ry + 8, 0, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 0.45;
+    c.beginPath();
+    c.ellipse(b.x + b.rx * 0.3, b.y + 35, b.rx * 0.85, b.ry * 0.7, 0, 0, Math.PI * 2);
     c.fill();
     c.globalAlpha = 1;
   });
 
+  // Extra Kronen für volle Wald-Dichte
+  const extraCanopy = world.theme === "forest" ? 14 : world.theme === "cave" ? 8 : 10;
+  for (let i = 0; i < extraCanopy; i++) {
+    const cx = 30 + i * (CW / extraCanopy);
+    const cy = 40 + (i % 4) * 28;
+    c.fillStyle = world[world.theme === "forest" ? "leaf" : "hill2"] || world.hill2;
+    c.globalAlpha = 0.35 + (i % 3) * 0.12;
+    c.beginPath();
+    c.ellipse(cx, cy, 38 + (i % 3) * 12, 18 + (i % 2) * 6, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.globalAlpha = 1;
+
   if (world.theme === "cave") {
     c.fillStyle = world.hill3 || world.hill;
-    c.fillRect(0, 0, path.x - 4, SKY_H);
-    c.fillRect(path.x + path.w + 4, 0, CW - path.x - path.w - 4, SKY_H);
+    c.fillRect(0, 0, CW, 90);
+    c.fillStyle = pathWallCol(world);
+    c.fillRect(0, 0, 28, CH);
+    c.fillRect(CW - 28, 0, 28, CH);
   }
 
   if (world.theme === "ruins" && world.hasStars) {
     c.fillStyle = world.star;
-    [[60,18],[140,42],[230,12],[320,38],[410,20],[500,45],[580,15],[620,52]].forEach(([sx, sy], i) => {
-      c.globalAlpha = 0.35 + (i % 3) * 0.15;
+    [[60,28],[140,52],[230,22],[320,48],[410,30],[500,55],[580,25]].forEach(([sx, sy], i) => {
+      c.globalAlpha = 0.3 + (i % 3) * 0.12;
       if (i % 3 === 0) drawSprite(c, SPRITES.cross, sx, sy, false);
       else c.fillRect(sx, sy, 2, 2);
     });
@@ -1575,8 +1604,8 @@ function paintWorldScene(c, world) {
 
   if (world.theme === "forest") {
     c.fillStyle = world.particleColor || world.accent;
-    [[60,80],[150,120],[280,95],[380,130],[480,85],[560,115],[320,60],[420,145]].forEach(([fx, fy]) => {
-      c.globalAlpha = 0.3;
+    [[60,100],[150,140],[280,115],[380,150],[480,105],[560,135],[320,80],[420,165]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.35;
       c.fillRect(fx, fy, 2, 2);
     });
     c.globalAlpha = 1;
@@ -1584,8 +1613,8 @@ function paintWorldScene(c, world) {
 
   if (world.theme === "volcano") {
     c.fillStyle = "#e74c3c";
-    [[120,200],[300,180],[450,210],[520,190]].forEach(([fx, fy]) => {
-      c.globalAlpha = 0.15;
+    [[120,220],[300,200],[450,230],[520,210]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.18;
       c.fillRect(fx, fy, 3, 2);
     });
     c.globalAlpha = 1;
@@ -1593,8 +1622,8 @@ function paintWorldScene(c, world) {
 
   if (world.theme === "dragon") {
     c.fillStyle = world.accent;
-    [[90,70],[250,50],[410,65],[530,80]].forEach(([fx, fy]) => {
-      c.globalAlpha = 0.12;
+    [[90,90],[250,70],[410,85],[530,100]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.15;
       c.fillRect(fx, fy, 2, 2);
     });
     c.globalAlpha = 1;
@@ -1609,30 +1638,28 @@ function paintWorldScene(c, world) {
     drawBgPropCeiling(c, type, x, flip, alpha);
   });
 
-  c.fillStyle = path.verge || world.moss;
-  c.fillRect(0, PATH_TOP - 16, path.x, GROUND - PATH_TOP + 16);
-  c.fillRect(path.x + path.w, PATH_TOP - 16, CW - path.x - path.w, GROUND - PATH_TOP + 16);
+  // Waldboden integriert – kein brauner Kachel-Balken
+  const floorGrad = c.createLinearGradient(0, GROUND - 40, 0, CH);
+  floorGrad.addColorStop(0, "rgba(0,0,0,0)");
+  floorGrad.addColorStop(0.4, world.moss || world.verge);
+  floorGrad.addColorStop(1, world.ground);
+  c.fillStyle = floorGrad;
+  c.fillRect(0, GROUND - 40, CW, CH - GROUND + 40);
 
-  if (world.theme === "cave") {
-    c.fillStyle = path.wall || world.hill;
-    c.fillRect(0, 0, path.x - 6, GROUND);
-    c.fillRect(path.x + path.w + 6, 0, CW - path.x - path.w - 6, GROUND);
-  }
+  c.fillStyle = world.leaf || world.moss || world.verge;
+  c.globalAlpha = 0.12;
+  c.fillRect(0, GROUND - 8, CW, 10);
+  c.globalAlpha = 1;
+}
+
+function pathWallCol(world) {
+  const path = getPath(world);
+  return path.wall || world.hill;
 }
 
 function renderUnifiedBackground(world) {
   ensureBgCache(world);
   ctx.drawImage(bgCache.image, 0, 0);
-
-  if (world.theme === "ruins" && world.hasMoon) {
-    const SKY_H = PATH_TOP - 55;
-    const mx = CW / 2 - 14;
-    const beam = ctx.createRadialGradient(mx, 42, 8, mx, 42, 100);
-    beam.addColorStop(0, "rgba(236,240,241,0.14)");
-    beam.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = beam;
-    ctx.fillRect(mx - 80, 0, 160, SKY_H);
-  }
 }
 
 function initWorldBackground() {
@@ -1681,7 +1708,7 @@ function initWorldParticles() {
   for (let i = 0; i < 48; i++) {
     game.worldParticles.push({
       x: Math.random() * CW,
-      y: 95 + Math.random() * (PATH_TOP - 110),
+      y: 40 + Math.random() * (GROUND - 80),
       phase: Math.random() * Math.PI * 2,
       speed: 0.4 + Math.random() * 1.2,
       size: world.theme === "volcano" ? 2 + Math.random() * 2 : 1 + Math.random() * 1.5,
@@ -1690,130 +1717,22 @@ function initWorldParticles() {
   }
 }
 
-function renderWorldWalkway(world) {
-  const path = getPath(world);
-  const scroll = game.scrollX * 0.55;
-  const tileW = 18;
-
-  // Untergrund unter dem Weg
-  ctx.fillStyle = world.ground;
-  ctx.fillRect(0, PATH_TOP, CW, GROUND - PATH_TOP);
-
-  // Seitenstreifen (Wald: Gras, Höhle: Gestein …)
-  ctx.fillStyle = path.verge;
-  ctx.fillRect(0, PATH_TOP, path.x, PATH_H + 4);
-  ctx.fillRect(path.x + path.w, PATH_TOP, CW - path.x - path.w, PATH_H + 4);
-
-  // Wegrand
-  ctx.fillStyle = path.border;
-  ctx.fillRect(path.x, PATH_TOP, 3, PATH_H);
-  ctx.fillRect(path.x + path.w - 3, PATH_TOP, 3, PATH_H);
-
-  // Weg-Oberfläche (scrollend)
-  for (let tx = 0; tx < path.w / tileW + 2; tx++) {
-    const ox = path.x + tx * tileW - (scroll % tileW);
-    const shade = (tx + Math.floor(scroll / tileW)) % 3;
-    ctx.fillStyle = shade === 0 ? path.center : shade === 1 ? path.edge : path.center;
-    ctx.fillRect(ox, PATH_TOP, tileW - 1, PATH_H);
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
-    ctx.fillRect(ox, PATH_TOP + PATH_H - 3, tileW - 1, 2);
-    const mark = worldLayout(world).pathMark;
-    if (tx % 4 === 1) {
-      if (mark === "leaf") {
-        ctx.fillStyle = world.leaf || world.accent;
-        ctx.globalAlpha = 0.35;
-        ctx.fillRect(ox + 4, PATH_TOP + 2, 3, 2);
-      } else if (mark === "accent" || mark === "gold") {
-        ctx.fillStyle = world.accent;
-        ctx.globalAlpha = mark === "gold" ? 0.15 : 0.12;
-        ctx.fillRect(ox + 3, PATH_TOP + (mark === "gold" ? 4 : 5), 5, 3);
-      } else if (mark === "stone") {
-        ctx.fillStyle = "rgba(255,255,255,0.05)";
-        ctx.fillRect(ox, PATH_TOP, tileW - 1, 2);
-      } else if (mark === "ember") {
-        ctx.fillStyle = "#f39c12";
-        ctx.globalAlpha = 0.45;
-        ctx.fillRect(ox + 6, PATH_TOP + 8, 3, 2);
-      }
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  // Weg-Tiefe / Schatten an den Rändern
-  const edgeGrad = ctx.createLinearGradient(path.x, PATH_TOP, path.x + 28, PATH_TOP);
-  edgeGrad.addColorStop(0, "rgba(0,0,0,0.35)");
-  edgeGrad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = edgeGrad;
-  ctx.fillRect(path.x, PATH_TOP, 28, PATH_H);
-  const edgeGradR = ctx.createLinearGradient(path.x + path.w, PATH_TOP, path.x + path.w - 28, PATH_TOP);
-  edgeGradR.addColorStop(0, "rgba(0,0,0,0.35)");
-  edgeGradR.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = edgeGradR;
-  ctx.fillRect(path.x + path.w - 28, PATH_TOP, 28, PATH_H);
-}
-
 function renderWorldAtmosphere(world) {
-  const path = getPath(world);
-
-  if (world.hasMoon) {
-    ctx.save();
-    ctx.globalAlpha = 0.8;
-    const mx = world.theme === "ruins" ? CW / 2 - 14 : CW - 68;
-    const my = world.theme === "ruins" ? 42 : 48;
-    drawSprite(ctx, SPRITES.moon, mx, my, false);
-    if (world.moonTint) {
-      ctx.fillStyle = world.moonTint;
-      ctx.globalAlpha = 0.22;
-      ctx.fillRect(mx - 4, my - 4, 28, 28);
-    }
-    ctx.restore();
-  }
-
   game.worldParticles.forEach((p) => {
     const fx = p.x + Math.sin(p.phase) * 6;
     const fy = p.y + Math.cos(p.phase * 1.3) * 5;
-    if (isOnPath(fx, path, 10)) return;
     ctx.fillStyle = world.particleColor || world.accent;
     ctx.globalAlpha = 0.25 + Math.sin(p.phase) * 0.22;
     ctx.fillRect(fx, fy, p.size, p.size);
   });
   ctx.globalAlpha = 1;
 
-  // Bodennebel nur am Weg – Perspektive „man geht durch“
-  const fogGrad = ctx.createLinearGradient(0, PATH_TOP - 20, 0, GROUND);
+  const fogGrad = ctx.createLinearGradient(0, GROUND - 30, 0, GROUND + 20);
   fogGrad.addColorStop(0, "rgba(0,0,0,0)");
-  fogGrad.addColorStop(0.45, world.fog);
-  fogGrad.addColorStop(1, world.fog2 || world.fog);
+  fogGrad.addColorStop(0.6, world.fog || "rgba(0,0,0,0.2)");
+  fogGrad.addColorStop(1, world.fog2 || world.fog || "rgba(0,0,0,0.35)");
   ctx.fillStyle = fogGrad;
-  ctx.fillRect(path.x - 12, PATH_TOP - 18, path.w + 24, GROUND - PATH_TOP + 22);
-}
-
-function renderWorldGround(world) {
-  ctx.fillStyle = world.ground;
-  ctx.fillRect(0, GROUND, CW, CH - GROUND);
-
-  const path = getPath(world);
-  const tileW = 20;
-  const tileH = 10;
-  const scroll = game.scrollX * 0.55;
-
-  for (let row = 0; row < 3; row++) {
-    for (let tx = 0; tx < CW / tileW + 2; tx++) {
-      const ox = tx * tileW - (scroll % tileW);
-      const oy = GROUND + row * tileH;
-      const onPath = ox + tileW > path.x && ox < path.x + path.w;
-      if (onPath && row === 0) continue;
-      const colors = [world.tile1, world.tile2, world.tile3];
-      ctx.fillStyle = colors[(tx + row) % 3];
-      ctx.fillRect(ox, oy, tileW - 2, tileH - 2);
-      if (row === 0) {
-        ctx.fillStyle = world.moss || world.verge;
-        ctx.globalAlpha = 0.35;
-        ctx.fillRect(ox, oy - 2, tileW - 2, 2);
-        ctx.globalAlpha = 1;
-      }
-    }
-  }
+  ctx.fillRect(0, GROUND - 30, CW, 50);
 }
 
 // ============================================
@@ -1839,7 +1758,8 @@ function warriorMeleeAttack() {
   const h = game.hero, st = heroStats();
   const cls = CLASSES.warrior;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
+  const aim = getAim();
+  const angle = Math.atan2(aim.y - hy, aim.x - hx);
   h.facing = Math.cos(angle) >= 0 ? 1 : -1;
   h.attackAnim = 0.14;
 
@@ -1877,7 +1797,8 @@ function warriorMeleeAttack() {
 function rangerShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const dx = mouse.x - hx, dy = mouse.y - hy;
+  const aim = getAim();
+  const dx = aim.x - hx, dy = aim.y - hy;
   const dist = Math.hypot(dx, dy);
   if (dist > cls.range) return;
 
@@ -1905,7 +1826,8 @@ function rangerShoot(cls) {
 function mageShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const dx = mouse.x - hx, dy = mouse.y - hy;
+  const aim = getAim();
+  const dx = aim.x - hx, dy = aim.y - hy;
   const dist = Math.hypot(dx, dy);
   if (dist > cls.range) return;
 
@@ -1965,7 +1887,8 @@ function useSpecial() {
   if (game.classKey === "warrior") {
     h.specialTimer = 0;
     h.attackAnim = 0.2;
-    const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
+    const aim = getAim();
+  const angle = Math.atan2(aim.y - hy, aim.x - hx);
     spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
     game.enemies.forEach((e) => {
       if (e.dead) return;
@@ -1991,7 +1914,8 @@ function useSpecial() {
   } else if (game.classKey === "ranger") {
     h.specialTimer = 0;
     h.attackAnim = 0.15;
-    const baseAngle = Math.atan2(mouse.y - hy, mouse.x - hx);
+    const aim = getAim();
+    const baseAngle = Math.atan2(aim.y - hy, aim.x - hx);
     for (let a = -3; a <= 3; a++) {
       const ang = baseAngle + a * 0.12;
       game.projectiles.push({
@@ -2009,7 +1933,8 @@ function useSpecial() {
     h.mana -= cls.manaCost;
     h.specialTimer = 0;
     h.attackAnim = 0.18;
-    const ang = Math.atan2(mouse.y - hy, mouse.x - hx);
+    const aim = getAim();
+    const ang = Math.atan2(aim.y - hy, aim.x - hx);
     game.projectiles.push({
       x: hx, y: hy, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6,
       dmg: Math.floor(st.magicDamage * 3), crit: false,
@@ -2266,15 +2191,14 @@ function render() {
 
   ctx.save();
   ctx.translate(shakeX, shakeY);
+  ctx.save();
+  applyCamera(ctx);
 
-  // Einheitlicher Hintergrund – Bäume & Details gebacken, kein Spawn
   renderUnifiedBackground(world);
-  renderWorldWalkway(world);
-
-  renderWorldGround(world);
   renderWorldAtmosphere(world);
 
   if (!game.hero) {
+    ctx.restore();
     ctx.restore();
     return;
   }
@@ -2355,11 +2279,12 @@ function render() {
   // Reichweiten-Anzeige
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {
     const cls = CLASSES[game.classKey];
+    const aim = getAim();
     if (cls.attackType === "melee") {
       ctx.strokeStyle = "rgba(231,76,60,0.35)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      const a = Math.atan2(mouse.y - hy, mouse.x - hx);
+      const a = Math.atan2(aim.y - hy, aim.x - hx);
       ctx.arc(hx, hy, cls.range, a - 1.1, a + 1.1);
       ctx.stroke();
     } else {
@@ -2403,7 +2328,14 @@ function render() {
     }
   });
 
-  // Fadenkreuz
+  if (h.specialTimer >= h.specialCd) {
+    ctx.fillStyle = "rgba(142,68,173,0.8)";
+    ctx.font = "bold 10px Courier New";
+    ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
+  }
+
+  ctx.restore();
+
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 1;
@@ -2411,12 +2343,6 @@ function render() {
     ctx.moveTo(mouse.x - 8, mouse.y); ctx.lineTo(mouse.x + 8, mouse.y);
     ctx.moveTo(mouse.x, mouse.y - 8); ctx.lineTo(mouse.x, mouse.y + 8);
     ctx.stroke();
-  }
-
-  if (h.specialTimer >= h.specialCd) {
-    ctx.fillStyle = "rgba(142,68,173,0.8)";
-    ctx.font = "bold 10px Courier New";
-    ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
   }
 
   ctx.restore();
