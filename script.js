@@ -68,14 +68,14 @@ const SPRITES = {
     "..KWSSSSWK..","...KWWWWK...","....KDDK....",".....KK....."
   ],
   sword: [
-    ".....K.....","....KwK....",".....WK.....",".....WK.....",
-    ".....WK.....",".....WK.....",".....WK.....",".....WK.....",
-    ".....WK.....","....KDDK....",".....KK....."
+    ".....K.....","....KwK....","....KWWK....","....KWWK....",
+    "....KWWK....","....KWWK....","....KWWK....","....KwWK....",
+    "....KDDK....",".....KK....."
   ],
   sword_heavy: [
-    ".....K.....","....KWWK....","....KwWK....",".....WK.....",
-    ".....WK.....",".....WK.....",".....WK.....",".....WK.....",
-    ".....WK.....","....KDDDK...",".....KK....."
+    ".....K.....","....KWWK....","...KWWWWK...","...KWWWWK...",
+    "...KWWWWK...","...KWWWWK...","....KwWWK...","....KDDDK...",
+    ".....KK....."
   ],
   bow: [
     ".....K.....","....KyK....","...Ky.wyK..","..Ky...wyK.",
@@ -1291,98 +1291,164 @@ function getPath(world) {
 
 let bgCache = { theme: null, image: null };
 
-// Festes Hintergrundbild pro Welt – feste Positionen, kein Tiling, kein Scroll
+// Festes Vollbild pro Welt – Details über die ganze Fläche verteilt
 const WORLD_BG_SCENES = {
   forest: {
     hills: [
-      { x: -30, w: 210, h: 78 }, { x: 100, w: 190, h: 98 }, { x: 280, w: 230, h: 72 },
-      { x: 460, w: 200, h: 92 }, { x: 580, w: 90, h: 76 }
+      { x: -40, w: 220, h: 82 }, { x: 80, w: 200, h: 100 }, { x: 200, w: 240, h: 76 },
+      { x: 360, w: 210, h: 96 }, { x: 500, w: 190, h: 84 }, { x: 600, w: 60, h: 70 }
     ],
     canopy: [
-      { x: 50, y: 28, rx: 52, ry: 20 }, { x: 160, y: 18, rx: 48, ry: 18 }, { x: 280, y: 32, rx: 60, ry: 22 },
-      { x: 400, y: 16, rx: 54, ry: 19 }, { x: 520, y: 26, rx: 50, ry: 17 }, { x: 600, y: 20, rx: 44, ry: 16 }
+      { x: 40, y: 24, rx: 58, ry: 22 }, { x: 130, y: 14, rx: 52, ry: 20 }, { x: 220, y: 28, rx: 62, ry: 24 },
+      { x: 320, y: 12, rx: 56, ry: 19 }, { x: 420, y: 26, rx: 60, ry: 21 }, { x: 510, y: 16, rx: 54, ry: 18 },
+      { x: 590, y: 22, rx: 50, ry: 17 }, { x: 300, y: 38, rx: 90, ry: 28 }
     ],
-    props: [
-      ["pine_silhouette", -14, 5, 0, 0.48], ["pine_silhouette", 8, 5, 1, 0.42],
-      ["pine_tree", 0, 4, 0, 0.9], ["pine_tree", 18, 4, 1, 0.82],
-      ["bush_dark", 6, 3.2, 0, 0.75], ["fern", 22, 3, 1, 0.7],
-      ["mushroom", 12, 3, 0, 0.85], ["glow_mushroom", 4, 3, 0, 0.8],
-      ["stump", 26, 3.5, 0, 0.7], ["root_cluster", 2, 3.2, 1, 0.65],
-      ["pine_silhouette", 598, 5, 1, 0.48], ["pine_tree", 582, 4, 1, 0.88],
-      ["pine_tree", 604, 4, 0, 0.85], ["bush_dark", 612, 3.2, 1, 0.75],
-      ["fern", 590, 3, 0, 0.7], ["mushroom", 620, 3, 1, 0.85],
-      ["hanging_vine", 30, 5, 0, 0.55], ["hanging_vine", 580, 5, 1, 0.55]
+    back: [
+      [20,0,0.38],[100,0,0.35],[180,1,0.36],[260,0,0.34],[340,1,0.37],[420,0,0.35],
+      [500,1,0.36],[580,0,0.38],[60,1,0.32],[440,1,0.33]
+    ],
+    mid: [
+      [40,0,0.58],[130,1,0.55],[220,0,0.56],[310,1,0.54],[400,0,0.57],[490,1,0.55],
+      [560,0,0.56],[80,1,0.52],[350,0,0.50],[470,1,0.51]
+    ],
+    near: [
+      [10,0,0.88],[55,1,0.82],[95,0,0.85],[600,1,0.87],[555,0,0.84],[515,1,0.80],
+      [25,1,0.75],[620,0,0.78],[145,0,0.65],[520,1,0.62],[380,0,0.48],[280,1,0.45]
+    ],
+    floor: [
+      ["bush_dark",30,0.7],["fern",70,0.65],["mushroom",160,0.8],["glow_mushroom",240,0.75],
+      ["stump",320,0.7],["root_cluster",400,0.65],["mushroom",480,0.8],["fern",540,0.7],
+      ["bush_dark",580,0.68],["glow_mushroom",120,0.6],["fern",450,0.62],["stump",15,0.72],
+      ["mushroom",610,0.78],["bush_dark",350,0.55],["fern",200,0.58]
+    ],
+    ceiling: [
+      ["hanging_vine",25,0,0.5],["hanging_vine",120,1,0.48],["hanging_vine",220,0,0.52],
+      ["hanging_vine",340,1,0.5],["hanging_vine",460,0,0.48],["hanging_vine",560,1,0.5]
     ]
   },
   cave: {
     hills: [
-      { x: -20, w: 200, h: 70 }, { x: 150, w: 180, h: 85 }, { x: 350, w: 210, h: 68 },
-      { x: 500, w: 170, h: 88 }
+      { x: -30, w: 210, h: 74 }, { x: 90, w: 195, h: 88 }, { x: 230, w: 220, h: 72 },
+      { x: 380, w: 200, h: 86 }, { x: 530, w: 180, h: 78 }
     ],
     canopy: [
-      { x: 80, y: 22, rx: 40, ry: 14 }, { x: 300, y: 18, rx: 50, ry: 16 }, { x: 520, y: 24, rx: 42, ry: 15 }
+      { x: 60, y: 20, rx: 50, ry: 16 }, { x: 200, y: 14, rx: 55, ry: 18 }, { x: 340, y: 22, rx: 52, ry: 17 },
+      { x: 480, y: 16, rx: 48, ry: 15 }, { x: 580, y: 20, rx: 44, ry: 14 }
     ],
-    props: [
-      ["stalactite", 10, 5, 0, 0.7], ["stalactite", 28, 5, 0, 0.65], ["stalactite", 50, 5, 1, 0.6],
-      ["rock", 4, 3.5, 0, 0.8], ["skull_rock", 16, 3.5, 0, 0.75], ["cave_crystal", 24, 3.2, 1, 0.85],
-      ["glow_pod", 8, 3, 0, 0.8], ["obsidian", 20, 3.2, 1, 0.7],
-      ["stalactite", 600, 5, 1, 0.7], ["stalactite", 580, 5, 1, 0.65],
-      ["rock", 610, 3.5, 1, 0.8], ["cave_crystal", 592, 3.2, 0, 0.85], ["skull_rock", 618, 3.5, 1, 0.75],
-      ["glow_pod", 604, 3, 1, 0.8], ["bones", 596, 3, 0, 0.7]
+    back: [
+      [30,0,0.4],[150,1,0.38],[270,0,0.36],[390,1,0.39],[510,0,0.37],[590,1,0.38]
+    ],
+    mid: [
+      [50,0,0.6],[170,1,0.58],[290,0,0.57],[410,1,0.59],[530,0,0.56],[80,1,0.54],[450,0,0.55]
+    ],
+    near: [
+      [12,0,0.85],[580,1,0.86],[540,0,0.82],[60,1,0.78],[600,0,0.8],[200,0,0.55],[360,1,0.52],[480,0,0.5]
+    ],
+    floor: [
+      ["rock",90,0.75],["skull_rock",210,0.8],["cave_crystal",330,0.85],["glow_pod",450,0.8],
+      ["obsidian",530,0.75],["bones",150,0.7],["rock",390,0.68],["cave_crystal",270,0.72],
+      ["skull_rock",480,0.7],["glow_pod",20,0.78],["rock",610,0.74]
+    ],
+    ceiling: [
+      ["stalactite",40,0,0.65],["stalactite",130,0,0.62],["stalactite",230,1,0.68],
+      ["stalactite",350,0,0.64],["stalactite",470,1,0.66],["stalactite",570,0,0.63],
+      ["stalactite",290,1,0.6],["stalactite",520,0,0.61]
     ]
   },
   ruins: {
     hills: [
-      { x: -10, w: 190, h: 74 }, { x: 130, w: 200, h: 90 }, { x: 320, w: 220, h: 76 },
-      { x: 490, w: 180, h: 86 }
+      { x: -20, w: 200, h: 78 }, { x: 100, w: 190, h: 92 }, { x: 250, w: 215, h: 74 },
+      { x: 400, w: 205, h: 88 }, { x: 550, w: 170, h: 80 }
     ],
     canopy: [
-      { x: 60, y: 24, rx: 46, ry: 17 }, { x: 220, y: 16, rx: 52, ry: 19 }, { x: 420, y: 22, rx: 48, ry: 16 },
-      { x: 560, y: 18, rx: 44, ry: 15 }
+      { x: 50, y: 22, rx: 50, ry: 18 }, { x: 180, y: 14, rx: 54, ry: 19 }, { x: 310, y: 24, rx: 52, ry: 17 },
+      { x: 440, y: 16, rx: 48, ry: 16 }, { x: 570, y: 20, rx: 46, ry: 15 }
     ],
-    props: [
-      ["pillar_ruin", -6, 5, 0, 0.75], ["pillar_ruin", 14, 5, 0, 0.7],
-      ["dead_tree", 4, 4, 0, 0.65], ["rubble", 22, 3.2, 0, 0.8], ["torch", 10, 3, 1, 0.9],
-      ["grave", 18, 3.2, 0, 0.75], ["banner", 26, 4.5, 1, 0.7],
-      ["pillar_ruin", 606, 5, 1, 0.75], ["pillar_ruin", 588, 5, 1, 0.7],
-      ["rubble", 612, 3.2, 1, 0.8], ["torch", 600, 3, 0, 0.9], ["grave", 594, 3.2, 1, 0.75],
-      ["stone_lantern", 620, 3.2, 1, 0.8], ["banner", 582, 4.5, 0, 0.7]
+    back: [
+      [40,0,0.42],[160,0,0.4],[280,1,0.38],[400,0,0.41],[520,1,0.39],[600,0,0.4]
+    ],
+    mid: [
+      [70,0,0.62],[190,1,0.6],[310,0,0.58],[430,1,0.61],[550,0,0.59],[250,1,0.55],[470,0,0.56]
+    ],
+    near: [
+      [8,0,0.85],[595,1,0.86],[550,0,0.82],[45,1,0.8],[610,0,0.78],[180,0,0.58],[360,1,0.55],[500,0,0.52]
+    ],
+    floor: [
+      ["rubble",100,0.78],["grave",220,0.75],["torch",340,0.9],["stone_lantern",460,0.8],
+      ["rubble",560,0.76],["bones",160,0.7],["grave",400,0.72],["rubble",280,0.74],
+      ["torch",520,0.88],["stone_lantern",30,0.78],["bones",600,0.68]
+    ],
+    ceiling: [
+      ["banner",60,0,0.55],["banner",200,1,0.52],["banner",340,0,0.54],
+      ["banner",480,1,0.53],["banner",580,0,0.55]
     ]
   },
   volcano: {
     hills: [
-      { x: -20, w: 180, h: 100 }, { x: 120, w: 200, h: 120 }, { x: 300, w: 190, h: 95 },
-      { x: 470, w: 210, h: 115 }, { x: 590, w: 80, h: 90 }
+      { x: -30, w: 190, h: 105 }, { x: 90, w: 205, h: 118 }, { x: 240, w: 195, h: 100 },
+      { x: 390, w: 210, h: 115 }, { x: 540, w: 185, h: 108 }
     ],
     peaks: [
-      { x: 80, h: 130 }, { x: 260, h: 150 }, { x: 440, h: 125 }
+      { x: 60, h: 135 }, { x: 200, h: 155 }, { x: 340, h: 140 }, { x: 480, h: 148 }
     ],
     canopy: [
-      { x: 100, y: 20, rx: 44, ry: 14 }, { x: 350, y: 16, rx: 50, ry: 16 }, { x: 550, y: 22, rx: 42, ry: 14 }
+      { x: 80, y: 18, rx: 48, ry: 15 }, { x: 240, y: 14, rx: 52, ry: 17 }, { x: 400, y: 20, rx: 50, ry: 16 },
+      { x: 540, y: 16, rx: 46, ry: 14 }
     ],
-    props: [
-      ["dead_tree", 2, 4, 0, 0.7], ["lava_rock", 12, 3.5, 0, 0.85], ["lava_rock", 22, 3.5, 1, 0.8],
-      ["rock", 8, 3.2, 0, 0.75], ["obsidian", 18, 3, 1, 0.7], ["bones", 26, 3, 0, 0.65],
-      ["dead_tree", 610, 4, 1, 0.7], ["lava_rock", 598, 3.5, 1, 0.85], ["lava_rock", 588, 3.5, 0, 0.8],
-      ["rock", 604, 3.2, 1, 0.75], ["obsidian", 594, 3, 0, 0.7], ["rubble", 618, 3, 1, 0.65]
+    back: [
+      [50,0,0.4],[180,1,0.38],[310,0,0.36],[440,1,0.39],[560,0,0.37]
+    ],
+    mid: [
+      [70,0,0.6],[200,1,0.58],[330,0,0.57],[460,1,0.59],[570,0,0.56],[130,1,0.54],[390,0,0.55]
+    ],
+    near: [
+      [10,0,0.85],[590,1,0.86],[550,0,0.82],[50,1,0.8],[610,0,0.78],[250,0,0.55],[420,1,0.52]
+    ],
+    floor: [
+      ["lava_rock",110,0.85],["rock",230,0.78],["lava_rock",350,0.82],["obsidian",470,0.8],
+      ["bones",560,0.72],["lava_rock",180,0.75],["rock",400,0.74],["obsidian",520,0.76],
+      ["lava_rock",30,0.8],["rock",600,0.73]
+    ],
+    ceiling: [
+      ["smoke_puff",100,0,0.5],["smoke_puff",260,0,0.48],["smoke_puff",420,0,0.52],["smoke_puff",540,0,0.5]
     ]
   },
   dragon: {
     hills: [
-      { x: -15, w: 195, h: 80 }, { x: 140, w: 185, h: 96 }, { x: 310, w: 215, h: 78 },
-      { x: 480, w: 195, h: 92 }
+      { x: -15, w: 200, h: 84 }, { x: 110, w: 190, h: 98 }, { x: 260, w: 220, h: 80 },
+      { x: 410, w: 200, h: 94 }, { x: 560, w: 170, h: 86 }
     ],
     canopy: [
-      { x: 70, y: 22, rx: 48, ry: 17 }, { x: 250, y: 14, rx: 54, ry: 19 }, { x: 430, y: 20, rx: 50, ry: 16 },
-      { x: 570, y: 16, rx: 46, ry: 15 }
+      { x: 55, y: 20, rx: 50, ry: 18 }, { x: 190, y: 12, rx: 56, ry: 20 }, { x: 325, y: 22, rx: 52, ry: 17 },
+      { x: 460, y: 14, rx: 50, ry: 16 }, { x: 575, y: 18, rx: 48, ry: 15 }
     ],
-    props: [
-      ["dragon_bone", -4, 4.5, 0, 0.75], ["obsidian", 10, 3.5, 0, 0.85], ["cave_crystal", 20, 3.2, 1, 0.8],
-      ["glow_pod", 6, 3, 0, 0.85], ["grave", 16, 3.2, 0, 0.7], ["banner", 24, 4.5, 1, 0.65],
-      ["dragon_bone", 608, 4.5, 1, 0.75], ["obsidian", 596, 3.5, 1, 0.85], ["cave_crystal", 586, 3.2, 0, 0.8],
-      ["glow_pod", 602, 3, 1, 0.85], ["stone_lantern", 614, 3.2, 1, 0.75], ["pillar_ruin", 580, 5, 0, 0.6]
+    back: [
+      [35,0,0.4],[155,1,0.38],[275,0,0.37],[395,1,0.39],[515,0,0.38],[590,1,0.36]
+    ],
+    mid: [
+      [65,0,0.6],[185,1,0.58],[305,0,0.57],[425,1,0.59],[545,0,0.56],[115,1,0.54],[465,0,0.55]
+    ],
+    near: [
+      [8,0,0.85],[595,1,0.86],[555,0,0.82],[42,1,0.8],[608,0,0.78],[210,0,0.58],[380,1,0.55],[490,0,0.52]
+    ],
+    floor: [
+      ["obsidian",100,0.82],["dragon_bone",220,0.78],["cave_crystal",340,0.85],["glow_pod",460,0.8],
+      ["grave",560,0.75],["obsidian",170,0.74],["dragon_bone",400,0.76],["crystal",280,0.8],
+      ["glow_pod",520,0.78],["obsidian",25,0.8],["dragon_bone",600,0.72]
+    ],
+    ceiling: [
+      ["banner",80,0,0.5],["hanging_vine",210,1,0.48],["banner",360,0,0.52],
+      ["hanging_vine",490,1,0.5],["banner",570,0,0.48]
     ]
   }
+};
+
+const BG_TREE_KEY = {
+  forest: { back: "pine_silhouette", mid: "pine_tree", near: "pine_tree" },
+  cave:   { back: "rock", mid: "skull_rock", near: "cave_crystal" },
+  ruins:  { back: "pillar_ruin", mid: "dead_tree", near: "pillar_ruin" },
+  volcano:{ back: "dead_tree", mid: "lava_rock", near: "lava_rock" },
+  dragon: { back: "dragon_bone", mid: "obsidian", near: "obsidian" }
 };
 
 function makeBgCanvas() {
@@ -1406,10 +1472,24 @@ function buildWorldBackgroundCache(world) {
 function drawBgProp(c, type, x, size, flip, alpha) {
   const sp = SPRITES[type];
   if (!sp) return;
-  const sc = size >= 5 ? BG_PIXEL : size >= 4 ? DECOR_PIXEL : DECOR_PIXEL * 0.82;
+  const sc = size >= 5 ? BG_PIXEL : size >= 4 ? DECOR_PIXEL : DECOR_PIXEL * 0.85;
   const sh = spriteDecorH(sp, sc);
   c.globalAlpha = alpha;
   drawSpriteScaled(c, sp, x, GROUND - sh, !!flip, sc);
+  c.globalAlpha = 1;
+}
+
+function drawBgTreeLayer(c, theme, layer, entries) {
+  const keys = BG_TREE_KEY[theme] || BG_TREE_KEY.forest;
+  const type = keys[layer];
+  const sp = SPRITES[type];
+  if (!sp || !entries) return;
+  const sc = layer === "back" ? BG_PIXEL : layer === "mid" ? DECOR_PIXEL * 0.95 : DECOR_PIXEL;
+  entries.forEach(([x, flip, alpha]) => {
+    const sh = spriteDecorH(sp, sc);
+    c.globalAlpha = alpha;
+    drawSpriteScaled(c, sp, x, GROUND - sh, !!flip, sc);
+  });
   c.globalAlpha = 1;
 }
 
@@ -1419,6 +1499,12 @@ function drawBgPropCeiling(c, type, x, flip, alpha) {
   c.globalAlpha = alpha;
   drawBgSprite(c, sp, x, 2, !!flip);
   c.globalAlpha = 1;
+}
+
+function drawBgFloorScatter(c, entries) {
+  entries.forEach(([type, x, alpha]) => {
+    drawBgProp(c, type, x, 3.2, x % 2 === 0, alpha);
+  });
 }
 
 function paintWorldScene(c, world) {
@@ -1479,7 +1565,7 @@ function paintWorldScene(c, world) {
 
   if (world.theme === "ruins" && world.hasStars) {
     c.fillStyle = world.star;
-    [[80, 20], [180, 45], [320, 15], [450, 38], [560, 22], [600, 50]].forEach(([sx, sy], i) => {
+    [[60,18],[140,42],[230,12],[320,38],[410,20],[500,45],[580,15],[620,52]].forEach(([sx, sy], i) => {
       c.globalAlpha = 0.35 + (i % 3) * 0.15;
       if (i % 3 === 0) drawSprite(c, SPRITES.cross, sx, sy, false);
       else c.fillRect(sx, sy, 2, 2);
@@ -1489,19 +1575,38 @@ function paintWorldScene(c, world) {
 
   if (world.theme === "forest") {
     c.fillStyle = world.particleColor || world.accent;
-    [[45, 90], [120, 130], [520, 100], [580, 140]].forEach(([fx, fy]) => {
-      c.globalAlpha = 0.35;
+    [[60,80],[150,120],[280,95],[380,130],[480,85],[560,115],[320,60],[420,145]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.3;
       c.fillRect(fx, fy, 2, 2);
     });
     c.globalAlpha = 1;
   }
 
-  scene.props.forEach(([type, x, scale, flip, alpha]) => {
-    if (type === "hanging_vine" || type === "stalactite" || type === "banner") {
-      drawBgPropCeiling(c, type, x, flip, alpha);
-    } else {
-      drawBgProp(c, type, x, scale, flip, alpha);
-    }
+  if (world.theme === "volcano") {
+    c.fillStyle = "#e74c3c";
+    [[120,200],[300,180],[450,210],[520,190]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.15;
+      c.fillRect(fx, fy, 3, 2);
+    });
+    c.globalAlpha = 1;
+  }
+
+  if (world.theme === "dragon") {
+    c.fillStyle = world.accent;
+    [[90,70],[250,50],[410,65],[530,80]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.12;
+      c.fillRect(fx, fy, 2, 2);
+    });
+    c.globalAlpha = 1;
+  }
+
+  drawBgTreeLayer(c, world.theme, "back", scene.back);
+  drawBgTreeLayer(c, world.theme, "mid", scene.mid);
+  drawBgTreeLayer(c, world.theme, "near", scene.near);
+  drawBgFloorScatter(c, scene.floor || []);
+
+  (scene.ceiling || []).forEach(([type, x, flip, alpha]) => {
+    drawBgPropCeiling(c, type, x, flip, alpha);
   });
 
   c.fillStyle = path.verge || world.moss;
