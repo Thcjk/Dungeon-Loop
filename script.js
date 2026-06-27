@@ -16,11 +16,11 @@ const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
-const CAM_ZOOM = 1.05;
+const CAM_ZOOM = 1.15;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
-  heroMinX: 48,
-  heroMaxX: 118,
+  heroMinX: 20,
+  heroMaxX: 300,
   enemyRightMargin: 92,
   enemySpacing: 54,
   introSpeed: 82,
@@ -1232,9 +1232,7 @@ function createHero() {
   };
   const heroSp = SPRITES[game.classKey];
   game.hero = {
-    x: -spriteCharW(heroSp) - COMBAT_LAYOUT.introOffscreen,
-    targetX: COMBAT_LAYOUT.heroCombatX,
-    walkingIn: true,
+    x: COMBAT_LAYOUT.heroCombatX,
     y: GROUND - spriteCharH(heroSp), vx: 0, vy: 0,
     w: spriteCharW(heroSp), h: spriteCharH(heroSp),
     maxHp: cls.hp + ub("upgrade_health"),
@@ -1330,29 +1328,12 @@ function getEnemyTargetX(index, enemyW) {
 function startWaveIntro() {
   game.waveIntro = true;
   game.combatReady = false;
-  const h = game.hero;
-  if (h) {
-    h.walkingIn = true;
-    h.targetX = COMBAT_LAYOUT.heroCombatX;
-    h.x = -h.w - COMBAT_LAYOUT.introOffscreen;
-    h.facing = 1;
-  }
+  // Held bleibt immer sichtbar – nur Gegner laufen ein
 }
 
 function updateWaveIntro(dt) {
   const spd = COMBAT_LAYOUT.introSpeed * dt;
-  const h = game.hero;
   let pending = false;
-
-  if (h && h.walkingIn) {
-    if (h.x < h.targetX - 0.5) {
-      h.x += spd;
-      pending = true;
-    } else {
-      h.x = h.targetX;
-      h.walkingIn = false;
-    }
-  }
 
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0 || !e.walkingIn) return;
@@ -1365,7 +1346,7 @@ function updateWaveIntro(dt) {
     }
   });
 
-  if (!pending && h && !h.walkingIn) {
+  if (!pending) {
     game.waveIntro = false;
     game.combatReady = true;
   }
@@ -1690,12 +1671,13 @@ function updateFrame(dt) {
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
 
-  // A/D Bewegung – nur links im Kampfbereich
-  if (game.combatReady && !game.waveIntro) {
+  // A/D – frei vor/zurück im linken Bereich und Mitte
+  if (game.isRunning && !game.isPaused && !game.isDead) {
     const spd = CLASSES[game.classKey].moveSpeed;
     if (keys.a) { h.x -= spd * dt; h.facing = -1; }
     if (keys.d) { h.x += spd * dt; h.facing = 1; }
-    h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(COMBAT_LAYOUT.heroMaxX, h.x));
+    const maxX = Math.min(COMBAT_LAYOUT.heroMaxX, CW * 0.48 - h.w);
+    h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
   h.y = GROUND - h.h;
 
