@@ -595,7 +595,7 @@ function enterGame(msg) {
   updateTotalGold(); renderUpgradeButtons();
   $("load-hint").textContent = msg;
   $("game-section").scrollIntoView({ behavior: "smooth" });
-  startRun();
+  requestAnimationFrame(() => startRun());
 }
 
 function emptyUpgrades() { const u = {}; UPGRADES.forEach((x) => u[x.key] = 0); return u; }
@@ -613,23 +613,58 @@ async function savePlayer() {
 // RUN
 // ============================================
 
+function countAliveEnemies() {
+  return game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
+}
+
+function safeSpawnWave() {
+  try {
+    if (countAliveEnemies() === 0) spawnWave();
+  } catch (err) {
+    console.error("spawnWave failed:", err);
+    addLog("Gegner-Spawn Fehler – erneuter Versuch...");
+  }
+}
+
+function ensureGameLoop() {
+  if (!canvas || !ctx) return;
+  if (!game.loopId) startLoop();
+  render();
+  updateHUD();
+  updateStatus();
+}
+
+function beginRunLoop() {
+  ensureGameLoop();
+}
+
 function startRun() {
-  if (game.isRunning && !game.isDead) return;
+  if (game.isRunning && !game.isDead) {
+    ensureGameLoop();
+    if (countAliveEnemies() === 0) safeSpawnWave();
+    return;
+  }
   hideUpgrades();
   stopLoop();
   resetRun();
   createHero();
   game.isRunning = true; game.isPaused = false; game.isDead = false;
+  upgradePause = false;
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.remove("hidden");
   $("btn-start-run").disabled = true;
   $("btn-pause").disabled = false;
   $("btn-restart").disabled = false;
-  canvas.focus();
-  spawnWave();
+  $("btn-pause").textContent = "Pause (P)";
+  safeSpawnWave();
   addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
   updateClassHint();
-  startLoop();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      beginRunLoop();
+      if (canvas) canvas.focus();
+    });
+  });
 }
 
 function resetRun() {
@@ -676,11 +711,12 @@ function hideUpgrades() {
   sec.classList.add("hidden");
   if (upgradePause) {
     upgradePause = false;
-    if (game.isRunning && !game.isDead) {
-      game.isPaused = false;
-      $("btn-pause").textContent = "Pause (P)";
-      startLoop();
-    }
+    game.isPaused = false;
+    $("btn-pause").textContent = "Pause (P)";
+  }
+  if (game.isRunning && !game.isDead && !game.isPaused) {
+    ensureGameLoop();
+    if (countAliveEnemies() === 0) safeSpawnWave();
   }
   if (canvas) canvas.focus();
 }
@@ -708,7 +744,7 @@ function togglePause() {
 // ============================================
 
 function createHero() {
-  const cls = CLASSES[game.classKey], u = game.upgrades;
+  const cls = CLASSES[game.classKey], u = game.upgrades || emptyUpgrades();
   const ub = (key) => {
     const up = UPGRADES.find((x) => x.key === key);
     return (u[key] || 0) * up.bonus;
@@ -818,6 +854,10 @@ function spawnEnemy(isBoss, index) {
   const name = names[Math.floor(Math.random() * names.length)];
   const spKey = MONSTER_SPRITE[name];
   const sp = SPRITES[spKey];
+  if (!sp) {
+    console.error("Sprite fehlt für:", name, spKey);
+    return;
+  }
   const stats = getEnemyStats(isBoss);
   const idx = index || 0;
 
@@ -1078,6 +1118,14 @@ function stopLoop() {
 }
 
 function update(dt) {
+  try {
+    updateFrame(dt);
+  } catch (err) {
+    console.error("update error:", err);
+  }
+}
+
+function updateFrame(dt) {
   const h = game.hero, st = heroStats();
   game.scrollX += dt * 40;
   h.specialTimer += dt;
@@ -1210,7 +1258,7 @@ function update(dt) {
       game.waveCooldown = 0;
       game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
       onWaveClear();
-      spawnWave();
+      safeSpawnWave();
     }
   } else {
     game.waveCooldown = 0;
@@ -1346,7 +1394,10 @@ function render() {
     }
   }
 
-  if (!game.hero) return;
+  if (!game.hero) {
+    ctx.restore();
+    return;
+  }
 
   game.coins.forEach((c) => drawSprite(ctx, SPRITES.coin, c.x - 6, c.y, false));
 
