@@ -10,7 +10,7 @@
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Laufe durch Dungeons, tippe Gegner an und werde stärker!</p>
+    <p class="subtitle">Pixel-RPG – Maus zielen, Linksklick schießen, Q = Spezial</p>
   </header>
 
   <main class="container">
@@ -22,19 +22,19 @@
       <p class="label">Klasse wählen</p>
       <div class="class-select" id="class-select">
         <button type="button" class="class-btn warrior selected" data-class="warrior">
-          <span class="class-icon">⚔️</span>
+          <canvas class="preview-sprite" data-preview="warrior" width="48" height="48"></canvas>
           <span class="class-name">Krieger</span>
-          <span class="class-desc">Viel Leben, gute Verteidigung</span>
+          <span class="class-desc">Schwerter, viel Leben</span>
         </button>
         <button type="button" class="class-btn ranger" data-class="ranger">
-          <span class="class-icon">🏹</span>
+          <canvas class="preview-sprite" data-preview="ranger" width="48" height="48"></canvas>
           <span class="class-name">Waldläufer</span>
-          <span class="class-desc">Hoher Schaden, hohe Krit-Chance</span>
+          <span class="class-desc">Pfeile, hohe Krit-Chance</span>
         </button>
         <button type="button" class="class-btn mage" data-class="mage">
-          <span class="class-icon">🔮</span>
+          <canvas class="preview-sprite" data-preview="mage" width="48" height="48"></canvas>
           <span class="class-name">Magier</span>
-          <span class="class-desc">Magieschaden & Mana-System</span>
+          <span class="class-desc">Zauber, Mana-System</span>
         </button>
       </div>
       <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
@@ -43,39 +43,47 @@
 
     <section class="card game-card hidden" id="game-section">
 
-      <div class="status-bar">
-        <div class="status-item"><span class="status-label">Level</span><span class="status-value" id="dungeon-level">1</span></div>
-        <div class="status-item"><span class="status-label">Gold</span><span class="status-value gold" id="run-gold">0</span></div>
-        <div class="status-item"><span class="status-label">XP</span><span class="status-value" id="run-xp">0</span></div>
-        <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
-      </div>
+      <div class="game-frame hidden" id="game-frame">
+        <canvas id="game-canvas" width="640" height="360" tabindex="0"></canvas>
 
-      <!-- Spielwelt -->
-      <div class="world-view hidden" id="world-view">
-        <div class="world-bg" id="world-bg">
-          <div class="world-sky"></div>
-          <div class="world-ground"></div>
-          <div class="world-decor" id="world-decor"></div>
-        </div>
-
-        <div class="world-overlay">
-          <div class="world-title" id="world-name">Wald der Anfänge</div>
-          <div class="world-hint" id="world-hint">Tippe Gegner an oder fahre mit der Maus drüber!</div>
-        </div>
-
-        <div class="hero-panel" id="hero-panel">
-          <div class="hero-sprite" id="hero-sprite">⚔️</div>
-          <div class="hero-info">
-            <span class="hero-label" id="hero-name">Held</span>
-            <div class="hp-bar mini"><div class="hp-fill" id="hero-hp-fill"></div></div>
-            <div class="mana-area mini hidden" id="mana-area">
-              <div class="mana-bar"><div class="mana-fill" id="hero-mana-fill"></div></div>
+        <div class="hud">
+          <div class="hud-left">
+            <div class="hud-bar">
+              <span class="hud-label">HEALTH</span>
+              <div class="bar-bg"><div class="bar-fill hp" id="hud-hp-fill"></div></div>
+              <span class="hud-val" id="hud-hp-text">0 / 0</span>
             </div>
+            <div class="hud-bar">
+              <span class="hud-label">XP</span>
+              <div class="bar-bg"><div class="bar-fill xp" id="hud-xp-fill"></div></div>
+              <span class="hud-val" id="hud-xp-text">0%</span>
+            </div>
+            <div class="hud-bar mana-bar hidden" id="hud-mana-wrap">
+              <span class="hud-label">MANA</span>
+              <div class="bar-bg"><div class="bar-fill mana" id="hud-mana-fill"></div></div>
+              <span class="hud-val" id="hud-mana-text">0 / 0</span>
+            </div>
+          </div>
+          <div class="hud-right">
+            <div class="hud-stat"><span class="coin">🪙</span> <span id="hud-gold">0</span></div>
+            <div class="hud-stat"><span>LV</span> <span id="hud-level">1</span></div>
+            <div class="hud-stat world-name" id="hud-world">Wald</div>
           </div>
         </div>
 
-        <div class="enemies-zone" id="enemies-zone"></div>
-        <div class="float-layer" id="float-layer"></div>
+        <div class="controls-hint">
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Bewegen &nbsp;|&nbsp;
+          <kbd>Maus</kbd> Zielen + Halten = Schießen &nbsp;|&nbsp;
+          <kbd>Q</kbd> Spezial &nbsp;|&nbsp;
+          <kbd>P</kbd> Pause
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-item"><span class="status-label">Dungeon</span><span class="status-value" id="dungeon-level">1</span></div>
+        <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
+        <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
+        <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
       </div>
 
       <div class="loot-display hidden" id="loot-display">
@@ -85,8 +93,7 @@
 
       <div class="controls">
         <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
-        <button type="button" class="btn btn-accent" id="btn-special" disabled>Spezial</button>
-        <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause</button>
+        <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
         <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
       </div>
 
@@ -113,17 +120,12 @@
     <section class="card leaderboard-card">
       <h2>Online-Rangliste</h2>
       <button type="button" class="btn btn-secondary btn-small" id="btn-reload-leaderboard">Rangliste neu laden</button>
-      <ol class="leaderboard" id="leaderboard">
-        <li class="loading">Lade Rangliste...</li>
-      </ol>
+      <ol class="leaderboard" id="leaderboard"><li class="loading">Lade Rangliste...</li></ol>
     </section>
 
   </main>
 
-  <footer class="footer">
-    <p>Dungeon Loop – Tippe Gegner an zum Kämpfen</p>
-  </footer>
-
+  <footer class="footer"><p>Dungeon Loop – Pixel Edition</p></footer>
   <script src="script.js"></script>
 </body>
 </html>
