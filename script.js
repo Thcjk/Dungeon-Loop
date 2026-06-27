@@ -1289,325 +1289,235 @@ function getPath(world) {
   return world.path || { x: 40, w: CW - 80, center: "#3d2e1a", edge: "#2a1f12", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" };
 }
 
-const BG_TILE_W = 1920;
-const BG_PARALLAX = 0.16;
-let bgCache = { theme: null, full: null };
+let bgCache = { theme: null, image: null };
 
-const WORLD_BG_DETAIL = {
+// Festes Hintergrundbild pro Welt – feste Positionen, kein Tiling, kein Scroll
+const WORLD_BG_SCENES = {
   forest: {
-    back:   ["pine_silhouette", "pine_silhouette", "tree", "dead_tree"],
-    mid:    ["pine_tree", "pine_tree", "pine_silhouette", "tree", "dead_tree"],
-    near:   ["pine_tree", "pine_tree", "bush_dark", "fern", "stump", "dead_tree", "tree"],
-    tiny:   ["mushroom", "glow_mushroom", "fern", "bones", "root_cluster", "bush", "glow_pod"],
-    floor:  ["mushroom", "stump", "root_cluster", "bush_dark", "stone_lantern", "bones", "fern"],
-    ceiling:["hanging_vine", "hanging_vine", "pine_silhouette"]
+    hills: [
+      { x: -30, w: 210, h: 78 }, { x: 100, w: 190, h: 98 }, { x: 280, w: 230, h: 72 },
+      { x: 460, w: 200, h: 92 }, { x: 580, w: 90, h: 76 }
+    ],
+    canopy: [
+      { x: 50, y: 28, rx: 52, ry: 20 }, { x: 160, y: 18, rx: 48, ry: 18 }, { x: 280, y: 32, rx: 60, ry: 22 },
+      { x: 400, y: 16, rx: 54, ry: 19 }, { x: 520, y: 26, rx: 50, ry: 17 }, { x: 600, y: 20, rx: 44, ry: 16 }
+    ],
+    props: [
+      ["pine_silhouette", -14, 5, 0, 0.48], ["pine_silhouette", 8, 5, 1, 0.42],
+      ["pine_tree", 0, 4, 0, 0.9], ["pine_tree", 18, 4, 1, 0.82],
+      ["bush_dark", 6, 3.2, 0, 0.75], ["fern", 22, 3, 1, 0.7],
+      ["mushroom", 12, 3, 0, 0.85], ["glow_mushroom", 4, 3, 0, 0.8],
+      ["stump", 26, 3.5, 0, 0.7], ["root_cluster", 2, 3.2, 1, 0.65],
+      ["pine_silhouette", 598, 5, 1, 0.48], ["pine_tree", 582, 4, 1, 0.88],
+      ["pine_tree", 604, 4, 0, 0.85], ["bush_dark", 612, 3.2, 1, 0.75],
+      ["fern", 590, 3, 0, 0.7], ["mushroom", 620, 3, 1, 0.85],
+      ["hanging_vine", 30, 5, 0, 0.55], ["hanging_vine", 580, 5, 1, 0.55]
+    ]
   },
   cave: {
-    back:   ["stalactite", "stalactite", "rock", "skull_rock"],
-    mid:    ["stalactite", "rock", "skull_rock", "cave_crystal", "obsidian"],
-    near:   ["cave_crystal", "rock", "skull_rock", "glow_pod", "stalactite", "obsidian"],
-    tiny:   ["glow_pod", "crystal", "bones", "smoke_puff", "cave_crystal"],
-    floor:  ["rock", "skull_rock", "bones", "rubble", "cave_crystal", "glow_pod"],
-    ceiling:["stalactite", "stalactite", "hanging_vine", "stalactite", "smoke_puff"]
+    hills: [
+      { x: -20, w: 200, h: 70 }, { x: 150, w: 180, h: 85 }, { x: 350, w: 210, h: 68 },
+      { x: 500, w: 170, h: 88 }
+    ],
+    canopy: [
+      { x: 80, y: 22, rx: 40, ry: 14 }, { x: 300, y: 18, rx: 50, ry: 16 }, { x: 520, y: 24, rx: 42, ry: 15 }
+    ],
+    props: [
+      ["stalactite", 10, 5, 0, 0.7], ["stalactite", 28, 5, 0, 0.65], ["stalactite", 50, 5, 1, 0.6],
+      ["rock", 4, 3.5, 0, 0.8], ["skull_rock", 16, 3.5, 0, 0.75], ["cave_crystal", 24, 3.2, 1, 0.85],
+      ["glow_pod", 8, 3, 0, 0.8], ["obsidian", 20, 3.2, 1, 0.7],
+      ["stalactite", 600, 5, 1, 0.7], ["stalactite", 580, 5, 1, 0.65],
+      ["rock", 610, 3.5, 1, 0.8], ["cave_crystal", 592, 3.2, 0, 0.85], ["skull_rock", 618, 3.5, 1, 0.75],
+      ["glow_pod", 604, 3, 1, 0.8], ["bones", 596, 3, 0, 0.7]
+    ]
   },
   ruins: {
-    back:   ["pillar_ruin", "pillar_ruin", "dead_tree", "banner"],
-    mid:    ["pillar_ruin", "banner", "dead_tree", "rubble", "torch"],
-    near:   ["pillar_ruin", "rubble", "torch", "grave", "stone_lantern", "banner"],
-    tiny:   ["rubble", "bones", "cross", "fern", "grave"],
-    floor:  ["rubble", "grave", "bones", "torch", "stone_lantern", "cross"],
-    ceiling:["banner", "hanging_vine", "stalactite"]
+    hills: [
+      { x: -10, w: 190, h: 74 }, { x: 130, w: 200, h: 90 }, { x: 320, w: 220, h: 76 },
+      { x: 490, w: 180, h: 86 }
+    ],
+    canopy: [
+      { x: 60, y: 24, rx: 46, ry: 17 }, { x: 220, y: 16, rx: 52, ry: 19 }, { x: 420, y: 22, rx: 48, ry: 16 },
+      { x: 560, y: 18, rx: 44, ry: 15 }
+    ],
+    props: [
+      ["pillar_ruin", -6, 5, 0, 0.75], ["pillar_ruin", 14, 5, 0, 0.7],
+      ["dead_tree", 4, 4, 0, 0.65], ["rubble", 22, 3.2, 0, 0.8], ["torch", 10, 3, 1, 0.9],
+      ["grave", 18, 3.2, 0, 0.75], ["banner", 26, 4.5, 1, 0.7],
+      ["pillar_ruin", 606, 5, 1, 0.75], ["pillar_ruin", 588, 5, 1, 0.7],
+      ["rubble", 612, 3.2, 1, 0.8], ["torch", 600, 3, 0, 0.9], ["grave", 594, 3.2, 1, 0.75],
+      ["stone_lantern", 620, 3.2, 1, 0.8], ["banner", 582, 4.5, 0, 0.7]
+    ]
   },
   volcano: {
-    back:   ["dead_tree", "lava_rock", "rock", "obsidian"],
-    mid:    ["lava_rock", "dead_tree", "rock", "lava_rock", "obsidian"],
-    near:   ["lava_rock", "rock", "dead_tree", "obsidian", "bones", "rubble"],
-    tiny:   ["smoke_puff", "glow_pod", "crystal", "bones", "lava_rock"],
-    floor:  ["lava_rock", "rock", "bones", "rubble", "obsidian"],
-    ceiling:["smoke_puff", "stalactite", "dead_tree"]
+    hills: [
+      { x: -20, w: 180, h: 100 }, { x: 120, w: 200, h: 120 }, { x: 300, w: 190, h: 95 },
+      { x: 470, w: 210, h: 115 }, { x: 590, w: 80, h: 90 }
+    ],
+    peaks: [
+      { x: 80, h: 130 }, { x: 260, h: 150 }, { x: 440, h: 125 }
+    ],
+    canopy: [
+      { x: 100, y: 20, rx: 44, ry: 14 }, { x: 350, y: 16, rx: 50, ry: 16 }, { x: 550, y: 22, rx: 42, ry: 14 }
+    ],
+    props: [
+      ["dead_tree", 2, 4, 0, 0.7], ["lava_rock", 12, 3.5, 0, 0.85], ["lava_rock", 22, 3.5, 1, 0.8],
+      ["rock", 8, 3.2, 0, 0.75], ["obsidian", 18, 3, 1, 0.7], ["bones", 26, 3, 0, 0.65],
+      ["dead_tree", 610, 4, 1, 0.7], ["lava_rock", 598, 3.5, 1, 0.85], ["lava_rock", 588, 3.5, 0, 0.8],
+      ["rock", 604, 3.2, 1, 0.75], ["obsidian", 594, 3, 0, 0.7], ["rubble", 618, 3, 1, 0.65]
+    ]
   },
   dragon: {
-    back:   ["dragon_bone", "obsidian", "pine_silhouette", "dead_tree"],
-    mid:    ["dragon_bone", "obsidian", "cave_crystal", "pillar_ruin", "dead_tree"],
-    near:   ["obsidian", "dragon_bone", "cave_crystal", "glow_pod", "banner", "grave"],
-    tiny:   ["glow_pod", "crystal", "bones", "cross", "crystal"],
-    floor:  ["obsidian", "dragon_bone", "grave", "stone_lantern", "crystal", "banner"],
-    ceiling:["hanging_vine", "banner", "stalactite"]
+    hills: [
+      { x: -15, w: 195, h: 80 }, { x: 140, w: 185, h: 96 }, { x: 310, w: 215, h: 78 },
+      { x: 480, w: 195, h: 92 }
+    ],
+    canopy: [
+      { x: 70, y: 22, rx: 48, ry: 17 }, { x: 250, y: 14, rx: 54, ry: 19 }, { x: 430, y: 20, rx: 50, ry: 16 },
+      { x: 570, y: 16, rx: 46, ry: 15 }
+    ],
+    props: [
+      ["dragon_bone", -4, 4.5, 0, 0.75], ["obsidian", 10, 3.5, 0, 0.85], ["cave_crystal", 20, 3.2, 1, 0.8],
+      ["glow_pod", 6, 3, 0, 0.85], ["grave", 16, 3.2, 0, 0.7], ["banner", 24, 4.5, 1, 0.65],
+      ["dragon_bone", 608, 4.5, 1, 0.75], ["obsidian", 596, 3.5, 1, 0.85], ["cave_crystal", 586, 3.2, 0, 0.8],
+      ["glow_pod", 602, 3, 1, 0.85], ["stone_lantern", 614, 3.2, 1, 0.75], ["pillar_ruin", 580, 5, 0, 0.6]
+    ]
   }
 };
 
-function bgSeed(i, salt) {
-  return (Math.abs(i * 9301 + salt * 49297) % 233280) / 233280;
-}
-
-function scrollWrap(x, period) {
-  return ((x % period) + period) % period;
-}
-
-function makeBgStripCanvas() {
+function makeBgCanvas() {
   const c = document.createElement("canvas");
-  c.width = BG_TILE_W;
+  c.width = CW;
   c.height = GROUND;
   return c;
 }
 
 function ensureBgCache(world) {
-  if (bgCache.theme === world.theme && bgCache.full) return;
+  if (bgCache.theme === world.theme && bgCache.image) return;
   buildWorldBackgroundCache(world);
 }
 
 function buildWorldBackgroundCache(world) {
   bgCache.theme = world.theme;
-  bgCache.full = makeBgStripCanvas();
-  paintFullWorldBackground(bgCache.full.getContext("2d"), world);
+  bgCache.image = makeBgCanvas();
+  paintWorldScene(bgCache.image.getContext("2d"), world);
 }
 
-function paintBgSpriteRow(c, types, spacing, scale, alpha, yBase, salt) {
-  if (!types || !types.length) return;
-  const count = Math.ceil(BG_TILE_W / spacing) + 4;
-  for (let i = -1; i < count; i++) {
-    const wx = i * spacing + bgSeed(i, salt) * spacing * 0.42;
-    const type = types[Math.floor(bgSeed(i, salt + 1) * types.length)];
-    const sp = SPRITES[type];
-    if (!sp) continue;
-    const sh = spriteDecorH(sp, scale);
-    const sy = yBase - sh - Math.floor(bgSeed(i, salt + 2) * 14);
-    c.globalAlpha = alpha * (0.82 + bgSeed(i, salt + 3) * 0.18);
-    drawSpriteScaled(c, sp, wx, sy, bgSeed(i, salt + 4) > 0.48, scale);
-  }
+function drawBgProp(c, type, x, size, flip, alpha) {
+  const sp = SPRITES[type];
+  if (!sp) return;
+  const sc = size >= 5 ? BG_PIXEL : size >= 4 ? DECOR_PIXEL : DECOR_PIXEL * 0.82;
+  const sh = spriteDecorH(sp, sc);
+  c.globalAlpha = alpha;
+  drawSpriteScaled(c, sp, x, GROUND - sh, !!flip, sc);
   c.globalAlpha = 1;
 }
 
-function paintBgHills(c, world) {
-  const hills = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
-  hills.forEach((col, layer) => {
-    c.fillStyle = col;
-    const hh = 88 + layer * 36;
-    const hy = GROUND - hh - layer * 12;
-    for (let hx = -80; hx < BG_TILE_W + 80; hx += 132) {
-      const ox = hx + layer * 22;
-      c.beginPath();
-      c.moveTo(ox, GROUND);
-      c.quadraticCurveTo(ox + 72, hy - 32, ox + 148, GROUND);
-      c.fill();
-      c.beginPath();
-      c.moveTo(ox + 60, GROUND);
-      c.quadraticCurveTo(ox + 118, hy - 18, ox + 190, GROUND);
-      c.fill();
-    }
+function drawBgPropCeiling(c, type, x, flip, alpha) {
+  const sp = SPRITES[type];
+  if (!sp) return;
+  c.globalAlpha = alpha;
+  drawBgSprite(c, sp, x, 2, !!flip);
+  c.globalAlpha = 1;
+}
+
+function paintWorldScene(c, world) {
+  const scene = WORLD_BG_SCENES[world.theme] || WORLD_BG_SCENES.forest;
+  const path = getPath(world);
+  const SKY_H = PATH_TOP - 55;
+
+  const skyGrad = c.createLinearGradient(0, 0, 0, SKY_H);
+  skyGrad.addColorStop(0, world.sky);
+  skyGrad.addColorStop(0.5, world.bg);
+  skyGrad.addColorStop(1, world.hill);
+  c.fillStyle = skyGrad;
+  c.fillRect(0, 0, CW, SKY_H);
+
+  c.fillStyle = world.hill2 || world.hill;
+  c.fillRect(0, SKY_H, CW, GROUND - SKY_H);
+
+  const hillCols = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
+  scene.hills.forEach((h, i) => {
+    c.fillStyle = hillCols[i % hillCols.length];
+    c.beginPath();
+    c.moveTo(h.x, GROUND);
+    c.quadraticCurveTo(h.x + h.w * 0.5, GROUND - h.h, h.x + h.w, GROUND);
+    c.fill();
   });
-}
 
-function paintBgCanopy(c, world, skyH, layout) {
-  const fillCol = world[layout.canopyFill] || world.hill3 || world.hill;
-  const speckCol = layout.canopySpeck === "accent" ? world.accent
-    : layout.canopySpeck === "star" ? world.star : (world.leaf || world.accent);
-  const dropCol = layout.canopyDrop === "accent" ? world.accent : (world.moss || world.verge);
+  if (scene.peaks) {
+    c.fillStyle = world.hill3;
+    scene.peaks.forEach((p) => {
+      c.beginPath();
+      c.moveTo(p.x, GROUND);
+      c.lineTo(p.x + 55, GROUND - p.h);
+      c.lineTo(p.x + 110, GROUND);
+      c.fill();
+    });
+  }
 
-  c.fillStyle = fillCol;
-  c.fillRect(0, 0, BG_TILE_W, skyH);
+  const canopyCol = world.hill3 || world.hill2 || world.hill;
+  c.fillStyle = canopyCol;
+  c.globalAlpha = 0.55;
+  c.fillRect(0, 0, CW, SKY_H);
+  c.globalAlpha = 1;
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 36) + 3; i++) {
-    const cx = i * 36 + bgSeed(i, 50) * 12;
-    const cy = 4 + (i % 6) * 8;
-    c.globalAlpha = 0.45 + (i % 4) * 0.14;
+  (scene.canopy || []).forEach((b) => {
     c.fillStyle = world.hill2 || world.hill;
+    c.globalAlpha = 0.65;
     c.beginPath();
-    c.ellipse(cx, cy, 22 + (i % 5) * 6, 12 + (i % 3) * 4, 0, 0, Math.PI * 2);
+    c.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2);
     c.fill();
-    c.beginPath();
-    c.ellipse(cx + 18, cy + 10, 28 + (i % 4) * 5, 14 + (i % 2) * 3, 0, 0, Math.PI * 2);
-    c.fill();
-    c.beginPath();
-    c.ellipse(cx + 8, cy + 22, 20 + (i % 3) * 4, 10, 0, 0, Math.PI * 2);
-    c.fill();
-  }
-  c.globalAlpha = 1;
-
-  c.fillStyle = speckCol;
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 22) + 2; i++) {
-    const lx = i * 22 + bgSeed(i, 51) * 8;
-    c.globalAlpha = 0.18 + (i % 5) * 0.07;
-    c.fillRect(lx, 3 + (i % 7) * 6, 3 + (i % 4), 2);
-    c.fillRect(lx + 5, 8 + (i % 5) * 5, 2, 2);
-  }
-  c.globalAlpha = 1;
-
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 48) + 2; i++) {
-    c.fillStyle = dropCol;
-    c.globalAlpha = 0.28 + (i % 3) * 0.1;
-    c.fillRect(i * 48 + bgSeed(i, 52) * 10, 0, 2, 24 + (i % 5) * 10);
-  }
-  c.globalAlpha = 1;
-}
-
-function paintBgCeiling(c, world, detail, skyH) {
-  const types = detail.ceiling;
-  if (!types) return;
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 34) + 3; i++) {
-    const type = types[Math.floor(bgSeed(i, 60) * types.length)];
-    const sp = SPRITES[type];
-    if (!sp) continue;
-    const scale = type === "stalactite" || type === "hanging_vine" ? BG_PIXEL : DECOR_PIXEL;
-    const wx = i * 34 + bgSeed(i, 61) * 16;
-    const wy = 1 + (i % 4) * 6 + bgSeed(i, 62) * 8;
-    c.globalAlpha = 0.55 + bgSeed(i, 63) * 0.35;
-    drawSpriteScaled(c, sp, wx, wy, i % 2 === 0, scale);
-    if (bgSeed(i, 64) > 0.6) {
-      drawSpriteScaled(c, sp, wx + 12, wy + 4, !(i % 2 === 0), scale * 0.85);
-    }
-  }
-  c.globalAlpha = 1;
+    c.globalAlpha = 1;
+  });
 
   if (world.theme === "cave") {
     c.fillStyle = world.hill3 || world.hill;
-    c.globalAlpha = 0.35;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 18); i++) {
-      c.fillRect(i * 18, 0, 14, skyH * 0.4);
-    }
-    c.globalAlpha = 1;
-  }
-}
-
-function paintBgGroundLitter(c, world, detail) {
-  const types = detail.floor;
-  if (!types) return;
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 20) + 4; i++) {
-    const type = types[Math.floor(bgSeed(i, 70) * types.length)];
-    const sp = SPRITES[type];
-    if (!sp) continue;
-    const scale = DECOR_PIXEL * (0.72 + bgSeed(i, 71) * 0.28);
-    const wx = i * 20 + bgSeed(i, 72) * 12;
-    const sh = spriteDecorH(sp, scale);
-    const sy = GROUND - sh - 2 - Math.floor(bgSeed(i, 73) * 4);
-    c.globalAlpha = 0.7 + bgSeed(i, 74) * 0.3;
-    drawSpriteScaled(c, sp, wx, sy, bgSeed(i, 75) > 0.5, scale);
-  }
-  c.globalAlpha = 1;
-
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 12) + 4; i++) {
-    const gx = i * 12 + bgSeed(i, 76) * 6;
-    c.fillStyle = i % 3 === 0 ? world.accent : (world.moss || world.leaf || world.verge);
-    c.globalAlpha = 0.15 + (i % 4) * 0.08;
-    c.fillRect(gx, PATH_TOP - 8 - (i % 5) * 4, 2, 2);
-    c.fillRect(gx + 1, PATH_TOP - 4 + (i % 3), 1, 3);
-  }
-  c.globalAlpha = 1;
-}
-
-function paintBgThemeOverlay(c, world) {
-  if (world.theme === "volcano") {
-    c.fillStyle = world.hill3;
-    for (let vx = -10; vx < BG_TILE_W + 10; vx += 160) {
-      const vh = 130 + (Math.floor(vx / 160) % 3) * 28;
-      c.beginPath();
-      c.moveTo(vx, GROUND);
-      c.lineTo(vx + 65, GROUND - vh);
-      c.lineTo(vx + 130, GROUND);
-      c.fill();
-    }
-    c.fillStyle = "#e74c3c";
-    c.globalAlpha = 0.12;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 28); i++) {
-      c.fillRect(i * 28 + bgSeed(i, 80) * 10, GROUND - 40 - bgSeed(i, 81) * 30, 3, 2);
-    }
-    c.globalAlpha = 1;
+    c.fillRect(0, 0, path.x - 4, SKY_H);
+    c.fillRect(path.x + path.w + 4, 0, CW - path.x - path.w - 4, SKY_H);
   }
 
   if (world.theme === "ruins" && world.hasStars) {
     c.fillStyle = world.star;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 40) + 2; i++) {
-      const sx = i * 40 + bgSeed(i, 82) * 20;
-      const sy = 12 + (i * 23) % 60;
-      c.globalAlpha = 0.3 + (i % 5) * 0.12;
-      if (i % 9 === 0) drawSprite(c, SPRITES.cross, sx, sy, false);
+    [[80, 20], [180, 45], [320, 15], [450, 38], [560, 22], [600, 50]].forEach(([sx, sy], i) => {
+      c.globalAlpha = 0.35 + (i % 3) * 0.15;
+      if (i % 3 === 0) drawSprite(c, SPRITES.cross, sx, sy, false);
       else c.fillRect(sx, sy, 2, 2);
-    }
-    c.globalAlpha = 1;
-  }
-
-  if (world.theme === "dragon") {
-    c.fillStyle = world.accent;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 24); i++) {
-      c.globalAlpha = 0.08 + bgSeed(i, 83) * 0.12;
-      c.fillRect(i * 24, 20 + bgSeed(i, 84) * 80, 2, 2);
-    }
+    });
     c.globalAlpha = 1;
   }
 
   if (world.theme === "forest") {
     c.fillStyle = world.particleColor || world.accent;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 26); i++) {
-      c.globalAlpha = 0.2 + bgSeed(i, 85) * 0.25;
-      c.fillRect(i * 26 + bgSeed(i, 86) * 12, 40 + bgSeed(i, 87) * 120, 2, 2);
-    }
+    [[45, 90], [120, 130], [520, 100], [580, 140]].forEach(([fx, fy]) => {
+      c.globalAlpha = 0.35;
+      c.fillRect(fx, fy, 2, 2);
+    });
     c.globalAlpha = 1;
   }
-}
 
-function paintFullWorldBackground(c, world) {
-  const SKY_H = PATH_TOP - 55;
-  const layout = WORLD_LAYOUT[world.theme] || WORLD_LAYOUT.forest;
-  const detail = WORLD_BG_DETAIL[world.theme] || WORLD_BG_DETAIL.forest;
+  scene.props.forEach(([type, x, scale, flip, alpha]) => {
+    if (type === "hanging_vine" || type === "stalactite" || type === "banner") {
+      drawBgPropCeiling(c, type, x, flip, alpha);
+    } else {
+      drawBgProp(c, type, x, scale, flip, alpha);
+    }
+  });
 
-  const skyGrad = c.createLinearGradient(0, 0, 0, SKY_H);
-  skyGrad.addColorStop(0, world.sky);
-  skyGrad.addColorStop(0.45, world.bg);
-  skyGrad.addColorStop(1, world.hill);
-  c.fillStyle = skyGrad;
-  c.fillRect(0, 0, BG_TILE_W, SKY_H);
+  c.fillStyle = path.verge || world.moss;
+  c.fillRect(0, PATH_TOP - 16, path.x, GROUND - PATH_TOP + 16);
+  c.fillRect(path.x + path.w, PATH_TOP - 16, CW - path.x - path.w, GROUND - PATH_TOP + 16);
 
-  c.fillStyle = world.hill2 || world.hill;
-  c.fillRect(0, SKY_H, BG_TILE_W, GROUND - SKY_H);
-
-  paintBgHills(c, world);
-  paintBgCanopy(c, world, SKY_H, layout);
-  paintBgThemeOverlay(c, world);
-  paintBgCeiling(c, world, detail, SKY_H);
-
-  paintBgSpriteRow(c, detail.back,  68, BG_PIXEL,     0.52, GROUND,      10);
-  paintBgSpriteRow(c, detail.mid,   42, BG_PIXEL,     0.68, GROUND - 4,  20);
-  paintBgSpriteRow(c, detail.near,  28, DECOR_PIXEL,  0.88, GROUND,      30);
-  paintBgSpriteRow(c, detail.tiny,  18, DECOR_PIXEL * 0.9, 0.82, PATH_TOP + 2, 40);
-
-  paintBgGroundLitter(c, world, detail);
-
-  c.fillStyle = world.path?.verge || world.moss;
-  c.globalAlpha = 0.25;
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 8); i++) {
-    c.fillRect(i * 8, PATH_TOP - 14, 6, GROUND - PATH_TOP + 10);
-  }
-  c.globalAlpha = 1;
-}
-
-function blitBgStrip(destCtx, stripCanvas, scroll, parallax) {
-  const w = stripCanvas.width;
-  const h = stripCanvas.height;
-  const off = scrollWrap(scroll * parallax, w);
-  let dx = 0;
-  let sx = off;
-  while (dx < CW) {
-    const sliceW = Math.min(w - sx, CW - dx);
-    destCtx.drawImage(stripCanvas, sx, 0, sliceW, h, dx, 0, sliceW, h);
-    dx += sliceW;
-    sx = 0;
+  if (world.theme === "cave") {
+    c.fillStyle = path.wall || world.hill;
+    c.fillRect(0, 0, path.x - 6, GROUND);
+    c.fillRect(path.x + path.w + 6, 0, CW - path.x - path.w - 6, GROUND);
   }
 }
 
 function renderUnifiedBackground(world) {
   ensureBgCache(world);
-  blitBgStrip(ctx, bgCache.full, game.scrollX, BG_PARALLAX);
-
-  const path = getPath(world);
-  ctx.fillStyle = path.verge || world.moss;
-  ctx.fillRect(0, PATH_TOP - 18, path.x, GROUND - PATH_TOP + 18);
-  ctx.fillRect(path.x + path.w, PATH_TOP - 18, CW - path.x - path.w, GROUND - PATH_TOP + 18);
-
-  if (world.theme === "cave") {
-    ctx.fillStyle = path.wall || world.hill;
-    ctx.fillRect(0, 0, path.x - 6, GROUND);
-    ctx.fillRect(path.x + path.w + 6, 0, CW - path.x - path.w - 6, GROUND);
-  }
+  ctx.drawImage(bgCache.image, 0, 0);
 
   if (world.theme === "ruins" && world.hasMoon) {
     const SKY_H = PATH_TOP - 55;
@@ -1622,7 +1532,7 @@ function renderUnifiedBackground(world) {
 
 function initWorldBackground() {
   bgCache.theme = null;
-  bgCache.full = null;
+  bgCache.image = null;
   ensureBgCache(getWorld());
   initWorldParticles();
 }
@@ -1660,18 +1570,6 @@ function isOnPath(px, path, margin) {
   return px > path.x - m && px < path.x + path.w + m;
 }
 
-function drawTiledInRange(minX, maxX, scroll, parallax, spacing, drawFn) {
-  const drift = scroll * parallax;
-  const span = maxX - minX + 140;
-  const count = Math.ceil(span / spacing) + 3;
-  const i0 = Math.floor((minX + drift - 60) / spacing);
-  for (let i = i0; i < i0 + count; i++) {
-    const sx = i * spacing - drift;
-    if (sx + 90 < minX - 40 || sx > maxX + 40) continue;
-    drawFn(sx, i);
-  }
-}
-
 function initWorldParticles() {
   const world = getWorld();
   game.worldParticles = [];
@@ -1685,16 +1583,6 @@ function initWorldParticles() {
       drift: (Math.random() - 0.5) * 14
     });
   }
-}
-
-function renderWorldSky(world) {
-  const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
-  grad.addColorStop(0, world.sky);
-  grad.addColorStop(0.35, world.bg);
-  grad.addColorStop(0.72, world.hill);
-  grad.addColorStop(1, world.hill2 || world.hill);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, CW, GROUND);
 }
 
 function renderWorldWalkway(world) {
@@ -1762,20 +1650,6 @@ function renderWorldWalkway(world) {
 function renderWorldAtmosphere(world) {
   const path = getPath(world);
 
-  if (world.hasStars && world.theme !== "cave" && world.theme !== "volcano") {
-    drawTiledInRange(0, CW, game.scrollX, 0.04, 67, (sx, i) => {
-      const sy = 18 + (i * 31) % 72;
-      ctx.fillStyle = world.star;
-      if (i % 7 === 0 && world.theme === "ruins") {
-        drawSprite(ctx, SPRITES.cross, sx, sy, false);
-      } else {
-        ctx.globalAlpha = 0.35 + (i % 5) * 0.14;
-        ctx.fillRect(sx, sy, 2, 2);
-        ctx.globalAlpha = 1;
-      }
-    });
-  }
-
   if (world.hasMoon) {
     ctx.save();
     ctx.globalAlpha = 0.8;
@@ -1791,7 +1665,7 @@ function renderWorldAtmosphere(world) {
   }
 
   game.worldParticles.forEach((p) => {
-    const fx = (p.x + game.scrollX * 0.03 + Math.sin(p.phase) * 6) % CW;
+    const fx = p.x + Math.sin(p.phase) * 6;
     const fy = p.y + Math.cos(p.phase * 1.3) * 5;
     if (isOnPath(fx, path, 10)) return;
     ctx.fillStyle = world.particleColor || world.accent;
