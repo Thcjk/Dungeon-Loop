@@ -40,19 +40,40 @@ const PAL = {
 
 const SPRITES = {
   warrior: [
-    "....KKKK....","...KRRRRK...","..KRRRRRRK..","..KRsSSsrK..",
-    "..KRRRRRRK..","..KRRooRRK..","...KRRRRK...","...KRRRRK...",
-    "...Kr..rK...","...Kr..rK...","...KK..KK..."
+    "....KKKK....","...KHHHHK...","..KHyyHyK..","..KHwSwHK..",
+    "..KHHHHHK..","..KHoHoHK..","...KDDDk...","...KD..DK..",
+    "...KD..DK..","...KK..KK..."
   ],
   ranger: [
-    "....KKKK....","...KGGGGK...","..KGGGGGGK..","..KGsSSsGK..",
-    "..KGGGGGGK..","..KGGllGGK..","...KGGGGK...","...KGGGGK...",
-    "...Kg..gK...","...Kg..gK...","...KK..KK..."
+    "....KKKK....","...KlGlGK...","..KlGGGGlK..","..KlsSSslK..",
+    "..KlGGGGlK..","..KlGllGlK..","...KlGGlK...","...Kg..gK..",
+    "...Kg..gK...","...KK..KK..."
   ],
   mage: [
-    "....KKKK....","...KPPPPK...","..KPPBBPPK..","..KPsSSsPK..",
-    "..KPPPPPPK..","..KPPnnPPK..","...KPPPPK...","...KPPPPK...",
-    "...Kp..pK...","...Kp..pK...","...KK..KK..."
+    "....KKKK....","...KuPuPK...","..KuPPPPuK..","..KPsSSsPK..",
+    "..KuPPPPuK..","..KuPBBPuK..","...KuPPuK...","...Kp..pK..",
+    "...Kp..pK...","...KK..KK..."
+  ],
+  shield: [
+    "..KKKK..",".KWwwWK.","KWwSSwWK","KWwwwwWK",".KWwwWK.","..KKKK.."
+  ],
+  sword: [
+    "...K...","..KwWK..","..KWWWK.","..KWWWK.","..KWWK..","...KWk..","...KWk.."
+  ],
+  sword_heavy: [
+    "....K....","...KwWK...","..KWWWWK.","..KWWWWK.","...KWWK..","....KWk..","....KWk.."
+  ],
+  bow: [
+    "....K....","...KyK...","..Ky..K..",".Ky....K.","..Ky..K..","...KyK...","....K...."
+  ],
+  bow_aim: [
+    "....K....","...KyK...","..KyyyyK.",".Ky....yK","..KyyyyK.","...KyK...","....K...."
+  ],
+  staff: [
+    "...K...","...YWk..","...YWk..","...YWk..","...YWk..","..KiBK..",".KiBBiK.","..KiBK.."
+  ],
+  orb_glow: [
+    "...KiK...","..KiBiK..",".KiBBiBK.","..KiBiK..","...KkK..."
   ],
   goblin: [
     "....KKKK....","...KmmGGK...","..KmGGGGmK..","..KmGGGGmK..",
@@ -397,14 +418,65 @@ function drawSprite(c, rows, x, y, flip) {
 function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
 
+const HERO_WEAPON = {
+  warrior: { idle: "sword", attack: "sword_heavy", offhand: "shield" },
+  ranger:  { idle: "bow", attack: "bow_aim" },
+  mage:    { idle: "staff", attack: "staff", glow: "orb_glow" }
+};
+
+function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking) {
+  const w = HERO_WEAPON[classKey];
+  if (!w) return;
+  const wKey = attacking ? (w.attack || w.idle) : w.idle;
+  const sp = SPRITES[wKey];
+  if (!sp) return;
+  c.save();
+  c.translate(cx, cy);
+  c.rotate(angle);
+  const gripX = classKey === "mage" ? -3 : classKey === "ranger" ? -2 : 4;
+  const gripY = classKey === "mage" ? -18 : classKey === "ranger" ? -10 : -10;
+  drawSprite(c, sp, gripX, gripY, false);
+  if (classKey === "mage" && attacking && w.glow) {
+    c.globalAlpha = 0.55 + Math.sin(performance.now() * 0.02) * 0.25;
+    drawSprite(c, SPRITES[w.glow], gripX - 1, gripY - 20, false);
+    c.globalAlpha = 1;
+  }
+  c.restore();
+}
+
+function drawHero(c, h, bob, atkOff, hurtOff) {
+  const x = h.x + atkOff + hurtOff;
+  const y = h.y + bob;
+  const flip = h.facing < 0;
+  const cx = x + h.w / 2;
+  const cy = y + h.h / 2 + 4;
+  const body = SPRITES[game.classKey];
+  const attacking = h.attackAnim > 0.04;
+  let angle = Math.atan2(mouse.y - cy, mouse.x - cx);
+  if (!mouse.onCanvas && !attacking) angle = flip ? Math.PI - 0.4 : -0.4;
+
+  if (game.classKey === "warrior") {
+    c.save();
+    c.translate(cx, cy);
+    drawSprite(c, SPRITES.shield, flip ? 12 : -20, -4, flip);
+    c.restore();
+  }
+
+  drawSprite(c, body, x, y, flip);
+  drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
+}
+
 function drawPreviews() {
   document.querySelectorAll(".preview-sprite").forEach((cv) => {
     const c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     c.clearRect(0, 0, 48, 48);
     const key = cv.dataset.preview;
-    const sp = SPRITES[key];
-    if (sp) drawSprite(c, sp, 8, 4, false);
+    const body = SPRITES[key];
+    if (!body) return;
+    if (key === "warrior") drawSprite(c, SPRITES.shield, 0, 14, false);
+    drawSprite(c, body, 8, 6, false);
+    drawHeroWeaponLayer(c, key, 22, 28, -0.55, key !== "warrior");
   });
 }
 
@@ -1850,7 +1922,7 @@ function render() {
     ctx.fillStyle = "rgba(231,76,60,0.25)";
     ctx.fillRect(h.x - 4, h.y - 8, h.w + 8, h.h + 12);
   }
-  drawSprite(ctx, SPRITES[game.classKey], h.x + atkOff + hurtOff, h.y + bob, h.facing < 0);
+  drawHero(ctx, h, bob, atkOff, hurtOff);
   ctx.globalAlpha = 1;
   ctx.restore();
 
