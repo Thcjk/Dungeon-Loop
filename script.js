@@ -705,6 +705,7 @@ document.addEventListener("DOMContentLoaded", () => {
   canvas = $("game-canvas");
   ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+  ensureBgCache(getWorld());
   drawPreviews();
   bindEvents();
   renderUpgradeButtons();
@@ -1284,8 +1285,52 @@ function getPath(world) {
   return world.path || { x: 40, w: CW - 80, center: "#3d2e1a", edge: "#2a1f12", verge: "#1b4332", wall: "#0a2218", border: "#2a1f12" };
 }
 
-const BG_TILE_W = 1280;
-let bgCache = { theme: null, far: null, mid: null, near: null };
+const BG_TILE_W = 1920;
+const BG_PARALLAX = 0.16;
+let bgCache = { theme: null, full: null };
+
+const WORLD_BG_DETAIL = {
+  forest: {
+    back:   ["pine_silhouette", "pine_silhouette", "tree", "dead_tree"],
+    mid:    ["pine_tree", "pine_tree", "pine_silhouette", "tree", "dead_tree"],
+    near:   ["pine_tree", "pine_tree", "bush_dark", "fern", "stump", "dead_tree", "tree"],
+    tiny:   ["mushroom", "glow_mushroom", "fern", "bones", "root_cluster", "bush", "glow_pod"],
+    floor:  ["mushroom", "stump", "root_cluster", "bush_dark", "stone_lantern", "bones", "fern"],
+    ceiling:["hanging_vine", "hanging_vine", "pine_silhouette"]
+  },
+  cave: {
+    back:   ["stalactite", "stalactite", "rock", "skull_rock"],
+    mid:    ["stalactite", "rock", "skull_rock", "cave_crystal", "obsidian"],
+    near:   ["cave_crystal", "rock", "skull_rock", "glow_pod", "stalactite", "obsidian"],
+    tiny:   ["glow_pod", "crystal", "bones", "smoke_puff", "cave_crystal"],
+    floor:  ["rock", "skull_rock", "bones", "rubble", "cave_crystal", "glow_pod"],
+    ceiling:["stalactite", "stalactite", "hanging_vine", "stalactite", "smoke_puff"]
+  },
+  ruins: {
+    back:   ["pillar_ruin", "pillar_ruin", "dead_tree", "banner"],
+    mid:    ["pillar_ruin", "banner", "dead_tree", "rubble", "torch"],
+    near:   ["pillar_ruin", "rubble", "torch", "grave", "stone_lantern", "banner"],
+    tiny:   ["rubble", "bones", "cross", "fern", "grave"],
+    floor:  ["rubble", "grave", "bones", "torch", "stone_lantern", "cross"],
+    ceiling:["banner", "hanging_vine", "stalactite"]
+  },
+  volcano: {
+    back:   ["dead_tree", "lava_rock", "rock", "obsidian"],
+    mid:    ["lava_rock", "dead_tree", "rock", "lava_rock", "obsidian"],
+    near:   ["lava_rock", "rock", "dead_tree", "obsidian", "bones", "rubble"],
+    tiny:   ["smoke_puff", "glow_pod", "crystal", "bones", "lava_rock"],
+    floor:  ["lava_rock", "rock", "bones", "rubble", "obsidian"],
+    ceiling:["smoke_puff", "stalactite", "dead_tree"]
+  },
+  dragon: {
+    back:   ["dragon_bone", "obsidian", "pine_silhouette", "dead_tree"],
+    mid:    ["dragon_bone", "obsidian", "cave_crystal", "pillar_ruin", "dead_tree"],
+    near:   ["obsidian", "dragon_bone", "cave_crystal", "glow_pod", "banner", "grave"],
+    tiny:   ["glow_pod", "crystal", "bones", "cross", "crystal"],
+    floor:  ["obsidian", "dragon_bone", "grave", "stone_lantern", "crystal", "banner"],
+    ceiling:["hanging_vine", "banner", "stalactite"]
+  }
+};
 
 function bgSeed(i, salt) {
   return (Math.abs(i * 9301 + salt * 49297) % 233280) / 233280;
@@ -1295,7 +1340,7 @@ function scrollWrap(x, period) {
   return ((x % period) + period) % period;
 }
 
-function makeBgLayerCanvas() {
+function makeBgStripCanvas() {
   const c = document.createElement("canvas");
   c.width = BG_TILE_W;
   c.height = GROUND;
@@ -1303,163 +1348,243 @@ function makeBgLayerCanvas() {
 }
 
 function ensureBgCache(world) {
-  if (bgCache.theme === world.theme) return;
+  if (bgCache.theme === world.theme && bgCache.full) return;
   buildWorldBackgroundCache(world);
 }
 
 function buildWorldBackgroundCache(world) {
   bgCache.theme = world.theme;
-  bgCache.far = makeBgLayerCanvas();
-  bgCache.mid = makeBgLayerCanvas();
-  bgCache.near = makeBgLayerCanvas();
-  paintBgFarLayer(bgCache.far.getContext("2d"), world);
-  paintBgMidLayer(bgCache.mid.getContext("2d"), world);
-  paintBgNearLayer(bgCache.near.getContext("2d"), world);
+  bgCache.full = makeBgStripCanvas();
+  paintFullWorldBackground(bgCache.full.getContext("2d"), world);
 }
 
-function paintBgFarLayer(c, world) {
+function paintBgSpriteRow(c, types, spacing, scale, alpha, yBase, salt) {
+  if (!types || !types.length) return;
+  const count = Math.ceil(BG_TILE_W / spacing) + 4;
+  for (let i = -1; i < count; i++) {
+    const wx = i * spacing + bgSeed(i, salt) * spacing * 0.42;
+    const type = types[Math.floor(bgSeed(i, salt + 1) * types.length)];
+    const sp = SPRITES[type];
+    if (!sp) continue;
+    const sh = spriteDecorH(sp, scale);
+    const sy = yBase - sh - Math.floor(bgSeed(i, salt + 2) * 14);
+    c.globalAlpha = alpha * (0.82 + bgSeed(i, salt + 3) * 0.18);
+    drawSpriteScaled(c, sp, wx, sy, bgSeed(i, salt + 4) > 0.48, scale);
+  }
+  c.globalAlpha = 1;
+}
+
+function paintBgHills(c, world) {
   const hills = [world.hill, world.hill2 || world.hill, world.hill3 || world.hill2 || world.hill];
   hills.forEach((col, layer) => {
     c.fillStyle = col;
-    const hh = 95 + layer * 32;
-    const hy = GROUND - hh - layer * 10;
-    for (let hx = -60; hx < BG_TILE_W + 60; hx += 148) {
+    const hh = 88 + layer * 36;
+    const hy = GROUND - hh - layer * 12;
+    for (let hx = -80; hx < BG_TILE_W + 80; hx += 132) {
+      const ox = hx + layer * 22;
       c.beginPath();
-      c.moveTo(hx, GROUND);
-      c.quadraticCurveTo(hx + 88, hy - 28, hx + 168, GROUND);
+      c.moveTo(ox, GROUND);
+      c.quadraticCurveTo(ox + 72, hy - 32, ox + 148, GROUND);
+      c.fill();
+      c.beginPath();
+      c.moveTo(ox + 60, GROUND);
+      c.quadraticCurveTo(ox + 118, hy - 18, ox + 190, GROUND);
       c.fill();
     }
   });
-
-  if (world.theme === "volcano") {
-    c.fillStyle = world.hill3;
-    for (let vx = -10; vx < BG_TILE_W + 10; vx += 185) {
-      const vh = 145 + (Math.floor(vx / 185) % 3) * 20;
-      c.beginPath();
-      c.moveTo(vx, GROUND);
-      c.lineTo(vx + 70, GROUND - vh);
-      c.lineTo(vx + 140, GROUND);
-      c.fill();
-    }
-  }
 }
 
-function paintBgMidLayer(c, world) {
-  const SKY_H = PATH_TOP - 55;
-  const layout = worldLayout(world);
+function paintBgCanopy(c, world, skyH, layout) {
   const fillCol = world[layout.canopyFill] || world.hill3 || world.hill;
   const speckCol = layout.canopySpeck === "accent" ? world.accent
     : layout.canopySpeck === "star" ? world.star : (world.leaf || world.accent);
   const dropCol = layout.canopyDrop === "accent" ? world.accent : (world.moss || world.verge);
 
   c.fillStyle = fillCol;
-  c.fillRect(0, 0, BG_TILE_W, SKY_H);
+  c.fillRect(0, 0, BG_TILE_W, skyH);
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 44) + 2; i++) {
-    const cx = i * 44;
-    const cy = 6 + (i % 5) * 9;
-    c.globalAlpha = 0.5 + (i % 3) * 0.12;
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 36) + 3; i++) {
+    const cx = i * 36 + bgSeed(i, 50) * 12;
+    const cy = 4 + (i % 6) * 8;
+    c.globalAlpha = 0.45 + (i % 4) * 0.14;
+    c.fillStyle = world.hill2 || world.hill;
     c.beginPath();
-    c.ellipse(cx, cy, 16 + (i % 5) * 3, 10 + (i % 3) * 2, 0, 0, Math.PI * 2);
+    c.ellipse(cx, cy, 22 + (i % 5) * 6, 12 + (i % 3) * 4, 0, 0, Math.PI * 2);
     c.fill();
     c.beginPath();
-    c.ellipse(cx + 22, cy + 12, 24 + (i % 4) * 5, 11 + (i % 2) * 3, 0, 0, Math.PI * 2);
+    c.ellipse(cx + 18, cy + 10, 28 + (i % 4) * 5, 14 + (i % 2) * 3, 0, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.ellipse(cx + 8, cy + 22, 20 + (i % 3) * 4, 10, 0, 0, Math.PI * 2);
     c.fill();
   }
   c.globalAlpha = 1;
 
   c.fillStyle = speckCol;
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 31) + 1; i++) {
-    const lx = i * 31;
-    c.globalAlpha = 0.2 + (i % 4) * 0.08;
-    c.fillRect(lx, 4 + (i % 6) * 7, 4 + (i % 3), 2);
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 22) + 2; i++) {
+    const lx = i * 22 + bgSeed(i, 51) * 8;
+    c.globalAlpha = 0.18 + (i % 5) * 0.07;
+    c.fillRect(lx, 3 + (i % 7) * 6, 3 + (i % 4), 2);
+    c.fillRect(lx + 5, 8 + (i % 5) * 5, 2, 2);
   }
   c.globalAlpha = 1;
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 58) + 1; i++) {
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 48) + 2; i++) {
     c.fillStyle = dropCol;
-    c.globalAlpha = 0.35;
-    c.fillRect(i * 58, 0, 2, 28 + (i % 4) * 8);
+    c.globalAlpha = 0.28 + (i % 3) * 0.1;
+    c.fillRect(i * 48 + bgSeed(i, 52) * 10, 0, 2, 24 + (i % 5) * 10);
+  }
+  c.globalAlpha = 1;
+}
+
+function paintBgCeiling(c, world, detail, skyH) {
+  const types = detail.ceiling;
+  if (!types) return;
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 34) + 3; i++) {
+    const type = types[Math.floor(bgSeed(i, 60) * types.length)];
+    const sp = SPRITES[type];
+    if (!sp) continue;
+    const scale = type === "stalactite" || type === "hanging_vine" ? BG_PIXEL : DECOR_PIXEL;
+    const wx = i * 34 + bgSeed(i, 61) * 16;
+    const wy = 1 + (i % 4) * 6 + bgSeed(i, 62) * 8;
+    c.globalAlpha = 0.55 + bgSeed(i, 63) * 0.35;
+    drawSpriteScaled(c, sp, wx, wy, i % 2 === 0, scale);
+    if (bgSeed(i, 64) > 0.6) {
+      drawSpriteScaled(c, sp, wx + 12, wy + 4, !(i % 2 === 0), scale * 0.85);
+    }
   }
   c.globalAlpha = 1;
 
-  const silKey = layout.silhouette;
-  const sil = SPRITES[silKey];
-  if (sil) {
-    const sh = spriteDecorH(sil, BG_PIXEL);
-    c.globalAlpha = 0.72;
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 52) + 2; i++) {
-      const sx = i * 52 + bgSeed(i, 11) * 8;
-      drawBgSprite(c, sil, sx, GROUND - sh - (i % 3) * 8, i % 2 === 0);
+  if (world.theme === "cave") {
+    c.fillStyle = world.hill3 || world.hill;
+    c.globalAlpha = 0.35;
+    for (let i = 0; i < Math.ceil(BG_TILE_W / 18); i++) {
+      c.fillRect(i * 18, 0, 14, skyH * 0.4);
+    }
+    c.globalAlpha = 1;
+  }
+}
+
+function paintBgGroundLitter(c, world, detail) {
+  const types = detail.floor;
+  if (!types) return;
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 20) + 4; i++) {
+    const type = types[Math.floor(bgSeed(i, 70) * types.length)];
+    const sp = SPRITES[type];
+    if (!sp) continue;
+    const scale = DECOR_PIXEL * (0.72 + bgSeed(i, 71) * 0.28);
+    const wx = i * 20 + bgSeed(i, 72) * 12;
+    const sh = spriteDecorH(sp, scale);
+    const sy = GROUND - sh - 2 - Math.floor(bgSeed(i, 73) * 4);
+    c.globalAlpha = 0.7 + bgSeed(i, 74) * 0.3;
+    drawSpriteScaled(c, sp, wx, sy, bgSeed(i, 75) > 0.5, scale);
+  }
+  c.globalAlpha = 1;
+
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 12) + 4; i++) {
+    const gx = i * 12 + bgSeed(i, 76) * 6;
+    c.fillStyle = i % 3 === 0 ? world.accent : (world.moss || world.leaf || world.verge);
+    c.globalAlpha = 0.15 + (i % 4) * 0.08;
+    c.fillRect(gx, PATH_TOP - 8 - (i % 5) * 4, 2, 2);
+    c.fillRect(gx + 1, PATH_TOP - 4 + (i % 3), 1, 3);
+  }
+  c.globalAlpha = 1;
+}
+
+function paintBgThemeOverlay(c, world) {
+  if (world.theme === "volcano") {
+    c.fillStyle = world.hill3;
+    for (let vx = -10; vx < BG_TILE_W + 10; vx += 160) {
+      const vh = 130 + (Math.floor(vx / 160) % 3) * 28;
+      c.beginPath();
+      c.moveTo(vx, GROUND);
+      c.lineTo(vx + 65, GROUND - vh);
+      c.lineTo(vx + 130, GROUND);
+      c.fill();
+    }
+    c.fillStyle = "#e74c3c";
+    c.globalAlpha = 0.12;
+    for (let i = 0; i < Math.ceil(BG_TILE_W / 28); i++) {
+      c.fillRect(i * 28 + bgSeed(i, 80) * 10, GROUND - 40 - bgSeed(i, 81) * 30, 3, 2);
     }
     c.globalAlpha = 1;
   }
 
-  if (world.theme === "cave") {
-    for (let i = 0; i < Math.ceil(BG_TILE_W / 88) + 1; i++) {
-      const sp = SPRITES.stalactite;
-      if (sp) drawBgSprite(c, sp, i * 88 + bgSeed(i, 12) * 10, 2 + (i % 3) * 8, false);
+  if (world.theme === "ruins" && world.hasStars) {
+    c.fillStyle = world.star;
+    for (let i = 0; i < Math.ceil(BG_TILE_W / 40) + 2; i++) {
+      const sx = i * 40 + bgSeed(i, 82) * 20;
+      const sy = 12 + (i * 23) % 60;
+      c.globalAlpha = 0.3 + (i % 5) * 0.12;
+      if (i % 9 === 0) drawSprite(c, SPRITES.cross, sx, sy, false);
+      else c.fillRect(sx, sy, 2, 2);
     }
+    c.globalAlpha = 1;
+  }
+
+  if (world.theme === "dragon") {
+    c.fillStyle = world.accent;
+    for (let i = 0; i < Math.ceil(BG_TILE_W / 24); i++) {
+      c.globalAlpha = 0.08 + bgSeed(i, 83) * 0.12;
+      c.fillRect(i * 24, 20 + bgSeed(i, 84) * 80, 2, 2);
+    }
+    c.globalAlpha = 1;
+  }
+
+  if (world.theme === "forest") {
+    c.fillStyle = world.particleColor || world.accent;
+    for (let i = 0; i < Math.ceil(BG_TILE_W / 26); i++) {
+      c.globalAlpha = 0.2 + bgSeed(i, 85) * 0.25;
+      c.fillRect(i * 26 + bgSeed(i, 86) * 12, 40 + bgSeed(i, 87) * 120, 2, 2);
+    }
+    c.globalAlpha = 1;
   }
 }
 
-function paintBgNearLayer(c, world) {
-  const types = world.decor || BG_TREE_TYPES[world.theme] || BG_TREE_TYPES.forest;
-  const layout = worldLayout(world);
-  const scatterL = SPRITES[layout.scatterL];
-  const scatterR = SPRITES[layout.scatterR];
-  const spacing = 42;
+function paintFullWorldBackground(c, world) {
+  const SKY_H = PATH_TOP - 55;
+  const layout = WORLD_LAYOUT[world.theme] || WORLD_LAYOUT.forest;
+  const detail = WORLD_BG_DETAIL[world.theme] || WORLD_BG_DETAIL.forest;
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / spacing) + 2; i++) {
-    const wx = i * spacing + bgSeed(i, 1) * 14;
-    const type = types[Math.floor(bgSeed(i, 2) * types.length)];
-    const sp = SPRITES[type];
-    if (!sp) continue;
+  const skyGrad = c.createLinearGradient(0, 0, 0, SKY_H);
+  skyGrad.addColorStop(0, world.sky);
+  skyGrad.addColorStop(0.45, world.bg);
+  skyGrad.addColorStop(1, world.hill);
+  c.fillStyle = skyGrad;
+  c.fillRect(0, 0, BG_TILE_W, SKY_H);
 
-    const layer = Math.floor(bgSeed(i, 6) * 3);
-    const scale = layer === 0 ? BG_PIXEL : DECOR_PIXEL;
-    const alpha = 0.62 + layer * 0.14;
-    const sh = spriteDecorH(sp, scale);
-    const sy = GROUND - sh - layer * 4 - Math.floor(bgSeed(i, 5) * 6);
-    const flip = bgSeed(i, 3) > 0.45;
+  c.fillStyle = world.hill2 || world.hill;
+  c.fillRect(0, SKY_H, BG_TILE_W, GROUND - SKY_H);
 
-    c.globalAlpha = alpha;
-    drawSpriteScaled(c, sp, wx, sy, flip, scale);
-  }
-  c.globalAlpha = 1;
+  paintBgHills(c, world);
+  paintBgCanopy(c, world, SKY_H, layout);
+  paintBgThemeOverlay(c, world);
+  paintBgCeiling(c, world, detail, SKY_H);
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 58) + 1; i++) {
-    const px = i * 58;
-    c.globalAlpha = 0.2 + (i % 5) * 0.06;
-    if (i % 9 === 0 && scatterL) {
-      drawDecorSprite(c, scatterL, px, GROUND - spriteDecorH(scatterL), false);
-    } else if (i % 11 === 0 && scatterR) {
-      drawDecorSprite(c, scatterR, px, GROUND - spriteDecorH(scatterR), i % 2 === 0);
-    } else {
-      c.fillStyle = i % 4 === 0 ? world.accent : (world.moss || world.verge);
-      c.fillRect(px, PATH_TOP - 20 - (i * 17 % 30), 2, 2);
-    }
-  }
-  c.globalAlpha = 1;
+  paintBgSpriteRow(c, detail.back,  68, BG_PIXEL,     0.52, GROUND,      10);
+  paintBgSpriteRow(c, detail.mid,   42, BG_PIXEL,     0.68, GROUND - 4,  20);
+  paintBgSpriteRow(c, detail.near,  28, DECOR_PIXEL,  0.88, GROUND,      30);
+  paintBgSpriteRow(c, detail.tiny,  18, DECOR_PIXEL * 0.9, 0.82, PATH_TOP + 2, 40);
 
-  for (let i = 0; i < Math.ceil(BG_TILE_W / 38) + 1; i++) {
-    const gx = i * 38;
-    c.fillStyle = i % 3 === 0 ? world.particleColor : world.accent;
-    c.globalAlpha = 0.22 + (i % 5) * 0.06;
-    c.fillRect(gx, PATH_TOP + 6 + (i % 4), 2, 2);
+  paintBgGroundLitter(c, world, detail);
+
+  c.fillStyle = world.path?.verge || world.moss;
+  c.globalAlpha = 0.25;
+  for (let i = 0; i < Math.ceil(BG_TILE_W / 8); i++) {
+    c.fillRect(i * 8, PATH_TOP - 14, 6, GROUND - PATH_TOP + 10);
   }
   c.globalAlpha = 1;
 }
 
-function blitBgLayer(destCtx, layerCanvas, scroll, parallax) {
-  const w = layerCanvas.width;
-  const h = layerCanvas.height;
+function blitBgStrip(destCtx, stripCanvas, scroll, parallax) {
+  const w = stripCanvas.width;
+  const h = stripCanvas.height;
   const off = scrollWrap(scroll * parallax, w);
   let dx = 0;
   let sx = off;
   while (dx < CW) {
     const sliceW = Math.min(w - sx, CW - dx);
-    destCtx.drawImage(layerCanvas, sx, 0, sliceW, h, dx, 0, sliceW, h);
+    destCtx.drawImage(stripCanvas, sx, 0, sliceW, h, dx, 0, sliceW, h);
     dx += sliceW;
     sx = 0;
   }
@@ -1467,10 +1592,7 @@ function blitBgLayer(destCtx, layerCanvas, scroll, parallax) {
 
 function renderUnifiedBackground(world) {
   ensureBgCache(world);
-  renderWorldSky(world);
-  blitBgLayer(ctx, bgCache.far, game.scrollX, 0.05);
-  blitBgLayer(ctx, bgCache.mid, game.scrollX, 0.11);
-  blitBgLayer(ctx, bgCache.near, game.scrollX, 0.20);
+  blitBgStrip(ctx, bgCache.full, game.scrollX, BG_PARALLAX);
 
   const path = getPath(world);
   ctx.fillStyle = path.verge || world.moss;
@@ -1478,8 +1600,6 @@ function renderUnifiedBackground(world) {
   ctx.fillRect(path.x + path.w, PATH_TOP - 18, CW - path.x - path.w, GROUND - PATH_TOP + 18);
 
   if (world.theme === "cave") {
-    ctx.fillStyle = world.hill3 || world.hill;
-    ctx.fillRect(0, 0, CW, PATH_TOP - 8);
     ctx.fillStyle = path.wall || world.hill;
     ctx.fillRect(0, 0, path.x - 6, GROUND);
     ctx.fillRect(path.x + path.w + 6, 0, CW - path.x - path.w - 6, GROUND);
@@ -1489,7 +1609,7 @@ function renderUnifiedBackground(world) {
     const SKY_H = PATH_TOP - 55;
     const mx = CW / 2 - 14;
     const beam = ctx.createRadialGradient(mx, 42, 8, mx, 42, 100);
-    beam.addColorStop(0, "rgba(236,240,241,0.12)");
+    beam.addColorStop(0, "rgba(236,240,241,0.14)");
     beam.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = beam;
     ctx.fillRect(mx - 80, 0, 160, SKY_H);
@@ -1498,19 +1618,12 @@ function renderUnifiedBackground(world) {
 
 function initWorldBackground() {
   bgCache.theme = null;
+  bgCache.full = null;
   ensureBgCache(getWorld());
   initWorldParticles();
 }
 
-const BG_TREE_TYPES = {
-  forest: ["pine_tree", "pine_silhouette", "tree", "dead_tree"],
-  cave:   ["stalactite", "rock", "skull_rock", "cave_crystal"],
-  ruins:  ["pillar_ruin", "dead_tree", "banner", "torch"],
-  volcano:["lava_rock", "rock", "dead_tree", "lava_rock"],
-  dragon: ["obsidian", "dragon_bone", "cave_crystal", "dead_tree"]
-};
-
-// Einheitliches Layout wie Wald – pro Theme nur Farben/Sprites
+// Einheitliches Layout – pro Theme Farben/Sprites
 const WORLD_LAYOUT = {
   forest: {
     silhouette: "pine_silhouette", scatterL: "glow_mushroom", scatterR: "fern",
