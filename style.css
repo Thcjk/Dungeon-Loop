@@ -68,6 +68,7 @@ body {
 .btn-primary { background: #3a1520; border-color: var(--hp); color: #fff; width: 100%; }
 .btn-secondary { background: #1a2030; }
 .btn-danger { background: #2a1010; border-color: #a03030; }
+.btn-gold { background: #2a2010; border-color: var(--gold); color: var(--gold); }
 .btn-large { padding: 0.8rem; font-size: 0.95rem; }
 .btn-small { font-size: 0.75rem; padding: 0.4rem 0.7rem; margin-bottom: 0.5rem; }
 .hint { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: 0.4rem; }
@@ -212,6 +213,88 @@ body {
   font-size: 0.6rem;
   color: var(--muted);
   text-align: center;
+  z-index: 10;
+}
+
+/* Game Over – großes Overlay über dem Canvas */
+.gameover-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  padding: 1rem;
+}
+
+.gameover-overlay.hidden { display: none; }
+
+.gameover-content {
+  text-align: center;
+  width: min(92%, 420px);
+  padding: 1.5rem 1.25rem;
+  border: 3px solid var(--hp);
+  background: rgba(8, 10, 20, 0.96);
+  box-shadow: 0 0 50px rgba(231, 76, 60, 0.45), inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.gameover-title {
+  font-size: clamp(2rem, 8vw, 3rem);
+  color: var(--hp);
+  letter-spacing: 6px;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 0 24px rgba(231, 76, 60, 0.9);
+  line-height: 1.1;
+}
+
+.gameover-summary {
+  font-size: 0.8rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.gameover-score {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.gameover-score strong {
+  color: var(--gold);
+  font-size: 1.6rem;
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.gameover-tip {
+  font-size: 0.72rem;
+  color: var(--xp);
+  margin: 0.5rem 0 0.75rem;
+  line-height: 1.4;
+  padding: 0.45rem 0.5rem;
+  background: rgba(46, 196, 182, 0.08);
+  border: 1px solid rgba(46, 196, 182, 0.2);
+}
+
+.gameover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+}
+
+.gameover-actions .btn { width: 100%; }
+
+.game-frame:fullscreen .gameover-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.game-frame:fullscreen .gameover-content {
+  width: min(80%, 520px);
+  padding: 2rem 1.75rem;
 }
 
 /* Status */
@@ -236,9 +319,14 @@ kbd {
 .loot-item.rarity-epic      { color: #9b59b6; }
 .loot-item.rarity-legendary { color: var(--gold); font-weight: bold; }
 
-.gameover-panel { border: 2px solid var(--hp); padding: 1rem; text-align: center; margin-top: 0.5rem; }
-.gameover-panel h3 { color: var(--hp); margin-bottom: 0.4rem; }
-.score-text strong { color: var(--gold); font-size: 1.4rem; }
+@keyframes highlight-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(241, 196, 15, 0.55); }
+}
+
+.upgrade-card.highlight-pulse {
+  animation: highlight-pulse 0.75s ease 3;
+}
 
 .total-gold strong { color: var(--gold); }
 

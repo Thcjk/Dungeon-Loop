@@ -81,6 +81,21 @@
             <kbd>P</kbd> Pause &nbsp;|&nbsp;
             <kbd>F</kbd> Vollbild
           </div>
+
+          <div class="gameover-overlay hidden" id="gameover-panel">
+            <div class="gameover-content">
+              <h2 class="gameover-title">GAME OVER</h2>
+              <p class="gameover-summary" id="gameover-summary"></p>
+              <p class="gameover-score">Score: <strong id="final-score">0</strong></p>
+              <p class="gameover-tip" id="gameover-tip"></p>
+              <div class="gameover-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-gameover-run">Neuen Run starten</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-gameover-upgrade">Upgraden</button>
+              </div>
+              <button type="button" class="btn btn-secondary btn-small" id="btn-save-score">Score speichern</button>
+              <p class="hint" id="save-hint"></p>
+            </div>
+          </div>
         </div>
 
         <aside class="game-sidebar">
@@ -109,13 +124,6 @@
         </aside>
       </div>
 
-      <div class="gameover-panel hidden" id="gameover-panel">
-        <h3>Game Over!</h3>
-        <p id="gameover-summary"></p>
-        <p class="score-text">Score: <strong id="final-score">0</strong></p>
-        <button type="button" class="btn btn-primary" id="btn-save-score">Score speichern</button>
-        <p class="hint" id="save-hint"></p>
-      </div>
     </section>
 
     <section class="card upgrade-card hidden" id="upgrade-section">

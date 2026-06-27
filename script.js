@@ -324,6 +324,8 @@ function bindEvents() {
   bind("btn-pause", togglePause);
   bind("btn-restart", restartRun);
   bind("btn-save-score", saveScore);
+  bind("btn-gameover-run", startRun);
+  bind("btn-gameover-upgrade", goToUpgrades);
   bind("btn-reload-leaderboard", loadLeaderboard);
   bind("btn-fullscreen", toggleFullscreen);
 
@@ -491,6 +493,15 @@ function restartRun() {
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true; $("btn-restart").disabled = true;
   addLog("Run zurückgesetzt.");
+}
+
+function goToUpgrades() {
+  $("gameover-panel").classList.add("hidden");
+  const sec = $("upgrade-section");
+  if (!sec) return;
+  sec.classList.add("highlight-pulse");
+  sec.scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(() => sec.classList.remove("highlight-pulse"), 2400);
 }
 
 function togglePause() {
@@ -979,6 +990,7 @@ function onEnemyKill(e) {
 function onDeath() {
   game.isDead = true; game.isRunning = false;
   stopLoop();
+  render();
   game.totalGold += game.runGold;
   savePlayer();
   addLog("Game Over!", "death");
@@ -986,10 +998,11 @@ function onDeath() {
   const world = getWorld();
   $("gameover-panel").classList.remove("hidden");
   $("gameover-summary").textContent =
-    "Level " + game.dungeonLevel + " (" + world.name + ") | " +
-    game.monstersDefeated + " Monster | " + game.runGold + " Gold";
+    "Level " + game.dungeonLevel + " · " + world.name + "\n" +
+    game.monstersDefeated + " Monster besiegt · " + game.runGold + " Gold";
   $("final-score").textContent = calcScore();
-  $("save-hint").textContent = "Tipp: " + getUpgradeTip();
+  $("gameover-tip").textContent = getUpgradeTip();
+  $("save-hint").textContent = "";
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons();
