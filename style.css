@@ -284,5 +284,5 @@ kbd {
 @media (max-width: 800px) {
   .game-layout { grid-template-columns: 1fr; }
   .class-select { flex-direction: column; }
-  .upgrade-grid { grid-template-columns: 1fr 1fr; }
+  .upgrade-grid { flex-direction: column; }
 }

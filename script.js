@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – Pixel Canvas Edition
-   Maus = Zielen + Schießen | Q = Spezial
+   Maus über Canvas = Auto-Angriff | 1 = Spezial
    WASD = Bewegen | P = Pause
    ============================================ */
 
@@ -330,15 +330,13 @@ function bindEvents() {
   document.addEventListener("fullscreenchange", onFullscreenChange);
 
   canvas.addEventListener("mousemove", onMouseMove);
-  canvas.addEventListener("mousedown", (e) => { mouse.down = true; e.preventDefault(); });
-  canvas.addEventListener("mouseup", () => { mouse.down = false; });
-  canvas.addEventListener("mouseleave", () => { mouse.down = false; mouse.onCanvas = false; });
   canvas.addEventListener("mouseenter", () => { mouse.onCanvas = true; });
+  canvas.addEventListener("mouseleave", () => { mouse.onCanvas = false; });
 
   window.addEventListener("keydown", (e) => {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
-    if (e.key.toLowerCase() === "q" && game.isRunning) useSpecial();
+    if (e.key === "1" && game.isRunning) useSpecial();
     if (e.key.toLowerCase() === "f") toggleFullscreen();
   });
   window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
@@ -350,11 +348,11 @@ function updateClassHint() {
   const hint = $("controls-hint");
   if (!hint || !cls) return;
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Schwert</strong> (kurz) | <kbd>Q</kbd> Schildschlag | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>F</kbd> Vollbild";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Pfeile</strong> (weit) | <kbd>Q</kbd> 7 Pfeile | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>F</kbd> Vollbild";
   } else {
-    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> + Halten = <strong>Zauber</strong> (Mana) | <kbd>Q</kbd> Feuerball | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>WASD</kbd> Bewegen | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>F</kbd> Vollbild";
   }
 }
 
@@ -470,7 +468,7 @@ function startRun() {
   $("btn-restart").disabled = false;
   canvas.focus();
   spawnWave();
-  addLog("Run gestartet – " + CLASSES[game.classKey].desc);
+  addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
   updateClassHint();
   startLoop();
 }
@@ -846,8 +844,8 @@ function update(dt) {
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
 
-  // Angriff bei Mausklick
-  if (mouse.down && mouse.onCanvas) attack();
+  // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
+  if (mouse.onCanvas) attack();
 
   // Schwert-Slashs altern
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
@@ -1152,7 +1150,7 @@ function render() {
   if (h.specialTimer >= h.specialCd) {
     ctx.fillStyle = "rgba(142,68,173,0.8)";
     ctx.font = "bold 10px Courier New";
-    ctx.fillText("[Q] SPEZIAL", h.x, h.y - 14);
+    ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
   }
 }
 
@@ -1188,7 +1186,7 @@ function updateStatus() {
   const h = game.hero;
   if (h) {
     const ready = h.specialTimer >= h.specialCd;
-    $("special-status").textContent = ready ? "Q bereit!" : Math.ceil(h.specialCd - h.specialTimer) + "s";
+    $("special-status").textContent = ready ? "1 bereit!" : Math.ceil(h.specialCd - h.specialTimer) + "s";
     $("special-status").style.color = ready ? "#2ecc71" : "";
   }
 }
