@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "description": "Wellen-Metadaten und Sound-Event-Keys für Dungeon Loop. Pfade in sounds.json eintragen.",
+  "waveTypes": {
+    "normal": {
+      "label": "Normale Welle",
+      "soundSpawn": "wave_spawn",
+      "soundClear": "wave_clear"
+    },
+    "danger": {
+      "label": "Gefährliche Welle",
+      "soundSpawn": "wave_spawn",
+      "soundClear": "wave_clear"
+    },
+    "boss": {
+      "label": "Boss-Welle",
+      "soundSpawn": "boss_spawn",
+      "soundClear": "boss_defeated"
+    }
+  },
+  "combatEvents": {
+    "player_melee": { "label": "Spieler Schwert-Schwung", "sound": "player_melee" },
+    "player_melee_hit": { "label": "Spieler Treffer", "sound": "player_melee_hit" },
+    "player_arrow": { "label": "Pfeil abgeschossen", "sound": "player_arrow" },
+    "player_magic": { "label": "Zauber gewirkt", "sound": "player_magic" },
+    "player_staff": { "label": "Stab-Schlag (kein Mana)", "sound": "player_staff" },
+    "player_special_warrior": { "label": "Schildschlag", "sound": "player_special_warrior" },
+    "player_special_ranger": { "label": "Präzisionsschuss", "sound": "player_special_ranger" },
+    "player_special_mage": { "label": "Feuerball", "sound": "player_special_mage" },
+    "player_hurt": { "label": "Spieler bekommt Schaden", "sound": "player_hurt" },
+    "enemy_attack": { "label": "Gegner greift an", "sound": "enemy_attack" },
+    "enemy_hit": { "label": "Gegner getroffen", "sound": "enemy_hit" },
+    "explosion": { "label": "Explosion", "sound": "explosion" },
+    "coin": { "label": "Gold eingesammelt", "sound": "coin" },
+    "level_up": { "label": "Level Up", "sound": "level_up" },
+    "world_change": { "label": "Neue Welt", "sound": "world_change" }
+  },
+  "worldAmbient": {
+    "Dunkler Wald": "ambient_forest",
+    "Verfluchte Höhle": "ambient_cave",
+    "Schlossruine": "ambient_ruins",
+    "Feuervulkan": "ambient_volcano",
+    "Drachenland": "ambient_dragon"
+  }
+}

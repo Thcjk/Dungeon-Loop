@@ -126,6 +126,7 @@ const SPRITES = {
   cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
   moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
   slash: ["...K...","..KRK..",".KRRRK.","..KRK..","...K..."],
+  enemy_slash: ["...o...","..fof..",".foooof.","..fof..","...o..."],
   projectile_sword: ["..K..",".KRK.",".KRK.","..K.."],
   projectile_arrow: ["..K..",".KyK.","KyyyK","..K.."],
   projectile_fire:  ["..f..",".fef.",".fff.","..f.."],
@@ -254,11 +255,17 @@ const game = {
   isRunning: false, isPaused: false, isDead: false,
   dungeonLevel: 1, runGold: 0, runXp: 0, playerLevel: 1, monstersDefeated: 0,
   hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
+  attackEffects: [], screenShake: 0,
+  waveNumber: 0, currentWave: null,
   combatLog: [], bestLoot: null,
   specialTimer: 0, lastShot: 0,
   scrollX: 0, decor: [], waveCooldown: 0,
   loopId: null
 };
+
+let WAVE_DATA = null;
+let SOUND_MAP = null;
+const audioCache = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -307,7 +314,145 @@ document.addEventListener("DOMContentLoaded", () => {
   renderUpgradeButtons();
   loadLeaderboard();
   initSupabase();
+  loadGameData();
 });
+
+// ============================================
+// WELLEN-DATEN & SOUND-HOOKS (waves.json / sounds.json)
+// ============================================
+
+async function loadGameData() {
+  try {
+    const res = await fetch("waves.json");
+    if (res.ok) WAVE_DATA = await res.json();
+  } catch (_) { /* offline / lokal ohne Datei */ }
+  try {
+    const res = await fetch("sounds.json");
+    if (res.ok) SOUND_MAP = await res.json();
+  } catch (_) { /* optional */ }
+}
+
+function playSound(key) {
+  if (!SOUND_MAP?.enabled || !SOUND_MAP.files?.[key]) return;
+  const src = SOUND_MAP.files[key];
+  if (!audioCache[src]) {
+    const a = new Audio(src);
+    a.volume = SOUND_MAP.volume ?? 0.5;
+    audioCache[src] = a;
+  }
+  const audio = audioCache[src];
+  audio.volume = SOUND_MAP.volume ?? 0.5;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
+
+function emitCombatEvent(eventKey) {
+  const evt = WAVE_DATA?.combatEvents?.[eventKey];
+  playSound(evt?.sound || eventKey);
+}
+
+function getWaveType(isBoss, danger) {
+  if (isBoss) return "boss";
+  if (danger >= 3) return "danger";
+  return "normal";
+}
+
+function onWaveSpawn(isBoss, count) {
+  const world = getWorld();
+  const waveType = getWaveType(isBoss, world.danger);
+  game.waveNumber++;
+  game.currentWave = {
+    number: game.waveNumber,
+    type: waveType,
+    dungeonLevel: game.dungeonLevel,
+    world: world.name,
+    danger: world.danger,
+    size: count,
+    isBoss,
+    enemies: []
+  };
+  const soundKey = WAVE_DATA?.waveTypes?.[waveType]?.soundSpawn || (isBoss ? "boss_spawn" : "wave_spawn");
+  playSound(soundKey);
+}
+
+function onWaveClear() {
+  const waveType = game.currentWave?.type || "normal";
+  const soundKey = WAVE_DATA?.waveTypes?.[waveType]?.soundClear || "wave_clear";
+  playSound(soundKey);
+  game.currentWave = null;
+}
+
+// ============================================
+// ANGRIFFS-VFX
+// ============================================
+
+function spawnMeleeSlash(x, y, angle, opts) {
+  const o = opts || {};
+  game.meleeSlashes.push({
+    x, y, angle,
+    life: o.life || 14,
+    maxLife: o.life || 14,
+    range: o.range || 90,
+    owner: o.owner || "player",
+    big: !!o.big
+  });
+}
+
+function spawnImpactRing(x, y, radius, color, life) {
+  game.attackEffects.push({
+    type: "ring", x, y, radius: radius || 24,
+    color: color || "#e74c3c",
+    life: life || 12, maxLife: life || 12
+  });
+}
+
+function spawnBurst(x, y, color, count, speed) {
+  const n = count || 5;
+  const spd = speed || 4;
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    game.particles.push({
+      x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+      life: 14 + Math.random() * 8, color: color || "#f1c40f", size: 2 + Math.random() * 2
+    });
+  }
+}
+
+function spawnExplosion(x, y, radius) {
+  game.attackEffects.push({
+    type: "explosion", x, y, radius: radius || 90,
+    life: 20, maxLife: 20, color: "#e74c3c"
+  });
+  spawnBurst(x, y, "#f39c12", 16, 6);
+  emitCombatEvent("explosion");
+}
+
+function enemyAttackPlayer(e, h, st) {
+  const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const angle = Math.atan2(hy - ey, hx - ex);
+  const dmg = Math.max(1, e.attack - st.defense);
+
+  e.attackAnim = e.isBoss ? 0.45 : 0.32;
+  spawnMeleeSlash(ex, ey, angle, {
+    life: e.isBoss ? 16 : 12,
+    range: e.isBoss ? 55 : 40,
+    owner: "enemy",
+    big: e.isBoss
+  });
+  spawnImpactRing(hx, hy, e.isBoss ? 32 : 22, "#e74c3c", 14);
+  spawnBurst(hx, hy - 8, "#e74c3c", e.isBoss ? 8 : 5, 3.5);
+
+  h.hp -= dmg;
+  h.hitFlash = e.isBoss ? 14 : 10;
+  h.hurtAnim = 0.28;
+  game.screenShake = Math.max(game.screenShake, e.isBoss ? 8 : 5);
+
+  spawnDamage(hx, hy - 5, dmg, false, true);
+  emitCombatEvent("enemy_attack");
+  emitCombatEvent("player_hurt");
+  if (h.hp <= 0) { h.hp = 0; onDeath(); }
+}
 
 function bindEvents() {
   document.querySelectorAll(".class-btn").forEach((btn) => {
@@ -478,8 +623,10 @@ function startRun() {
 function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
-  game.enemies = []; game.projectiles = []; game.particles = []; game.coins = []; game.meleeSlashes = [];
+  game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
+  game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
   game.scrollX = 0; game.decor = []; game.specialTimer = 0; game.waveCooldown = 0;
+  game.waveNumber = 0; game.currentWave = null;
   $("loot-display").classList.add("hidden");
   initDecor();
 }
@@ -537,7 +684,7 @@ function createHero() {
     specialCd: Math.max(2.5, cls.specialCd - ub("upgrade_cooldown")),
     specialTimer: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
-    facing: 1, anim: 0
+    facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0
   };
   $("hud-mana-wrap").classList.toggle("hidden", game.classKey !== "mage");
 }
@@ -614,6 +761,7 @@ function spawnWave() {
   const count = getWaveSize();
   const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
   const world = getWorld();
+  onWaveSpawn(isBoss, count);
   for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
   if (isBoss) addLog("⚠ BOSS! Gefahr " + world.danger + "/5", "boss");
   else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "death");
@@ -638,8 +786,10 @@ function spawnEnemy(isBoss, index) {
     goldReward: stats.gold, xpReward: stats.xp,
     speed: stats.speed,
     attackInterval: stats.attackInterval,
-    hitFlash: 0, anim: Math.random() * 6, dead: false, attackTimer: 0
+    hitFlash: 0, anim: Math.random() * 6, dead: false,
+    attackTimer: 0, attackAnim: 0, attackWindup: 0
   });
+  if (game.currentWave) game.currentWave.enemies.push({ name, isBoss });
 }
 
 function initDecor() {
@@ -681,6 +831,7 @@ function warriorMeleeAttack() {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
   h.facing = Math.cos(angle) >= 0 ? 1 : -1;
+  h.attackAnim = 0.14;
 
   let hitAny = false;
   game.enemies.forEach((e) => {
@@ -699,11 +850,16 @@ function warriorMeleeAttack() {
     dmg = Math.floor(dmg);
     e.hp -= dmg; e.hitFlash = 8;
     spawnDamage(ex, e.y, dmg, isCrit);
+    spawnImpactRing(ex, ey, 16, isCrit ? "#f1c40f" : "#ecf0f1", 10);
+    emitCombatEvent("enemy_hit");
     if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
     hitAny = true;
   });
 
-  game.meleeSlashes.push({ x: hx, y: hy, angle, life: 14, range: cls.range });
+  spawnMeleeSlash(hx, hy, angle, { life: 14, range: cls.range, owner: "player" });
+  spawnBurst(hx + Math.cos(angle) * 30, hy + Math.sin(angle) * 30, "#bdc3c7", 4, 2.5);
+  emitCombatEvent("player_melee");
+  if (hitAny) emitCombatEvent("player_melee_hit");
   if (hitAny) addLog("Schwerttreffer!", "crit");
   return true;
 }
@@ -728,9 +884,12 @@ function rangerShoot(cls) {
   game.projectiles.push({
     x: hx, y: hy, vx: (dx / len) * cls.projSpeed, vy: (dy / len) * cls.projSpeed,
     dmg: Math.floor(dmg), crit: isCrit, sprite: cls.proj,
-    life: 70, owner: "player", pierce: false
+    life: 70, owner: "player", pierce: false, trail: "#2ecc71"
   });
   h.facing = dx >= 0 ? 1 : -1;
+  h.attackAnim = 0.1;
+  spawnBurst(hx + (dx / len) * 8, hy + (dy / len) * 8, "#27ae60", 3, 2);
+  emitCombatEvent("player_arrow");
 }
 
 function mageShoot(cls) {
@@ -740,14 +899,37 @@ function mageShoot(cls) {
   const dist = Math.hypot(dx, dy);
   if (dist > cls.range) return;
 
-  let dmg = st.magicDamage;
+  const angle = Math.atan2(dy, dx);
+  h.facing = dx >= 0 ? 1 : -1;
+
   if (h.mana < cls.manaPerShot) {
-    dmg = st.attack * 0.4;
+    let dmg = Math.floor(st.attack * 0.4);
+    const isCrit = Math.random() < st.crit;
+    if (isCrit) dmg *= 2;
+    game.enemies.forEach((e) => {
+      if (e.dead || e.hp <= 0) return;
+      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+      if (Math.hypot(ex - hx, ey - hy) > 55) return;
+      let diff = Math.atan2(ey - hy, ex - hx) - angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > 1.2) return;
+      e.hp -= dmg; e.hitFlash = 6;
+      spawnDamage(ex, e.y, dmg, isCrit);
+      spawnImpactRing(ex, ey, 14, "#9b59b6", 8);
+      emitCombatEvent("enemy_hit");
+      if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+    });
+    spawnMeleeSlash(hx, hy, angle, { life: 10, range: 55, owner: "player" });
+    spawnBurst(hx, hy, "#8e44ad", 4, 2);
+    h.attackAnim = 0.12;
+    emitCombatEvent("player_staff");
     addLog("Kein Mana – Stab-Schlag!");
-  } else {
-    h.mana -= cls.manaPerShot;
+    return true;
   }
 
+  h.mana -= cls.manaPerShot;
+  let dmg = st.magicDamage;
   const isCrit = Math.random() < st.crit;
   if (isCrit) dmg *= 2;
   const len = dist || 1;
@@ -755,9 +937,11 @@ function mageShoot(cls) {
   game.projectiles.push({
     x: hx, y: hy, vx: (dx / len) * cls.projSpeed, vy: (dy / len) * cls.projSpeed,
     dmg: Math.floor(dmg), crit: isCrit, sprite: cls.proj,
-    life: 65, owner: "player", magic: true
+    life: 65, owner: "player", magic: true, trail: "#e74c3c"
   });
-  h.facing = dx >= 0 ? 1 : -1;
+  h.attackAnim = 0.1;
+  spawnBurst(hx, hy, "#9b59b6", 5, 2.5);
+  emitCombatEvent("player_magic");
   return true;
 }
 
@@ -770,8 +954,9 @@ function useSpecial() {
 
   if (game.classKey === "warrior") {
     h.specialTimer = 0;
+    h.attackAnim = 0.2;
     const angle = Math.atan2(mouse.y - hy, mouse.x - hx);
-    game.meleeSlashes.push({ x: hx, y: hy, angle, life: 20, range: cls.specialRange, big: true });
+    spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
     game.enemies.forEach((e) => {
       if (e.dead) return;
       const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
@@ -784,35 +969,45 @@ function useSpecial() {
       const dmg = Math.floor(st.attack * 2.8);
       e.hp -= dmg; e.hitFlash = 10;
       spawnDamage(ex, e.y, dmg, true);
+      spawnImpactRing(ex, ey, 22, "#f1c40f", 12);
+      emitCombatEvent("enemy_hit");
       if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
     });
     addLog("Schildschlag! – Nahkampf-Spezial", "special");
-    for (let i = 0; i < 10; i++) game.particles.push({ x: hx, y: hy, vx: Math.cos(angle + (Math.random()-0.5)) * 5, vy: Math.sin(angle + (Math.random()-0.5)) * 5, life: 18, color: "#e74c3c", size: 4 });
+    spawnBurst(hx, hy, "#e74c3c", 12, 5);
+    game.screenShake = Math.max(game.screenShake, 4);
+    emitCombatEvent("player_special_warrior");
 
   } else if (game.classKey === "ranger") {
     h.specialTimer = 0;
+    h.attackAnim = 0.15;
     const baseAngle = Math.atan2(mouse.y - hy, mouse.x - hx);
     for (let a = -3; a <= 3; a++) {
       const ang = baseAngle + a * 0.12;
       game.projectiles.push({
         x: hx, y: hy, vx: Math.cos(ang) * 16, vy: Math.sin(ang) * 16,
         dmg: Math.floor(st.attack * 2), crit: Math.random() < st.crit + 0.25,
-        sprite: "projectile_arrow", life: 80, owner: "player", pierce: true
+        sprite: "projectile_arrow", life: 80, owner: "player", pierce: true, trail: "#f1c40f"
       });
     }
+    spawnBurst(hx, hy, "#27ae60", 8, 3);
     addLog("Präzisionsschuss! – 7 Pfeile", "special");
+    emitCombatEvent("player_special_ranger");
 
   } else if (game.classKey === "mage") {
     if (h.mana < cls.manaCost) { addLog("Nicht genug Mana!"); return; }
     h.mana -= cls.manaCost;
     h.specialTimer = 0;
+    h.attackAnim = 0.18;
     const ang = Math.atan2(mouse.y - hy, mouse.x - hx);
     game.projectiles.push({
       x: hx, y: hy, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6,
       dmg: Math.floor(st.magicDamage * 3), crit: false,
-      sprite: "projectile_fire", life: 55, owner: "player", explosive: true, big: true
+      sprite: "projectile_fire", life: 55, owner: "player", explosive: true, big: true, trail: "#f39c12"
     });
+    spawnBurst(hx, hy, "#e67e22", 10, 4);
     addLog("Feuerball! – Explosion", "special");
+    emitCombatEvent("player_special_mage");
   }
 }
 
@@ -842,6 +1037,10 @@ function update(dt) {
   game.scrollX += dt * 40;
   h.specialTimer += dt;
   h.anim += dt * 8;
+  if (h.hitFlash > 0) h.hitFlash -= dt * 30;
+  if (h.attackAnim > 0) h.attackAnim -= dt * 4;
+  if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
+  if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
 
   // WASD Bewegung (klassenabhängige Geschwindigkeit)
   const spd = CLASSES[game.classKey].moveSpeed;
@@ -858,8 +1057,9 @@ function update(dt) {
   // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
   if (mouse.onCanvas) attack();
 
-  // Schwert-Slashs altern
+  // Schwert-Slashes & Effekte altern
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
+  game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
 
   // Gegner bewegen, stoppen & angreifen
   const stopLine = h.x + h.w + 4;
@@ -867,6 +1067,8 @@ function update(dt) {
     if (e.dead || e.hp <= 0) return;
     e.anim += dt * 6;
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
+    if (e.attackAnim > 0) e.attackAnim -= dt * 4;
+    if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
     // Auf gleiche Höhe wie Held
     e.y += (h.y - e.y) * Math.min(1, dt * 5);
@@ -884,14 +1086,17 @@ function update(dt) {
     if (inRange && yClose) {
       e.attackTimer += dt;
       const interval = e.attackInterval || 0.75;
+      const windup = 0.22;
+      if (e.attackTimer >= interval - windup) {
+        e.attackWindup = Math.min(1, (e.attackTimer - (interval - windup)) / windup);
+      }
       if (e.attackTimer >= interval) {
         e.attackTimer = 0;
-        const dmg = Math.max(1, e.attack - st.defense);
-        h.hp -= dmg;
-        spawnDamage(h.x + h.w / 2, h.y - 5, dmg, false, true);
-        e.hitFlash = 5;
-        if (h.hp <= 0) { h.hp = 0; onDeath(); }
+        e.attackWindup = 0;
+        enemyAttackPlayer(e, h, st);
       }
+    } else {
+      e.attackWindup = 0;
     }
   });
 
@@ -906,6 +1111,9 @@ function update(dt) {
   // Projektile
   game.projectiles = game.projectiles.filter((p) => {
     p.x += p.vx; p.y += p.vy; p.life--;
+    if (p.trail && p.life % 3 === 0) {
+      game.particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 8, color: p.trail, size: 2 });
+    }
     if (p.life <= 0) return false;
     if (p.owner === "player") {
       for (const e of game.enemies) {
@@ -913,7 +1121,10 @@ function update(dt) {
         if (p.x > e.x && p.x < e.x+e.w && p.y > e.y && p.y < e.y+e.h) {
           e.hp -= p.dmg; e.hitFlash = 6;
           spawnDamage(e.x+e.w/2, e.y, p.dmg, p.crit);
+          spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : "#ecf0f1", 10);
+          emitCombatEvent("enemy_hit");
           if (p.explosive) {
+            spawnExplosion(p.x, p.y, 90);
             game.enemies.forEach((o) => {
               if (o.dead || o.hp <= 0) return;
               if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < 90) {
@@ -921,7 +1132,6 @@ function update(dt) {
                 if (o.hp <= 0 && !o.dead) { o.dead = true; onEnemyKill(o); }
               }
             });
-            for (let i = 0; i < 14; i++) game.particles.push({ x:p.x, y:p.y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:28, color:"#e74c3c", size:4 });
           }
           if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
           if (!p.pierce) return false;
@@ -937,7 +1147,12 @@ function update(dt) {
   // Münzen einsammeln
   game.coins = game.coins.filter((c) => {
     c.y += dt * 30; c.life -= dt;
-    if (Math.hypot(c.x - h.x, c.y - h.y) < 30) { game.runGold += c.val; return false; }
+    if (Math.hypot(c.x - h.x, c.y - h.y) < 30) {
+      game.runGold += c.val;
+      spawnBurst(c.x, c.y, "#f1c40f", 4, 2);
+      playSound("coin");
+      return false;
+    }
     return c.life > 0;
   });
 
@@ -949,6 +1164,7 @@ function update(dt) {
     if (game.waveCooldown >= cd) {
       game.waveCooldown = 0;
       game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
+      onWaveClear();
       spawnWave();
     }
   } else {
@@ -973,6 +1189,9 @@ function onEnemyKill(e) {
   if (newWorld !== oldWorld) {
     initDecor();
     addLog("⚠ NEUE WELT: " + newWorld + " – viel schwerer!", "boss");
+    const ambKey = WAVE_DATA?.worldAmbient?.[newWorld];
+    if (ambKey) playSound(ambKey);
+    emitCombatEvent("world_change");
   }
   addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "");
   game.coins.push({ x: e.x+e.w/2, y: e.y, val: gold, life: 3 });
@@ -982,6 +1201,8 @@ function onEnemyKill(e) {
     game.runXp -= game.playerLevel * BALANCE.xpPerLevel;
     game.playerLevel++;
     game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * 0.12));
+    spawnBurst(game.hero.x + game.hero.w / 2, game.hero.y, "#2ecc71", 10, 3);
+    emitCombatEvent("level_up");
     addLog("Level Up! Held " + game.playerLevel);
   }
   if (Math.random() < BALANCE.lootChance) generateLoot();
@@ -1018,6 +1239,11 @@ function spawnDamage(x, y, val, crit, taken) {
 
 function render() {
   const world = getWorld();
+  const shakeX = game.screenShake ? (Math.random() - 0.5) * game.screenShake : 0;
+  const shakeY = game.screenShake ? (Math.random() - 0.5) * game.screenShake * 0.6 : 0;
+
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
 
   // Himmel
   const grad = ctx.createLinearGradient(0, 0, 0, GROUND);
@@ -1079,21 +1305,76 @@ function render() {
 
   game.coins.forEach((c) => drawSprite(ctx, SPRITES.coin, c.x - 6, c.y, false));
 
+  // Treffer-Ringe & Explosionen (hinten)
+  game.attackEffects.forEach((fx) => {
+    const t = fx.life / fx.maxLife;
+    if (fx.type === "ring") {
+      ctx.strokeStyle = fx.color;
+      ctx.globalAlpha = t * 0.85;
+      ctx.lineWidth = 2 + (1 - t) * 2;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * (1.1 - t * 0.3), 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (fx.type === "explosion") {
+      ctx.fillStyle = fx.color;
+      ctx.globalAlpha = t * 0.35;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * (1 - t * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#f39c12";
+      ctx.globalAlpha = t * 0.7;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * (1 - t * 0.7), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  // Nahkampf-Schläge (Spieler + Gegner)
+  game.meleeSlashes.forEach((s) => {
+    const maxLife = s.maxLife || (s.big ? 20 : 14);
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.angle);
+    ctx.globalAlpha = (s.life / maxLife) * (s.big ? 0.95 : 0.8);
+    const sc = s.big ? 2.5 : 1.8;
+    const sp = s.owner === "enemy" ? SPRITES.enemy_slash : SPRITES.slash;
+    drawSprite(ctx, sp, s.range * 0.35, -6 * sc, false);
+    ctx.restore();
+  });
+
   // Gegner
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = Math.sin(e.anim) * 2;
+    const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
+    const drawX = e.x - lunge;
+    ctx.save();
     if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
-    drawSprite(ctx, SPRITES[e.sprite], e.x, e.y + bob, true);
+    if (e.attackWindup > 0) {
+      ctx.shadowColor = "#e74c3c";
+      ctx.shadowBlur = 6 + e.attackWindup * 10;
+    }
+    drawSprite(ctx, SPRITES[e.sprite], drawX, e.y + bob, true);
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
+    ctx.restore();
     ctx.fillStyle = "#111"; ctx.fillRect(e.x, e.y - 6, e.w, 4);
     ctx.fillStyle = e.isBoss ? "#f1c40f" : "#e74c3c";
     ctx.fillRect(e.x, e.y - 6, e.w * (e.hp / e.maxHp), 4);
+    if (e.attackWindup > 0.4) {
+      ctx.fillStyle = "rgba(231,76,60," + (e.attackWindup * 0.7) + ")";
+      ctx.font = "bold 9px Courier New";
+      ctx.fillText("!", e.x + e.w / 2 - 3, e.y - 10);
+    }
   });
 
   const h = game.hero;
   const bob = Math.sin(h.anim) * 2;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const hurtOff = h.hurtAnim > 0 ? Math.sin(h.hurtAnim * 20) * 4 * h.hurtAnim : 0;
+  const atkOff = h.attackAnim > 0 ? h.facing * 5 * h.attackAnim : 0;
 
   // Reichweiten-Anzeige
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {
@@ -1120,19 +1401,15 @@ function render() {
     }
   }
 
-  // Schwert-Slashes
-  game.meleeSlashes.forEach((s) => {
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(s.angle);
-    const alpha = s.life / 14;
-    ctx.globalAlpha = alpha * (s.big ? 0.9 : 0.7);
-    const sc = s.big ? 2.5 : 1.8;
-    drawSprite(ctx, SPRITES.slash, s.range * 0.4, -6 * sc, false);
-    ctx.restore();
-  });
-
-  drawSprite(ctx, SPRITES[game.classKey], h.x, h.y + bob, h.facing < 0);
+  ctx.save();
+  if (h.hitFlash > 0) {
+    ctx.globalAlpha = 0.45 + Math.sin(h.hitFlash) * 0.35;
+    ctx.fillStyle = "rgba(231,76,60,0.25)";
+    ctx.fillRect(h.x - 4, h.y - 8, h.w + 8, h.h + 12);
+  }
+  drawSprite(ctx, SPRITES[game.classKey], h.x + atkOff + hurtOff, h.y + bob, h.facing < 0);
+  ctx.globalAlpha = 1;
+  ctx.restore();
 
   game.projectiles.forEach((p) => {
     const sc = p.big ? 1.5 : 1;
@@ -1165,6 +1442,8 @@ function render() {
     ctx.font = "bold 10px Courier New";
     ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
   }
+
+  ctx.restore();
 }
 
 // ============================================

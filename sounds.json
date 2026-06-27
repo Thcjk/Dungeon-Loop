@@ -1,0 +1,31 @@
+{
+  "enabled": false,
+  "volume": 0.55,
+  "description": "Sound-Dateien hier eintragen und enabled auf true setzen. Lege .ogg/.mp3 Dateien in den sounds/ Ordner.",
+  "files": {
+    "wave_spawn": "sounds/waves/wave_spawn.ogg",
+    "wave_clear": "sounds/waves/wave_clear.ogg",
+    "boss_spawn": "sounds/waves/boss_spawn.ogg",
+    "boss_defeated": "sounds/waves/boss_defeated.ogg",
+    "player_melee": "sounds/combat/sword_swing.ogg",
+    "player_melee_hit": "sounds/combat/sword_hit.ogg",
+    "player_arrow": "sounds/combat/arrow_shoot.ogg",
+    "player_magic": "sounds/combat/magic_cast.ogg",
+    "player_staff": "sounds/combat/staff_hit.ogg",
+    "player_special_warrior": "sounds/combat/shield_bash.ogg",
+    "player_special_ranger": "sounds/combat/multi_arrow.ogg",
+    "player_special_mage": "sounds/combat/fireball.ogg",
+    "player_hurt": "sounds/combat/player_hurt.ogg",
+    "enemy_attack": "sounds/combat/enemy_claw.ogg",
+    "enemy_hit": "sounds/combat/enemy_hit.ogg",
+    "explosion": "sounds/combat/explosion.ogg",
+    "coin": "sounds/ui/coin.ogg",
+    "level_up": "sounds/ui/level_up.ogg",
+    "world_change": "sounds/ui/world_change.ogg",
+    "ambient_forest": "sounds/ambient/forest.ogg",
+    "ambient_cave": "sounds/ambient/cave.ogg",
+    "ambient_ruins": "sounds/ambient/ruins.ogg",
+    "ambient_volcano": "sounds/ambient/volcano.ogg",
+    "ambient_dragon": "sounds/ambient/dragon.ogg"
+  }
+}
