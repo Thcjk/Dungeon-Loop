@@ -1095,6 +1095,42 @@ function countAliveEnemies() {
   return game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
 }
 
+function getNearestEnemy() {
+  const h = game.hero;
+  if (!h) return null;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  let best = null, bestD = Infinity;
+  game.enemies.forEach((e) => {
+    if (e.dead || e.hp <= 0) return;
+    const d = Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy);
+    if (d < bestD) { bestD = d; best = e; }
+  });
+  return best;
+}
+
+function getCombatAim() {
+  const aim = getAim();
+  const h = game.hero;
+  if (!h) return aim;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const cls = CLASSES[game.classKey];
+  const maxR = cls.range || 520;
+
+  const aimAt = (tx, ty) => ({ x: tx, y: ty, onCanvas: true, down: mouse.down });
+
+  if (aim.onCanvas && Math.hypot(aim.x - hx, aim.y - hy) <= maxR) return aim;
+
+  const target = getNearestEnemy();
+  if (target) return aimAt(target.x + target.w / 2, target.y + target.h / 2);
+
+  if (aim.onCanvas) return aim;
+  return aimAt(hx + 220, hy);
+}
+
+function enemyInCombatRange(e, h) {
+  return e.x + e.w > h.x - 16 && e.x < h.x + h.w + 400;
+}
+
 function safeSpawnWave() {
   try {
     if (countAliveEnemies() === 0) spawnWave();
@@ -1152,7 +1188,7 @@ function resetRun() {
   game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
   game.scrollX = 0; game.specialTimer = 0; game.waveCooldown = 0;
   game.waveNumber = 0; game.currentWave = null;
-  game.waveIntro = false; game.combatReady = false;
+  game.waveIntro = false; game.combatReady = true;
   game.worldParticles = [];
   $("loot-display").classList.add("hidden");
   initWorldBackground();
@@ -1327,8 +1363,7 @@ function getEnemyTargetX(index, enemyW) {
 
 function startWaveIntro() {
   game.waveIntro = true;
-  game.combatReady = false;
-  // Held bleibt immer sichtbar – nur Gegner laufen ein
+  game.combatReady = true;
 }
 
 function updateWaveIntro(dt) {
@@ -1346,10 +1381,7 @@ function updateWaveIntro(dt) {
     }
   });
 
-  if (!pending) {
-    game.waveIntro = false;
-    game.combatReady = true;
-  }
+  if (!pending) game.waveIntro = false;
 }
 
 function spawnWave() {
@@ -1433,8 +1465,7 @@ function attack() {
   if (cls.attackType === "melee") {
     if (warriorMeleeAttack()) game.lastShot = now;
   } else if (cls.attackType === "ranged") {
-    rangerShoot(cls);
-    game.lastShot = now;
+    if (rangerShoot(cls)) game.lastShot = now;
   } else if (cls.attackType === "magic") {
     if (mageShoot(cls)) game.lastShot = now;
   }
@@ -1444,7 +1475,7 @@ function warriorMeleeAttack() {
   const h = game.hero, st = heroStats();
   const cls = CLASSES.warrior;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const aim = getAim();
+  const aim = getCombatAim();
   const angle = Math.atan2(aim.y - hy, aim.x - hx);
   h.facing = Math.cos(angle) >= 0 ? 1 : -1;
   h.attackAnim = 0.14;
@@ -1483,10 +1514,17 @@ function warriorMeleeAttack() {
 function rangerShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const aim = getAim();
-  const dx = aim.x - hx, dy = aim.y - hy;
-  const dist = Math.hypot(dx, dy);
-  if (dist > cls.range) return;
+  const aim = getCombatAim();
+  let dx = aim.x - hx, dy = aim.y - hy;
+  let dist = Math.hypot(dx, dy);
+  if (dist > cls.range) {
+    const near = getNearestEnemy();
+    if (!near) return false;
+    dx = near.x + near.w / 2 - hx;
+    dy = near.y + near.h / 2 - hy;
+    dist = Math.hypot(dx, dy);
+    if (dist > cls.range) return false;
+  }
 
   let dmgMult = 1;
   const tooClose = game.enemies.some((e) => !e.dead && e.hp > 0 &&
@@ -1507,15 +1545,23 @@ function rangerShoot(cls) {
   h.attackAnim = 0.1;
   spawnBurst(hx + (dx / len) * 8, hy + (dy / len) * 8, "#27ae60", 3, 2);
   emitCombatEvent("player_arrow");
+  return true;
 }
 
 function mageShoot(cls) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const aim = getAim();
-  const dx = aim.x - hx, dy = aim.y - hy;
-  const dist = Math.hypot(dx, dy);
-  if (dist > cls.range) return;
+  const aim = getCombatAim();
+  let dx = aim.x - hx, dy = aim.y - hy;
+  let dist = Math.hypot(dx, dy);
+  if (dist > cls.range) {
+    const near = getNearestEnemy();
+    if (!near) return false;
+    dx = near.x + near.w / 2 - hx;
+    dy = near.y + near.h / 2 - hy;
+    dist = Math.hypot(dx, dy);
+    if (dist > cls.range) return false;
+  }
 
   const angle = Math.atan2(dy, dx);
   h.facing = dx >= 0 ? 1 : -1;
@@ -1565,7 +1611,7 @@ function mageShoot(cls) {
 
 function useSpecial() {
   const h = game.hero;
-  if (h.specialTimer < h.specialCd || game.isPaused || game.waveIntro || !game.combatReady) return;
+  if (h.specialTimer < h.specialCd || game.isPaused || !game.isRunning || game.isDead) return;
   const st = heroStats();
   const cls = CLASSES[game.classKey];
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
@@ -1573,8 +1619,8 @@ function useSpecial() {
   if (game.classKey === "warrior") {
     h.specialTimer = 0;
     h.attackAnim = 0.2;
-    const aim = getAim();
-  const angle = Math.atan2(aim.y - hy, aim.x - hx);
+    const aim = getCombatAim();
+    const angle = Math.atan2(aim.y - hy, aim.x - hx);
     spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
     game.enemies.forEach((e) => {
       if (e.dead) return;
@@ -1686,8 +1732,8 @@ function updateFrame(dt) {
 
   if (game.waveIntro) updateWaveIntro(dt);
 
-  // Auto-Angriff wenn Maus über dem Spiel ist (kein Klick nötig)
-  if (mouse.onCanvas && game.combatReady && !game.waveIntro) attack();
+  // Auto-Angriff solange Gegner leben (Maus optional zum Zielen)
+  if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
 
   // Ambient-Partikel (Parallax-Welt)
   updateWorldAmbient(dt, getWorld());
@@ -1705,29 +1751,25 @@ function updateFrame(dt) {
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    if (!game.waveIntro && !e.walkingIn && e.targetX != null) {
+    if (!e.walkingIn && e.targetX != null && !game.waveIntro) {
       e.x = e.targetX;
     }
 
-    if (!game.combatReady || game.waveIntro) return;
-
-    const hx = h.x + h.w / 2, ex = e.x + e.w / 2;
-    const inRange = Math.abs(ex - hx) < CW * 0.42;
-
-    if (inRange) {
-      e.attackTimer += dt;
-      const interval = e.attackInterval || 0.75;
-      const windup = 0.22;
-      if (e.attackTimer >= interval - windup) {
-        e.attackWindup = Math.min(1, (e.attackTimer - (interval - windup)) / windup);
-      }
-      if (e.attackTimer >= interval) {
-        e.attackTimer = 0;
-        e.attackWindup = 0;
-        enemyAttackPlayer(e, h, st);
-      }
-    } else {
+    if (!enemyInCombatRange(e, h)) {
       e.attackWindup = 0;
+      return;
+    }
+
+    e.attackTimer += dt;
+    const interval = e.attackInterval || 0.75;
+    const windup = 0.22;
+    if (e.attackTimer >= interval - windup) {
+      e.attackWindup = Math.min(1, (e.attackTimer - (interval - windup)) / windup);
+    }
+    if (e.attackTimer >= interval) {
+      e.attackTimer = 0;
+      e.attackWindup = 0;
+      enemyAttackPlayer(e, h, st);
     }
   });
 
