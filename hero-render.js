@@ -2,14 +2,14 @@
 const HR = {
   NW: 32,
   NH: 48,
-  SCALE: 1.25,
+  SCALE: 2,
   PAL: {
     ".": null,
     "0": "#14100e", "1": "#2a221c", "2": "#3d342c",
     "3": "#c4a078", "4": "#9a7858", "5": "#dcc8a8",
     "6": "#3a2a20", "7": "#5c4030", "8": "#7a5840",
     "9": "#2a3238", "a": "#3d4850", "b": "#586068",
-    "c": "#6a7078", "d": "#909aa4", "e": "#b8c0c8",
+    "c": "#8a949e", "d": "#b0bac4", "e": "#dce4ec",
     "f": "#4a3828", "g": "#6a5038", "h": "#8a6848",
     "i": "#505860", "j": "#788490", "k": "#a0a8b0",
     "l": "#2a2018", "m": "#403028", "n": "#584838",
@@ -228,8 +228,8 @@ HR.GEAR = {
     "0ff0..........","0tt0..........","0ss0..........",".00..........."
   ],
   shield: [
-    "....0000....","...0ggh0...","..0gGGh0..",".0gGGGh0.",
-    ".0gGGGh0.","..0gGh0..","...0ff0...","....00...."
+    "....0000....","...0ggh0...","..0gDDh0..",".0gDDDh0.",
+    ".0gDDDh0.","..0gGh0..","...0ff0...","....00...."
   ],
   bow: [
     ".....00.....","....0uu0....","...0u..u0...","..0u....u0..",
@@ -301,6 +301,17 @@ HR.drawGear = (c, cls, cx, cy, angle, attacking, flip) => {
   c.restore();
 };
 
+HR.drawGlow = (c, dx, dy, w, h) => {
+  c.save();
+  const pad = 6;
+  c.fillStyle = "rgba(255,235,190,0.14)";
+  c.fillRect(dx - pad, dy - 3, w + pad * 2, h + 6);
+  c.strokeStyle = "rgba(255,255,255,0.32)";
+  c.lineWidth = 1.5;
+  c.strokeRect(dx - 3, dy - 1, w + 6, h + 2);
+  c.restore();
+};
+
 HR.draw = (c, opts) => {
   const { x, y, h, world, bob, atkOff, hurtOff, classKey, aimX, aimY } = opts;
   const flip = h.facing < 0;
@@ -317,6 +328,7 @@ HR.draw = (c, opts) => {
   if (!attacking && Math.abs(aimX - cx) < 8) angle = flip ? 2.5 : -0.65;
 
   drawCharShadow(c, cx, footY, h.w, getCharStyle(world), bob, false);
+  HR.drawGlow(c, dx, dy, h.w, h.h);
   if (classKey === "warrior") {
     c.save(); c.translate(cx, cy);
     if (flip) c.scale(-1, 1);
@@ -324,8 +336,7 @@ HR.draw = (c, opts) => {
     c.restore();
   }
   hrDrawRows(c, body, dx, dy, flip, HR.SCALE);
-  applyWorldCharTint(c, dx, dy, h.w, h.h, world);
-  drawCharFeetFog(c, dx, dy, h.w, h.h, world);
+  /* Held ohne Welt-Fog/Tint – sonst im Wald unsichtbar */
   HR.drawGear(c, classKey, cx, cy, angle, attacking, flip);
 };
 

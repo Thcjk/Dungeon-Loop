@@ -844,7 +844,7 @@ function enemyAttackPlayer(e, h, st) {
   h.hurtAnim = 0.28;
   game.screenShake = Math.max(game.screenShake, e.isBoss ? 8 : 5);
 
-  spawnDamage(hx, hy - 5, dmg, false, true);
+  spawnDamage(hx, hy - 18, dmg, false, true);
   emitCombatEvent("enemy_attack");
   emitCombatEvent("player_hurt");
   if (h.hp <= 0) { h.hp = 0; onDeath(); }
@@ -2106,9 +2106,9 @@ function render() {
   });
 
   if (h.specialTimer >= h.specialCd) {
-    ctx.fillStyle = "rgba(142,68,173,0.8)";
+    ctx.fillStyle = "rgba(200,160,255,0.95)";
     ctx.font = "bold 10px Courier New";
-    ctx.fillText("[1] SPEZIAL", h.x, h.y - 14);
+    ctx.fillText("[1] SPEZIAL", h.x, h.y - 22);
   }
 
   ctx.restore();
