@@ -787,7 +787,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=53");
+    const res = await fetch("sounds.json?v=54");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -1141,13 +1141,13 @@ function spawnBurst(x, y, color, count, speed) {
   }
 }
 
-function spawnExplosion(x, y, radius) {
+function spawnExplosion(x, y, radius, playSound) {
   game.attackEffects.push({
     type: "explosion", x, y, radius: radius || 90,
     life: 20, maxLife: 20, color: "#e74c3c"
   });
   spawnBurst(x, y, "#f39c12", 16, 6);
-  emitCombatEvent("explosion");
+  if (playSound !== false) emitCombatEvent("explosion");
 }
 
 function calcPlayerDamage(rawAttack, defense) {
@@ -2178,7 +2178,7 @@ function castAbility(ab, h, st) {
   h.attackAnim = 0.18;
   game.abilityCastLock = 0.4;
   addLog(ab.name + "!", "magic");
-  emitCombatEvent(ab.sound || "player_special_" + game.classKey);
+  emitCombatEvent(getClassSpecialSound(game.classKey));
   spawnBurst(hx, hy, ab.particle || ab.color, 10, 4);
   game.screenShake = Math.max(game.screenShake, ab.type === "aoe_ground" ? 5 : 3);
 
@@ -2226,7 +2226,7 @@ function castAbility(ab, h, st) {
     case "aoe_ground": {
       const tx = target ? target.x + target.w / 2 : hx + h.facing * 80;
       const ty = target ? target.y + target.h / 2 : hy;
-      spawnExplosion(tx, ty, ab.radius || 100);
+      spawnExplosion(tx, ty, ab.radius || 100, false);
       game.attackEffects.push({
         type: "explosion", x: tx, y: ty, radius: ab.radius || 100,
         life: 22, maxLife: 22, color: ab.color
@@ -2291,7 +2291,7 @@ function castAbility(ab, h, st) {
         dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
         sprite: game.classKey === "mage" ? "projectile_fire" : "projectile_arrow",
         life: 60, owner: "player", explosive: true, big: true,
-        trail: ab.particle, magic: game.classKey === "mage"
+        trail: ab.particle, magic: game.classKey === "mage", fromAbility: true
       });
       break;
     }
@@ -2555,7 +2555,7 @@ function updateFrame(dt) {
             }
           }
           if (p.explosive) {
-            spawnExplosion(p.x, p.y, 90);
+            spawnExplosion(p.x, p.y, 90, !p.fromAbility);
             game.enemies.forEach((o) => {
               if (!isEnemyOnScreen(o) || o.walkingIn || o.dead || o.hp <= 0) return;
               if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < 90) {
