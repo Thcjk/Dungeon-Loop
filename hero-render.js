@@ -1,65 +1,109 @@
-/* Hero Renderer – kompakt wie Gegner (14×14 Grid, 3× Skalierung → ~42×42 px) */
+/* ==========================================================================
+   Dungeon Loop – Hero Renderer (Komplett-Neuzeichnung)
+   Hochwertige Pixel-Art · realistische Proportionen · weltgebundene Farben
+   Grid 22×28 @ 2px · Display ~15 % kleiner für Kampfabstand
+   ========================================================================== */
+
 const HR = {
-  NW: 14,
-  NH: 14,
-  SCALE: 3,
+  NW: 22,
+  NH: 28,
+  SCALE: 2,
+  /** Etwas kleiner als Gegner-Hitbox – mehr Platz für Projektile & FX */
+  DISPLAY_SCALE: 0.84,
+  CX: 11,
+
+  ANIM: {
+    idle:   { n: 6, t: 0.32 },
+    walk:   { n: 8, t: 0.075 },
+    attack: { n: 5, t: 0.065 },
+    hurt:   { n: 3, t: 0.11 },
+    death:  { n: 6, t: 0.2 }
+  },
+
+  /** Basis-Palette – gedämpft, passend zu Gegner-Sprites */
   PAL: {
     ".": null,
-    "0": "#14100e", "1": "#2a221c", "2": "#3d342c",
-    "3": "#c4a078", "4": "#9a7858", "5": "#dcc8a8",
-    "6": "#3a2a20", "7": "#5c4030", "8": "#7a5840",
-    "9": "#2a3238", "a": "#3d4850", "b": "#586068",
-    "c": "#8a949e", "d": "#b0bac4", "e": "#dce4ec",
-    "f": "#4a3828", "g": "#6a5038", "h": "#8a6848",
-    "i": "#505860", "j": "#788490", "k": "#a0a8b0",
-    "l": "#2a2018", "m": "#403028", "n": "#584838",
-    "o": "#283848", "p": "#406080", "q": "#6090b8",
-    "r": "#88b8d8", "s": "#3a2818", "t": "#5a3820",
-    "u": "#7a5030", "v": "#285838", "w": "#408858",
-    "x": "#60a878", "y": "#382820", "z": "#201810",
-    "A": "#484038", "B": "#686058", "C": "#887868",
-    "D": "#a89070", "E": "#c8b090", "F": "#686048"
+    "0": "#0c0a0a", "1": "#1a1614", "2": "#2a2420", "3": "#3a322c",
+    "4": "#b89878", "5": "#9a7858", "6": "#dcc8a8", "7": "#7a6048",
+    "8": "#5a4030", "9": "#3a2a22",
+    "a": "#4a5058", "b": "#687078", "c": "#909aa4", "d": "#b8c4cc",
+    "e": "#dce4ec", "f": "#f0f4f8",
+    "g": "#3a4a38", "h": "#4a6248", "i": "#5a7a58", "j": "#6a9468",
+    "k": "#2a3828", "l": "#1a2418",
+    "m": "#5a4838", "n": "#7a6048", "o": "#9a8060", "p": "#baa080",
+    "q": "#382818", "r": "#584030", "s": "#786048",
+    "t": "#283848", "u": "#384858", "v": "#506878", "w": "#6890a8",
+    "x": "#88b8d0", "y": "#a8d8e8",
+    "z": "#382858", "A": "#503870", "B": "#684898", "C": "#8868b8",
+    "D": "#a888d8", "E": "#c8a8f0",
+    "F": "#6a5030", "G": "#8a6838", "H": "#aa8848", "I": "#caa858",
+    "J": "#4a3828", "K": "#6a5038", "L": "#8a6848",
+    "M": "#282018", "N": "#403028", "O": "#584838", "P": "#786050",
+    "Q": "#989078", "R": "#b8b0a0",
+    "S": "#1a1818", "T": "#303030", "U": "#484848", "V": "#686868",
+    "W": "#888888", "X": "#a8a8a8", "Y": "#c8c8c8", "Z": "#e8e8e8",
+    "!": "#284838", "@": "#386848", "#": "#488858", "$": "#589868",
+    "%": "#689878", "^": "#789888",
+    "&": "#482818", "*": "#683828", "(": "#884838", ")": "#a85848",
+    "-": "#c87858", "_": "#e89868",
+    "+": "#381818", "=": "#582020", "[": "#782828", "]": "#983838",
+    "{": "#b84848", "}": "#d86868",
+    "|": "#181828", ";": "#282840", ":": "#383858", "'": "#484870",
+    "<": "#585888", ">": "#6868a0",
+    ",": "#302018", "`": "#503028", "~": "#704038", "?": "#905048"
   },
-  ANIM: {
-    idle:  { n: 4, t: 0.38 },
-    walk:  { n: 6, t: 0.09 },
-    attack:{ n: 4, t: 0.07 },
-    hurt:  { n: 2, t: 0.14 },
-    death: { n: 4, t: 0.22 }
+
+  /** Welt-Themen: Farbumbiegung für perfekte Integration */
+  THEMES: {
+    forest: { mul: null, rim: "rgba(82,183,136,0.12)", aura: null },
+    swamp:  { mul: "rgba(40,55,30,0.18)", rim: "rgba(82,183,136,0.1)", aura: "#354828" },
+    frost:  { mul: "rgba(120,160,200,0.14)", rim: "rgba(168,216,232,0.18)", aura: "#506878" },
+    fire:   { mul: "rgba(120,40,15,0.16)", rim: "rgba(243,156,18,0.14)", aura: "#582818" },
+    ruins:  { mul: "rgba(50,45,65,0.12)", rim: "rgba(187,134,252,0.12)", aura: "#403858" }
   }
 };
 
 HR._footRow = null;
+HR._cache = {};
 
 HR.getFootRow = () => {
   if (HR._footRow != null) return HR._footRow;
-  let last = 0;
-  ["warrior", "ranger", "mage"].forEach((cls) => {
-    Object.keys(HR.ANIM).forEach((st) => {
-      for (let f = 0; f < HR.ANIM[st].n; f++) {
-        hrGetBody(cls, st, f).forEach((row, r) => {
-          if (/[^.]/.test(row)) last = Math.max(last, r);
-        });
-      }
-    });
-  });
+  let last = HR.NH - 1;
   HR._footRow = last;
   return last;
 };
 
-HR.displayW = () => HR.NW * HR.SCALE;
-HR.displayH = () => (HR.getFootRow() + 1) * HR.SCALE;
+HR.displayW = () => Math.ceil(HR.NW * HR.SCALE * HR.DISPLAY_SCALE);
+HR.displayH = () => Math.ceil((HR.getFootRow() + 1) * HR.SCALE * HR.DISPLAY_SCALE);
 HR.getFootOffset = () => HR.displayH();
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
 HR.getDrawY = () => HR.getGroundY() - HR.displayH();
 
-function hrDrawRows(c, rows, x, y, flip, sc) {
+/* ---- Zeichen-Hilfen ---- */
+
+function hrBlank() {
+  return Array(HR.NH).fill(null).map(() => ".".repeat(HR.NW).split(""));
+}
+
+function hrSet(g, x, y, ch) {
+  if (y < 0 || y >= HR.NH || x < 0 || x >= HR.NW || !ch || ch === ".") return;
+  g[y][x] = ch;
+}
+
+function hrRow(g, y, x0, str) {
+  for (let i = 0; i < str.length; i++) hrSet(g, x0 + i, y, str[i]);
+}
+
+function hrGrid(g) { return g.map((r) => r.join("")); }
+
+function hrDrawRows(c, rows, x, y, flip, sc, pal) {
   const s = sc || HR.SCALE;
+  const P = pal || HR.PAL;
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let col = 0; col < row.length; col++) {
       const ch = row[col];
-      const colr = HR.PAL[ch];
+      const colr = P[ch] || HR.PAL[ch];
       if (!colr) continue;
       const dc = flip ? row.length - 1 - col : col;
       c.fillStyle = colr;
@@ -68,186 +112,337 @@ function hrDrawRows(c, rows, x, y, flip, sc) {
   }
 }
 
-function hrBlank() {
-  return Array(HR.NH).fill(null).map(() => ".".repeat(HR.NW).split(""));
+function hrThemePal(theme) {
+  const t = HR.THEMES[theme] || HR.THEMES.forest;
+  if (!t.mul) return HR.PAL;
+  return HR.PAL;
 }
 
-function hrSet(g, x, y, ch) {
-  if (y < 0 || y >= HR.NH || x < 0 || x >= HR.NW) return;
-  g[y][x] = ch;
-}
+/* ---- Körper-Bausteine (Proportionen: Kopf ~18 %, lange Beine, schmale Arme) ---- */
 
-function hrFill(g, x0, y0, x1, y1, ch) {
-  for (let y = y0; y <= y1; y++)
-    for (let x = x0; x <= x1; x++) hrSet(g, x, y, ch);
-}
-
-function hrRow(g, y, xs, s) {
-  for (let i = 0; i < s.length; i++) hrSet(g, xs + i, y, s[i]);
-}
-
-function hrGrid(g) {
-  return g.map((r) => r.join(""));
-}
-
-function hrHead(g, cx, y, skin, hair, cls) {
-  hrFill(g, cx - 2, y, cx + 2, y, "0");
-  hrFill(g, cx - 3, y + 1, cx + 3, y + 2, hair);
-  hrFill(g, cx - 2, y + 2, cx + 2, y + 4, skin);
-  hrSet(g, cx - 1, y + 3, "z"); hrSet(g, cx + 1, y + 3, "z");
-  hrSet(g, cx, y + 4, "4");
+function hrDrawHead(g, cx, y, cls, frame) {
+  const skin = "4", skinD = "5", skinL = "6";
   if (cls === "warrior") {
-    hrRow(g, y + 1, cx - 1, "878");
-    hrSet(g, cx, y + 4, "6");
-  }
-  if (cls === "ranger") {
-    hrFill(g, cx - 3, y + 1, cx + 3, y + 2, "v");
-    hrSet(g, cx - 1, y + 3, "4"); hrSet(g, cx + 1, y + 3, "4");
-  }
-  if (cls === "mage") {
-    hrFill(g, cx - 3, y, cx + 3, y + 2, "o");
-    hrFill(g, cx - 2, y + 1, cx + 2, y + 3, "p");
-    hrSet(g, cx, y + 3, "x");
+    hrRow(g, y,     cx - 3, "00000");
+    hrRow(g, y + 1, cx - 4, "0VWV0");
+    hrRow(g, y + 2, cx - 4, "0abb0");
+    hrRow(g, y + 3, cx - 3, "0cdc0");
+    hrRow(g, y + 4, cx - 3, "0cdc0");
+    hrSet(g, cx - 1, y + 3, "1"); hrSet(g, cx + 1, y + 3, "1");
+    hrSet(g, cx, y + 4, "b");
+    hrSet(g, cx - 2, y + 2, "X"); hrSet(g, cx + 2, y + 2, "V");
+  } else if (cls === "ranger") {
+    hrRow(g, y,     cx - 3, "00000");
+    hrRow(g, y + 1, cx - 4, "0kkk0");
+    hrRow(g, y + 2, cx - 4, "0kkk0");
+    hrRow(g, y + 3, cx - 3, "0" + skin + skin + skin + "0");
+    hrRow(g, y + 4, cx - 3, "0" + skinD + skinL + skinD + "0");
+    hrSet(g, cx - 1, y + 3, "8"); hrSet(g, cx + 1, y + 3, "8");
+    hrSet(g, cx, y + 4, "5");
+    hrSet(g, cx, y + 1, "j");
+  } else {
+    hrRow(g, y,     cx - 3, "0AAA0");
+    hrRow(g, y + 1, cx - 4, "0ABBA0");
+    hrRow(g, y + 2, cx - 4, "0zAAz0");
+    hrRow(g, y + 3, cx - 3, "0" + skin + skin + skin + "0");
+    hrRow(g, y + 4, cx - 3, "0" + skinD + skinL + skinD + "0");
+    hrSet(g, cx - 1, y + 3, "9"); hrSet(g, cx + 1, y + 3, "9");
+    hrSet(g, cx, y + 4, "5");
+    hrSet(g, cx, y + 2, "C");
   }
 }
 
-function hrTorso(g, cx, y, cls, breath) {
+function hrDrawTorso(g, cx, y, cls, breath) {
   const by = breath | 0;
   if (cls === "warrior") {
-    hrFill(g, cx - 3, y + by, cx + 3, y + 1 + by, "0");
-    hrFill(g, cx - 2, y + 1 + by, cx + 2, y + 4 + by, "c");
-    hrFill(g, cx - 1, y + 2 + by, cx + 1, y + 3 + by, "e");
-    hrRow(g, y + 4 + by, cx - 2, "fgf");
+    hrRow(g, y + by,     cx - 4, "0S000S0");
+    hrRow(g, y + 1 + by, cx - 4, "0abb0");
+    hrRow(g, y + 2 + by, cx - 3, "cde0");
+    hrRow(g, y + 3 + by, cx - 3, "cde0");
+    hrRow(g, y + 4 + by, cx - 3, "bab0");
+    hrRow(g, y + 5 + by, cx - 3, "0FGF0");
+    hrSet(g, cx - 4, y + 2 + by, "V"); hrSet(g, cx + 4, y + 2 + by, "V");
+    hrSet(g, cx, y + 3 + by, "f");
+    hrRow(g, y + 6 + by, cx - 2, "0H0");
   } else if (cls === "ranger") {
-    hrFill(g, cx - 2, y + by, cx + 2, y + 1 + by, "0");
-    hrFill(g, cx - 2, y + 1 + by, cx + 2, y + 4 + by, "g");
-    hrFill(g, cx - 1, y + 2 + by, cx + 1, y + 3 + by, "h");
-    hrRow(g, y + 4 + by, cx - 1, "fff");
-    hrSet(g, cx + 3, y + 2 + by, "t");
+    hrRow(g, y + by,     cx - 3, "0k0");
+    hrRow(g, y + 1 + by, cx - 3, "0mn0");
+    hrRow(g, y + 2 + by, cx - 3, "0op0");
+    hrRow(g, y + 3 + by, cx - 3, "0pq0");
+    hrRow(g, y + 4 + by, cx - 3, "0rs0");
+    hrRow(g, y + 5 + by, cx - 2, "0F0");
+    hrSet(g, cx - 4, y + 2 + by, "k");
+    hrSet(g, cx + 4, y + 1 + by, "q");
+    hrSet(g, cx + 4, y + 2 + by, "r");
+    hrSet(g, cx, y + 3 + by, "s");
   } else {
-    hrFill(g, cx - 2, y + by, cx + 2, y + 1 + by, "0");
-    hrFill(g, cx - 3, y + 1 + by, cx + 3, y + 4 + by, "o");
-    hrFill(g, cx - 2, y + 2 + by, cx + 2, y + 3 + by, "q");
-    hrRow(g, y + 3 + by, cx - 1, "wx");
+    hrRow(g, y + by,     cx - 3, "0z0");
+    hrRow(g, y + 1 + by, cx - 4, "0ABA0");
+    hrRow(g, y + 2 + by, cx - 4, "0BCB0");
+    hrRow(g, y + 3 + by, cx - 4, "0BCB0");
+    hrRow(g, y + 4 + by, cx - 3, "0CB0");
+    hrRow(g, y + 5 + by, cx - 3, "0AA0");
+    hrSet(g, cx - 5, y + 2 + by, "z");
+    hrSet(g, cx + 5, y + 2 + by, "z");
+    hrSet(g, cx, y + 3 + by, "D");
+    hrRow(g, y + 6 + by, cx - 2, "0=0");
   }
 }
 
-function hrArm(g, cx, y, side, swing, cls) {
+function hrDrawArm(g, cx, y, side, swing, cls) {
   const s = side < 0 ? -1 : 1;
-  const ax = cx + s * 3 + (swing * s | 0);
-  const ay = y + 1 - Math.abs(swing);
-  const col = cls === "warrior" ? "c" : cls === "ranger" ? "g" : "p";
-  const hand = cls === "warrior" ? "d" : "h";
-  hrFill(g, ax, ay, ax, ay + 2, "0");
-  hrSet(g, ax, ay + 1, col);
-  hrSet(g, ax + (s > 0 ? 0 : 0), ay + 2, hand);
+  const ax = cx + s * 4 + (swing * s | 0);
+  const ay = y + 1 - Math.abs(swing >> 1);
+  const upper = cls === "warrior" ? "b" : cls === "ranger" ? "n" : "B";
+  const lower = cls === "warrior" ? "c" : cls === "ranger" ? "o" : "A";
+  const hand = cls === "warrior" ? "d" : cls === "ranger" ? "4" : "6";
+  hrSet(g, ax, ay, "0");
+  hrSet(g, ax, ay + 1, upper);
+  hrSet(g, ax, ay + 2, lower);
+  hrSet(g, ax + (s > 0 ? 0 : 0), ay + 3, hand);
 }
 
-function hrLeg(g, cx, y, side, phase, cls) {
+function hrDrawLeg(g, cx, y, side, phase, cls) {
   const s = side < 0 ? -1 : 1;
   const px = cx + s * 1 + (phase * s | 0);
-  const py = y + (phase > 0 ? 1 : 0);
-  const boot = cls === "mage" ? "o" : "l";
-  const thigh = cls === "warrior" ? "a" : cls === "ranger" ? "f" : "o";
+  const py = y + Math.max(0, phase);
+  const thigh = cls === "warrior" ? "U" : cls === "ranger" ? "J" : "u";
+  const shin  = cls === "warrior" ? "T" : cls === "ranger" ? "K" : "v";
+  const boot  = cls === "warrior" ? "M" : cls === "ranger" ? "M" : "1";
   hrSet(g, px, py, "0");
   hrSet(g, px, py + 1, thigh);
-  hrSet(g, px, py + 2, boot);
+  hrSet(g, px, py + 2, shin);
+  hrSet(g, px, py + 3, boot);
+  hrSet(g, px + (phase > 0 ? s : 0), py + 4, boot);
 }
 
-function hrCape(g, cx, y, sway, cls) {
+function hrDrawCape(g, cx, y, sway, cls) {
+  const sw = sway | 0;
   if (cls === "warrior") {
-    hrSet(g, cx - 4, y + 2 + sway, "q");
-    hrSet(g, cx + 4, y + 2 - sway, "q");
+    hrSet(g, cx - 5, y + 3 + sw, "q");
+    hrSet(g, cx - 5, y + 4 + sw, "r");
+    hrSet(g, cx + 5, y + 3 - sw, "q");
+  } else if (cls === "ranger") {
+    hrSet(g, cx - 6, y + 2 + sw, "k");
+    hrSet(g, cx - 6, y + 3 + sw, "l");
+    hrSet(g, cx - 5, y + 4 + sw, "k");
+    hrSet(g, cx + 6, y + 2 - sw, "k");
+    hrSet(g, cx + 6, y + 3 - sw, "l");
+  } else if (cls === "mage") {
+    hrSet(g, cx - 6, y + 1 + sw, "z");
+    hrSet(g, cx - 6, y + 2 + sw, "A");
+    hrSet(g, cx - 5, y + 3 + sw, "B");
+    hrSet(g, cx - 5, y + 4 + sw, "z");
+    hrSet(g, cx + 6, y + 1 - sw, "z");
+    hrSet(g, cx + 6, y + 2 - sw, "A");
+  }
+}
+
+function hrDrawBelt(g, cx, y, cls) {
+  if (cls === "warrior") {
+    hrRow(g, y, cx - 3, "0HI0");
+    hrSet(g, cx - 4, y, "F"); hrSet(g, cx + 4, y, "F");
+  } else if (cls === "ranger") {
+    hrRow(g, y, cx - 2, "0F0");
+    hrSet(g, cx - 3, y, "q"); hrSet(g, cx + 3, y, "t");
+  } else {
+    hrRow(g, y, cx - 2, "0=0");
+    hrSet(g, cx - 3, y, "+"); hrSet(g, cx + 3, y, "+");
+  }
+}
+
+function hrDrawExtras(g, cx, y, cls) {
+  if (cls === "ranger") {
+    hrSet(g, cx + 5, y + 1, "q");
+    hrSet(g, cx + 5, y + 2, "r");
+    hrSet(g, cx + 5, y + 3, "s");
+    hrSet(g, cx + 6, y + 2, "t");
   }
   if (cls === "mage") {
-    hrSet(g, cx - 4, y + 1 + sway, "n");
-    hrSet(g, cx + 4, y + 1 - sway, "n");
+    hrSet(g, cx - 5, y + 4, "C");
+    hrSet(g, cx - 4, y + 5, "D");
+    hrSet(g, cx + 5, y + 3, "E");
   }
 }
 
 function hrBuildBody(cls, pose) {
   const g = hrBlank();
-  const cx = 7;
-  const headY = 0 + (pose.death > 0 ? pose.death : 0);
-  const torsoY = 5 + (pose.death > 1 ? 2 : 0);
-  const legY = 10 + (pose.death > 2 ? 1 : 0);
-  const skin = "3", hair = cls === "mage" ? "o" : cls === "ranger" ? "7" : "6";
-  hrHead(g, cx, headY, skin, hair, cls);
-  hrTorso(g, cx, torsoY, cls, pose.breath);
-  hrCape(g, cx, torsoY, pose.sway, cls);
-  hrArm(g, cx, torsoY, -1, pose.armL, cls);
-  hrArm(g, cx, torsoY, 1, pose.armR, cls);
-  hrLeg(g, cx, legY, -1, pose.legL, cls);
-  hrLeg(g, cx, legY, 1, pose.legR, cls);
-  if (cls === "ranger") {
-    hrSet(g, cx + 3, torsoY + 2, "s");
-    hrSet(g, cx + 3, torsoY + 3, "t");
-  }
-  if (cls === "mage") {
-    hrSet(g, cx - 4, torsoY + 3, "f");
-    hrSet(g, cx - 4, torsoY + 4, "x");
+  const cx = HR.CX;
+  const headY  = 1 + pose.drop;
+  const torsoY = 7 + pose.drop + (pose.death > 1 ? 2 : 0);
+  const beltY  = 14 + pose.drop + (pose.death > 1 ? 2 : 0);
+  const legY   = 16 + pose.drop + (pose.death > 2 ? 2 : 0);
+
+  hrDrawCape(g, cx, torsoY, pose.sway, cls);
+  hrDrawHead(g, cx, headY, cls, 0);
+  hrDrawTorso(g, cx, torsoY, cls, pose.breath);
+  hrDrawBelt(g, cx, beltY, cls);
+  hrDrawArm(g, cx, torsoY, -1, pose.armL, cls);
+  hrDrawArm(g, cx, torsoY,  1, pose.armR, cls);
+  hrDrawLeg(g, cx, legY, -1, pose.legL, cls);
+  hrDrawLeg(g, cx, legY,  1, pose.legR, cls);
+  hrDrawExtras(g, cx, torsoY, cls);
+
+  if (pose.death > 3) {
+    hrRow(g, legY + 4, cx - 4, "0000000");
   }
   return hrGrid(g);
 }
 
 function hrPose(cls, state, frame) {
   const f = frame;
-  const p = { breath: 0, sway: 0, armL: 0, armR: 0, legL: 0, legR: 0, hurt: 0, death: 0 };
+  const p = { breath: 0, sway: 0, armL: 0, armR: 0, legL: 0, legR: 0, drop: 0, death: 0, lean: 0 };
   if (state === "idle") {
-    p.breath = f % 2;
-    p.sway = (f % 4) < 2 ? 0 : 1;
-    p.armL = -1; p.armR = 1;
+    p.breath = f % 3 === 0 ? 0 : f % 3 === 1 ? 1 : 0;
+    p.sway = f < 3 ? 0 : f < 5 ? 1 : 0;
+    p.armL = -1; p.armR = 0;
   } else if (state === "walk") {
-    const w = [0, 1, 1, 0, -1, -1];
-    p.legL = w[f % 6]; p.legR = -w[f % 6];
-    p.armL = -w[f % 6]; p.armR = w[f % 6];
+    const cycle = [0, 1, 1, 0, -1, -1, 0, 0];
+    const ph = cycle[f % 8];
+    p.legL = ph; p.legR = -ph;
+    p.armL = -ph; p.armR = ph;
     p.sway = f % 2;
+    p.breath = f % 4 === 2 ? 1 : 0;
   } else if (state === "attack") {
-    p.armR = 1 + f;
-    p.armL = -1 - f;
-    p.legL = 1; p.legR = 0;
+    p.armR = 2 + f;
+    p.armL = -2 - Math.floor(f / 2);
+    p.legL = 1; p.legR = -1;
+    p.lean = f;
+    p.sway = f;
   } else if (state === "hurt") {
-    p.hurt = 1;
-    p.armL = -1; p.armR = 1;
+    p.lean = 1 + f;
+    p.armL = -2; p.armR = 2;
+    p.drop = f;
   } else if (state === "death") {
     p.death = f + 1;
-    p.armL = 2; p.armR = 2;
+    p.drop = f + 1;
+    p.armL = 3; p.armR = 3;
+    p.legL = 2; p.legR = 2;
   }
   return p;
 }
 
-HR._cache = {};
 function hrGetBody(cls, state, frame) {
-  const k = cls + state + frame;
+  const k = cls + "|" + state + "|" + frame;
   if (!HR._cache[k]) HR._cache[k] = hrBuildBody(cls, hrPose(cls, state, frame));
   return HR._cache[k];
 }
 
-/* ---- Ausrüstung (skaliert mit 3×) ---- */
-HR.GEAR = {
+/* ---- Detaillierte Waffen & Ausrüstung (eigene Pixel-Grids) ---- */
+
+HR.WEAPONS = {
   sword: [
-    "..00..",".0ee0.",".0ee0.",".0dd0.",".0dd0.",".0ff0.",".0tt0.","..00.."
+    "....00....",
+    "...0ef0...",
+    "...0ef0...",
+    "...0de0...",
+    "...0de0...",
+    "...0cd0...",
+    "...0bc0...",
+    "...0ab0...",
+    "...0FF0...",
+    "...0GG0...",
+    "...0HH0...",
+    "...0JJ0...",
+    "....00...."
   ],
   sword_swing: [
-    "..00..",".0ee0.","0eee0.","0dd0..","0ff0..",".0tt0.","..00.."
+    "....00....",
+    "..0eef0...",
+    ".0eeef0...",
+    "0eef0.....",
+    "0de0......",
+    "0cd0......",
+    ".0bc0.....",
+    "..0FF0....",
+    "...0GG0...",
+    "....00...."
   ],
   shield: [
-    "..00..",".0gD0.","0gDD0.","0gDD0.",".0gG0.","..00.."
+    "....00....",
+    "...0GF0...",
+    "..0GHH0..",
+    "..0HIP0..",
+    "..0HIP0..",
+    "..0GHH0..",
+    "...0GF0...",
+    "...0JJ0...",
+    "....00...."
   ],
   bow: [
-    "..0..",".0u0.","0u.u0","0u.u0",".0u0.","..0.."
+    ".....0....",
+    "....0F0...",
+    "...0F.F0..",
+    "..0F...F0.",
+    "..0F...F0.",
+    "...0F.F0..",
+    "....0F0...",
+    ".....0....",
+    "...0tt0...",
+    "...0ss0..."
   ],
   bow_draw: [
-    "..0..",".0u0.","0ueu0","0ueu0",".0u0.","..0.."
+    ".....0....",
+    "....0F0...",
+    "...0Fef0..",
+    "..0FedeF0.",
+    "..0FedeF0.",
+    "...0Fef0..",
+    "....0F0...",
+    ".....0...."
+  ],
+  arrow: [
+    "..0..",
+    ".0e0.",
+    "0ede0",
+    ".0e0.",
+    "..0.."
   ],
   staff: [
-    "..00..",".0uu0.",".0tt0.",".0qq0.",".0xx0.","..00.."
+    "....00....",
+    "...0JJ0...",
+    "...0HH0...",
+    "...0GG0...",
+    "...0FF0...",
+    "...0FF0...",
+    "...0JJ0...",
+    "...0JJ0...",
+    "...0JJ0...",
+    "...0JJ0...",
+    "...0JJ0...",
+    "....00...."
+  ],
+  staff_orb: [
+    "...0ww0...",
+    "..0wyyw0..",
+    "..0wyxyw0.",
+    "..0wyyw0..",
+    "...0ww0..."
   ],
   staff_cast: [
-    "..00..",".0tt0.","0qrr0","0qrr0",".0xx0.","..00.."
+    "....00....",
+    "...0JJ0...",
+    "..0wyyw0..",
+    ".0wyxxyw0.",
+    ".0wyyyyw0.",
+    "..0wyyw0..",
+    "...0ww0...",
+    "...0JJ0..."
   ],
   spellbook: [
-    ".00.","0ff0","0xx0",".00."
+    "..00..",
+    ".0==0.",
+    ".0CB0.",
+    ".0CB0.",
+    "..00.."
+  ],
+  quiver: [
+    ".0..",
+    "0t0.",
+    "0s0.",
+    "0r0.",
+    "0q0.",
+    ".0.."
   ]
 };
 
@@ -274,80 +469,140 @@ HR.updateAnim = (h, dt, moving) => {
   }
 };
 
-HR.drawGear = (c, cls, cx, cy, angle, attacking, flip) => {
-  const sc = HR.SCALE;
+/** Schild am linken Arm verankert (nicht schwebend) */
+HR.drawShield = (c, cx, cy, flip, sc, pose) => {
+  const s = sc || HR.SCALE;
+  const ox = flip ? 8 : -10;
+  const oy = -4 + (pose.breath || 0);
+  c.save();
+  c.translate(cx + ox, cy + oy);
+  if (flip) c.scale(-1, 1);
+  hrDrawRows(c, HR.WEAPONS.shield, 0, 0, false, s);
+  c.restore();
+};
+
+HR.drawWeapon = (c, cls, cx, cy, angle, attacking, flip, sc, pose) => {
+  const s = sc || HR.SCALE;
   c.save();
   c.translate(cx, cy);
   if (flip) c.scale(-1, 1);
   c.rotate(angle);
+
   if (cls === "warrior") {
-    hrDrawRows(c, HR.GEAR.shield, -5, -3, false, sc);
-    hrDrawRows(c, attacking ? HR.GEAR.sword_swing : HR.GEAR.sword, 1, -10, false, sc);
+    hrDrawRows(c, attacking ? HR.WEAPONS.sword_swing : HR.WEAPONS.sword, 2, -18, false, s);
   } else if (cls === "ranger") {
-    hrDrawRows(c, attacking ? HR.GEAR.bow_draw : HR.GEAR.bow, -2, -6, false, sc);
+    hrDrawRows(c, attacking ? HR.WEAPONS.bow_draw : HR.WEAPONS.bow, -4, -10, false, s);
+    if (attacking) hrDrawRows(c, HR.WEAPONS.arrow, 6, -8, false, s);
   } else {
-    hrDrawRows(c, attacking ? HR.GEAR.staff_cast : HR.GEAR.staff, -1, -10, false, sc);
-    if (attacking) {
-      c.globalAlpha = 0.4;
-      c.fillStyle = "#68d898";
-      c.beginPath(); c.arc(0, -12, 3, 0, Math.PI * 2); c.fill();
+    hrDrawRows(c, attacking ? HR.WEAPONS.staff_cast : HR.WEAPONS.staff, -2, -20, false, s);
+    if (!attacking) hrDrawRows(c, HR.WEAPONS.staff_orb, -2, -24, false, s);
+    else {
+      c.globalAlpha = 0.55;
+      c.fillStyle = "#88d8f0";
+      c.beginPath(); c.arc(0, -22, 5, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 0.25;
+      c.beginPath(); c.arc(0, -22, 9, 0, Math.PI * 2); c.fill();
       c.globalAlpha = 1;
     }
-    hrDrawRows(c, HR.GEAR.spellbook, -6, 1, false, sc);
+    hrDrawRows(c, HR.WEAPONS.spellbook, -10, 2, false, s);
   }
+  c.restore();
+};
+
+HR.drawRangerQuiver = (c, cx, cy, flip, sc, sway) => {
+  const s = sc || HR.SCALE;
+  const ox = flip ? -8 : 6;
+  hrDrawRows(c, HR.WEAPONS.quiver, cx + ox, cy - 8 + (sway || 0), flip, s);
+};
+
+HR.drawMageRunes = (c, cx, cy, flip, frame, casting) => {
+  if (!casting && frame % 3 !== 0) return;
+  c.save();
+  c.globalAlpha = casting ? 0.7 : 0.25;
+  c.fillStyle = casting ? "#c8a8f0" : "#8868b8";
+  const t = frame * 0.8;
+  [[-8, -14], [8, -12], [0, -18]].forEach(([ox, oy], i) => {
+    c.fillRect(cx + ox + Math.sin(t + i) * 2, cy + oy + Math.cos(t + i) * 2, 2, 2);
+  });
   c.restore();
 };
 
 HR.drawShadow = (c, dx, w, groundY) => {
   c.save();
-  c.fillStyle = "rgba(0,0,0,0.35)";
+  c.fillStyle = "rgba(0,0,0,0.38)";
   c.beginPath();
-  c.ellipse(dx + w / 2, groundY + 1, w * 0.38, 4, 0, 0, Math.PI * 2);
+  c.ellipse(dx + w / 2, groundY + 1, w * 0.42, 4.5, 0, 0, Math.PI * 2);
   c.fill();
   c.restore();
+};
+
+HR.applyWorldTint = (c, x, y, w, h, world) => {
+  if (!world || typeof getCharStyle !== "function") return;
+  applyWorldCharTint(c, x, y, w, h, world);
 };
 
 HR.draw = (c, opts) => {
   const { x, h, world, atkOff, hurtOff, classKey, aimX, aimY } = opts;
   const flip = h.facing < 0;
   const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
-  const dx = x + atkOff + hurtOff;
-  const dy = groundY - HR.displayH();
-  const cx = dx + h.w / 2;
-  const cy = dy + h.h * 0.42;
+  const ds = HR.DISPLAY_SCALE;
+  const rawW = HR.NW * HR.SCALE;
+  const rawH = (HR.getFootRow() + 1) * HR.SCALE;
+  const dispW = HR.displayW();
+  const dispH = HR.displayH();
+
+  const leanOff = h.animState === "hurt" ? (h.animFrame || 0) * 1.5 : 0;
+  const dx = x + atkOff + hurtOff - leanOff * (flip ? -1 : 1);
+  const dy = groundY - dispH;
+  const cx = dx + dispW / 2;
+  const cy = dy + dispH * 0.4;
   const attacking = h.attackAnim > 0.04;
   const st = h.animState || "idle";
   const frame = h.animFrame || 0;
+  const pose = hrPose(classKey, st, frame);
   const body = hrGetBody(classKey, st, frame);
-  let angle = Math.atan2(aimY - cy, aimX - cx);
-  if (!attacking && Math.abs(aimX - cx) < 8) angle = flip ? 2.5 : -0.65;
 
-  drawCharShadow(c, cx, groundY, h.w, getCharStyle(world), 0, false);
-  HR.drawShadow(c, dx, h.w, groundY);
-  if (classKey === "warrior") {
-    c.save(); c.translate(cx, cy);
-    if (flip) c.scale(-1, 1);
-    hrDrawRows(c, HR.GEAR.shield, -7, -2, false, HR.SCALE);
-    c.restore();
+  let angle = Math.atan2(aimY - cy, aimX - cx);
+  if (!attacking && Math.abs(aimX - cx) < 12) angle = flip ? 2.4 : -0.7;
+
+  if (typeof drawCharShadow === "function") {
+    drawCharShadow(c, cx, groundY, dispW, getCharStyle(world), 0, false);
   }
-  hrDrawRows(c, body, dx, dy, flip, HR.SCALE);
-  HR.drawGear(c, classKey, cx, cy, angle, attacking, flip);
+  HR.drawShadow(c, dx, dispW, groundY);
+
+  c.save();
+  c.translate(cx, groundY);
+  c.scale(ds, ds);
+  c.translate(-cx, -groundY);
+
+  const rawDx = cx - rawW / 2;
+  const rawDy = groundY - rawH;
+  const icx = cx;
+  const icy = rawDy + rawH * 0.38;
+
+  if (classKey === "warrior") HR.drawShield(c, icx, icy, flip, HR.SCALE, pose);
+  if (classKey === "ranger") HR.drawRangerQuiver(c, icx, icy, flip, HR.SCALE, pose.sway);
+  hrDrawRows(c, body, rawDx, rawDy, flip, HR.SCALE);
+  HR.drawWeapon(c, classKey, icx, icy, angle, attacking, flip, HR.SCALE, pose);
+  if (classKey === "mage") HR.drawMageRunes(c, icx, icy, flip, frame, attacking);
+
+  c.restore();
+
+  HR.applyWorldTint(c, dx, dy, dispW, dispH, world);
+  if (typeof drawCharFeetFog === "function") drawCharFeetFog(c, dx, dy, dispW, dispH, world);
 };
 
 HR.drawPreview = (c, classKey, w, h) => {
   c.clearRect(0, 0, w, h);
-  const body = hrGetBody(classKey, "idle", 0);
-  const bw = HR.displayW();
-  const bh = HR.displayH();
-  const ox = Math.floor((w - bw) / 2);
-  const oy = Math.floor((h - bh) / 2) + 8;
-  const cx = ox + bw / 2;
-  const cy = oy + bh * 0.42;
-  if (classKey === "warrior") {
-    c.save(); c.translate(cx, cy);
-    hrDrawRows(c, HR.GEAR.shield, -7, -2, false, HR.SCALE);
-    c.restore();
-  }
-  hrDrawRows(c, body, ox, oy, false, HR.SCALE);
-  HR.drawGear(c, classKey, cx, cy, -0.65, false, false);
+  const fakeHero = {
+    w: HR.displayW(), h: HR.displayH(), facing: 1,
+    animState: "idle", animFrame: 0, attackAnim: 0, hurtAnim: 0, deathAnim: false
+  };
+  const ox = Math.floor((w - HR.displayW()) / 2);
+  HR.draw(c, {
+    x: ox, h: fakeHero, world: { theme: "forest" },
+    atkOff: 0, hurtOff: 0, classKey,
+    aimX: ox + HR.displayW() * 0.75, aimY: h * 0.4,
+    groundY: h - 8
+  });
 };
