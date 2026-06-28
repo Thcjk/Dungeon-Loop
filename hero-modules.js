@@ -102,11 +102,13 @@ HM.PARTS = {
       hrModRow(g, y + by,     cx - 4, "0S000S0");
       hrModRow(g, y + 1 + by, cx - 4, "0abb0");
       hrModRow(g, y + 2 + by, cx - 3, "cde0");
-      hrModRow(g, y + 3 + by, cx - 3, "cde0");
+      hrModRow(g, y + 3 + by, cx - 3, "def0");
       hrModRow(g, y + 4 + by, cx - 3, "bab0");
       hrModRow(g, y + 5 + by, cx - 3, "0FGF0");
       hrModSet(g, cx - 4, y + 2 + by, "V"); hrModSet(g, cx + 4, y + 2 + by, "V");
+      hrModSet(g, cx - 3, y + 3 + by, "f"); hrModSet(g, cx + 3, y + 3 + by, "e");
       hrModSet(g, cx, y + 3 + by, "f");
+      hrModSet(g, cx - 4, y + 4 + by, "J"); hrModSet(g, cx + 4, y + 4 + by, "J");
     }
   },
   torso_leather: {
@@ -184,11 +186,15 @@ HM.PARTS = {
   },
   hood_ranger: {
     type: "procedural", layer: "helmet",
-    draw(g, cx, y) {
+    draw(g, cx, y, pose) {
+      const sw = (pose.sway | 0) + (pose.capeWave | 0);
       hrModRow(g, y,     cx - 3, "00000");
       hrModRow(g, y + 1, cx - 4, "0kkk0");
       hrModRow(g, y + 2, cx - 4, "0kkk0");
       hrModSet(g, cx, y + 1, "j");
+      hrModSet(g, cx + 3 + sw, y + 4, "8");
+      hrModSet(g, cx + 4 + sw, y + 5, "7");
+      hrModSet(g, cx + 2 + sw, y + 5, "6");
     }
   },
   hat_mage: {
@@ -229,33 +235,39 @@ HM.PARTS = {
   cloak_warrior: {
     type: "procedural", layer: "cloak_back",
     draw(g, cx, y, pose) {
-      const sw = pose.sway | 0;
+      const sw = (pose.sway | 0) + (pose.capeWave | 0);
       hrModSet(g, cx - 5, y + 3 + sw, "q");
       hrModSet(g, cx - 5, y + 4 + sw, "r");
+      hrModSet(g, cx - 4, y + 5 + sw, "s");
       hrModSet(g, cx + 5, y + 3 - sw, "q");
+      hrModSet(g, cx + 4, y + 4 - sw, "r");
     }
   },
   cloak_ranger: {
     type: "procedural", layer: "cloak_back",
     draw(g, cx, y, pose) {
-      const sw = pose.sway | 0;
+      const sw = (pose.sway | 0) + (pose.capeWave | 0);
       hrModSet(g, cx - 6, y + 2 + sw, "k");
       hrModSet(g, cx - 6, y + 3 + sw, "l");
       hrModSet(g, cx - 5, y + 4 + sw, "k");
+      hrModSet(g, cx - 4, y + 5 + sw, "j");
       hrModSet(g, cx + 6, y + 2 - sw, "k");
       hrModSet(g, cx + 6, y + 3 - sw, "l");
+      hrModSet(g, cx + 5, y + 4 - sw, "k");
     }
   },
   cloak_mage: {
     type: "procedural", layer: "cloak_back",
     draw(g, cx, y, pose) {
-      const sw = pose.sway | 0;
+      const sw = (pose.sway | 0) + (pose.capeWave | 0);
       hrModSet(g, cx - 6, y + 1 + sw, "z");
       hrModSet(g, cx - 6, y + 2 + sw, "A");
       hrModSet(g, cx - 5, y + 3 + sw, "B");
       hrModSet(g, cx - 5, y + 4 + sw, "z");
+      hrModSet(g, cx - 4, y + 5 + sw, "A");
       hrModSet(g, cx + 6, y + 1 - sw, "z");
       hrModSet(g, cx + 6, y + 2 - sw, "A");
+      hrModSet(g, cx + 5, y + 3 - sw, "B");
     }
   }
 };
@@ -265,11 +277,11 @@ HM.ITEMS = {
   sword_broad: {
     layer: "weapon", slot: "weapon", z: "front",
     rows: [
-      "....00....","...0ef0...","...0ef0...","...0de0...","...0de0...",
-      "...0cd0...","...0bc0...","...0ab0...","...0FF0...","...0GG0...",
-      "...0HH0...","...0JJ0...","....00...."
+      "....00....","...0ff0...","...0ef0...","...0ef0...","...0de0...",
+      "...0de0...","...0cd0...","...0bc0...","...0ab0...","...0FF0...",
+      "...0GG0...","...0HH0...","...0JJ0...","...0JJ0...","....00...."
     ],
-    grip: { x: 2, y: 11 }, attach: "handR", idleAngle: -0.7
+    grip: { x: 2, y: 13 }, attach: "handR", idleAngle: -0.7
   },
   sword_broad_swing: {
     layer: "weapon", slot: "weapon_attack", z: "front",
@@ -282,8 +294,9 @@ HM.ITEMS = {
   shield_round: {
     layer: "shield", slot: "shield", z: "back",
     rows: [
-      "....00....","...0GF0...","..0GHH0..","..0HIP0..","..0HIP0..",
-      "..0GHH0..","...0GF0...","...0JJ0...","....00...."
+      "....00....","...0GF0...","..0GHH0..","..0HIU0..","..0HIP0..",
+      "..0HIU0..","..0GHH0..","...0GF0...","...0JJ0...","...0JJ0...",
+      "....00...."
     ],
     attach: "handL", offset: { x: -10, y: -4 }
   },

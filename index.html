@@ -17,35 +17,71 @@
 
     <section class="card setup-card" id="setup-section">
       <h2>Held erstellen</h2>
-      <label class="label" for="player-name">Spielername</label>
-      <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
-      <p class="label">Klasse wählen</p>
-      <div class="class-select" id="class-select">
-        <button type="button" class="class-btn warrior selected" data-class="warrior">
-          <canvas class="preview-sprite" data-preview="warrior" width="80" height="88"></canvas>
-          <span class="class-name">Krieger</span>
-          <span class="class-desc">Nahkampf – Schwert, kurze Reichweite</span>
-        </button>
-        <button type="button" class="class-btn ranger" data-class="ranger">
-          <canvas class="preview-sprite" data-preview="ranger" width="80" height="88"></canvas>
-          <span class="class-name">Waldläufer</span>
-          <span class="class-desc">Bogen – große Reichweite, schwach nah</span>
-        </button>
-        <button type="button" class="class-btn mage" data-class="mage">
-          <canvas class="preview-sprite" data-preview="mage" width="80" height="88"></canvas>
-          <span class="class-name">Magier</span>
-          <span class="class-desc">Zauber – mittlere Reichweite, Mana</span>
-        </button>
-      </div>
+      <div class="setup-layout">
+        <div class="setup-main">
+          <label class="label" for="player-name">Spielername</label>
+          <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
 
-      <!-- Fähigkeiten: freischalten (Level+Gold) & ausrüsten (max. 2) -->
-      <div class="ability-section" id="ability-section">
-        <h3 class="ability-heading">Spezialfähigkeiten</h3>
-        <div id="ability-panel" class="ability-panel"></div>
-      </div>
+          <p class="label">Klasse wählen</p>
+          <div class="class-select class-tabs" id="class-select">
+            <button type="button" class="class-btn warrior selected" data-class="warrior">
+              <span class="class-name">Krieger</span>
+              <span class="class-desc">Schild &amp; Schwert</span>
+            </button>
+            <button type="button" class="class-btn ranger" data-class="ranger">
+              <span class="class-name">Waldläufer</span>
+              <span class="class-desc">Kapuze &amp; Bogen</span>
+            </button>
+            <button type="button" class="class-btn mage" data-class="mage">
+              <span class="class-name">Magier</span>
+              <span class="class-desc">Robe &amp; Stab</span>
+            </button>
+          </div>
 
-      <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
-      <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten.</p>
+          <div class="ability-section" id="ability-section">
+            <h3 class="ability-heading">Spezialfähigkeiten</h3>
+            <div id="ability-panel" class="ability-panel"></div>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
+          <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten.</p>
+        </div>
+
+        <aside class="hero-card warrior" id="hero-card">
+          <div class="hero-card-frame">
+            <h3 class="hero-card-title" id="hero-card-class">KRIEGER</h3>
+            <div class="hero-card-portrait">
+              <canvas id="hero-card-canvas" width="220" height="268"></canvas>
+            </div>
+            <div class="hero-card-stats">
+              <div class="hero-stat">
+                <span class="hero-stat-icon">❤️</span>
+                <span class="hero-stat-label">HP</span>
+                <strong id="hero-stat-hp">115</strong>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-icon">⚔</span>
+                <span class="hero-stat-label">Angriff</span>
+                <strong id="hero-stat-atk">19</strong>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-icon">🛡</span>
+                <span class="hero-stat-label">Rüstung</span>
+                <strong id="hero-stat-def">5</strong>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-icon">⭐</span>
+                <span class="hero-stat-label">Seltenheit</span>
+                <strong id="hero-stat-rarity">Gewöhnlich</strong>
+              </div>
+            </div>
+            <div class="hero-card-weapon">
+              <span class="hero-weapon-label">Aktuelle Waffe</span>
+              <strong id="hero-weapon-name">Eisenschwert + Schild</strong>
+            </div>
+          </div>
+        </aside>
+      </div>
     </section>
 
     <section class="card game-card hidden" id="game-section">
@@ -165,10 +201,10 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop – Pixel Edition</p></footer>
-  <script src="world-render.js?v=53"></script>
-  <script src="hero-modules.js?v=53"></script>
-  <script src="hero-render.js?v=53"></script>
-  <script src="abilities.js?v=54"></script>
-  <script src="script.js?v=54"></script>
+  <script src="world-render.js?v=55"></script>
+  <script src="hero-modules.js?v=55"></script>
+  <script src="hero-render.js?v=55"></script>
+  <script src="abilities.js?v=55"></script>
+  <script src="script.js?v=55"></script>
 </body>
 </html>
