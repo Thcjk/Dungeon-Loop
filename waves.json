@@ -37,9 +37,9 @@
   },
   "worldAmbient": {
     "Dunkler Wald": "ambient_forest",
-    "Verfluchte Höhle": "ambient_cave",
-    "Schlossruine": "ambient_ruins",
-    "Feuervulkan": "ambient_volcano",
-    "Drachenland": "ambient_dragon"
+    "Verfluchte Sümpfe": "ambient_swamp",
+    "Gefrorene Berge": "ambient_frost",
+    "Feuerlande": "ambient_fire",
+    "Vergessene Ruinen": "ambient_ruins"
   }
 }
