@@ -1206,7 +1206,13 @@ function startRun() {
   hideUpgrades();
   stopLoop();
   resetRun();
-  createHero();
+  try {
+    createHero();
+  } catch (err) {
+    console.error("createHero failed:", err);
+    addLog("Start fehlgeschlagen – Seite neu laden (Strg+F5).");
+    return;
+  }
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
   $("gameover-panel").classList.add("hidden");
@@ -1314,9 +1320,8 @@ function createHero() {
   };
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
-    y: GROUND - HR.getFootOffset(), vx: 0, vy: 0,
+    y: GROUND - HR.displayH(), vx: 0, vy: 0,
     w: HR.displayW(), h: HR.displayH(),
-    footOff: HR.getFootOffset(),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
     attack: cls.attack + ub("upgrade_attack"),
@@ -1741,7 +1746,9 @@ function update(dt) {
 }
 
 function updateFrame(dt) {
-  const h = game.hero, st = heroStats();
+  const h = game.hero;
+  if (!h) return;
+  const st = heroStats();
   game.scrollX += dt * 40;
   h.specialTimer += dt;
   h.anim += dt * 8;
@@ -1758,7 +1765,7 @@ function updateFrame(dt) {
     const maxX = Math.min(COMBAT_LAYOUT.heroMaxX, CW * 0.48 - h.w);
     h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
-  h.y = GROUND - (h.footOff || HR.getFootOffset());
+  h.y = GROUND - h.h;
   if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)
@@ -2050,7 +2057,6 @@ function render() {
   });
 
   const h = game.hero;
-  const bob = Math.sin(h.anim) * 2;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const hurtOff = h.hurtAnim > 0 ? Math.sin(h.hurtAnim * 20) * 4 * h.hurtAnim : 0;
   const atkOff = h.attackAnim > 0 ? h.facing * 5 * h.attackAnim : 0;
@@ -2086,7 +2092,7 @@ function render() {
     ctx.fillStyle = "rgba(231,76,60,0.25)";
     ctx.fillRect(h.x - 4, h.y - 8, h.w + 8, h.h + 12);
   }
-  drawHero(ctx, h, bob, atkOff, hurtOff, world);
+  drawHero(ctx, h, 0, atkOff, hurtOff, world);
   ctx.globalAlpha = 1;
   ctx.restore();
 
