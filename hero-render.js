@@ -1,64 +1,64 @@
 /* ==========================================================================
-   Dungeon Loop – Hero Renderer (Modular Compositor)
-   Lesbarkeit: größer, Kontrast, 1px-Outline, Heldenkarte im Menü
+   Dungeon Loop – Hero Renderer
+   Spec: schlank, 22–28 px im Spiel, 64–72 px im Menü, hoher Kontrast
    ========================================================================== */
 
 const HR = {
   NW: 22,
-  NH: 28,
+  NH: 26,
   SCALE: 2,
-  /** In-Game – gut lesbar, nicht übergroß */
-  DISPLAY_SCALE: 1.15,
-  /** Startmenü: dynamisch an Kartenrahmen angepasst (Basis 3.5×) */
-  PREVIEW_SCALE: 3.5,
-  OUTLINE: "rgba(10,8,14,0.88)",
+  /** In-Game ~26 px Höhe (Spec: 22–28 px, max. 1/5 Bildschirm) */
+  DISPLAY_SCALE: 0.46,
+  /** Startmenü ~68 px Höhe (Spec: 64–72 px, 2–3× Spiel) */
+  MENU_TARGET_PX: 68,
+  OUTLINE: "rgba(8,6,12,0.92)",
   CX: 11,
 
   ANIM: {
     idle:   { n: 8, t: 0.28 },
-    walk:   { n: 8, t: 0.075 },
+    walk:   { n: 6, t: 0.07 },
     attack: { n: 5, t: 0.065 },
     hurt:   { n: 3, t: 0.11 },
     death:  { n: 6, t: 0.2 }
   },
 
-  /** Aufgehellte Palette – besserer Kontrast im dunklen Wald */
+  /** Helle Akzente – Lesbarkeit im dunklen Wald ohne Neon */
   PAL: {
     ".": null,
-    "0": "#181412", "1": "#242018", "2": "#342c26", "3": "#443a32",
-    "4": "#c8a888", "5": "#a88868", "6": "#ecd8b8", "7": "#886848",
-    "8": "#6a4838", "9": "#3a2a22",
-    "a": "#6a727a", "b": "#8894a0", "c": "#b0bcc8", "d": "#d0dce8",
-    "e": "#e8f0f8", "f": "#fafcff",
-    "g": "#4a5a48", "h": "#5a7258", "i": "#6a8a68", "j": "#7aa878",
-    "k": "#3a4838", "l": "#2a3428",
-    "m": "#6a5848", "n": "#8a7058", "o": "#aa9070", "p": "#cab090",
-    "q": "#483828", "r": "#685040", "s": "#886858",
-    "t": "#384858", "u": "#485868", "v": "#607888", "w": "#7898b0",
-    "x": "#98c8e0", "y": "#b8e0f0",
-    "z": "#483868", "A": "#604880", "B": "#7858a0", "C": "#9878c0",
-    "D": "#b898e0", "E": "#d8b8f8",
-    "F": "#7a6038", "G": "#9a7848", "H": "#ba9848", "I": "#dab858",
-    "J": "#5a4838", "K": "#7a6048", "L": "#9a7858",
-    "M": "#383028", "N": "#504838", "O": "#685848", "P": "#887060",
-    "Q": "#a8a090", "R": "#c8c0b0",
-    "S": "#1a1818", "T": "#404040", "U": "#585858", "V": "#787878",
-    "W": "#989898", "X": "#b8b8b8", "Y": "#d8d8d8", "Z": "#f0f0f0",
-    "!": "#385848", "@": "#486858", "#": "#587868", "$": "#689878",
-    "%": "#78a888", "^": "#88b898",
-    "&": "#583020", "*": "#784030", "(": "#985040", ")": "#b86850",
-    "-": "#d88860", "_": "#f0a878",
-    "+": "#481818", "=": "#682828", "[": "#883838", "]": "#a84848",
-    "{": "#c85858", "}": "#e87878",
-    "|": "#181828", ";": "#282840", ":": "#383858", "'": "#484870",
-    "<": "#585888", ">": "#6868a0",
-    ",": "#403028", "`": "#604838", "~": "#805848", "?": "#a06858"
+    "0": "#201810", "1": "#2a2218", "2": "#3a3228", "3": "#4a4034",
+    "4": "#d8b890", "5": "#b89070", "6": "#f0e0c0", "7": "#987050",
+    "8": "#785038", "9": "#483020",
+    "a": "#788490", "b": "#98a8b8", "c": "#c0d0e0", "d": "#e0ecf8",
+    "e": "#f4f8ff", "f": "#ffffff",
+    "g": "#5a7a58", "h": "#6a9a68", "i": "#7aba78", "j": "#8ada88",
+    "k": "#4a5a48", "l": "#3a4a38",
+    "m": "#806848", "n": "#a08868", "o": "#c0a888", "p": "#e0c8a8",
+    "q": "#584830", "r": "#786040", "s": "#987850",
+    "t": "#485868", "u": "#587888", "v": "#7098a8", "w": "#90b8d0",
+    "x": "#a8d8f0", "y": "#c8f0ff",
+    "z": "#584878", "A": "#705898", "B": "#8870b0", "C": "#a890d0",
+    "D": "#c8b0f0", "E": "#e8d0ff",
+    "F": "#907038", "G": "#b08848", "H": "#d0a850", "I": "#f0c860",
+    "J": "#684830", "K": "#886040", "L": "#a87850",
+    "M": "#403830", "N": "#584840", "O": "#705850", "P": "#907868",
+    "Q": "#b0a890", "R": "#d0c8b0",
+    "S": "#282018", "T": "#505050", "U": "#686868", "V": "#909090",
+    "W": "#b0b0b0", "X": "#d0d0d0", "Y": "#e8e8e8", "Z": "#ffffff",
+    "!": "#486858", "@": "#588868", "#": "#68a878", "$": "#78c088",
+    "%": "#88d898", "^": "#98e8a8",
+    "&": "#683020", "*": "#884830", "(": "#a86040", ")": "#c87850",
+    "-": "#e89868", "_": "#ffb080",
+    "+": "#581818", "=": "#782828", "[": "#983838", "]": "#b84848",
+    "{": "#d85858", "}": "#f87878",
+    "|": "#201828", ";": "#302840", ":": "#403858", "'": "#505070",
+    "<": "#606088", ">": "#7070a0",
+    ",": "#483028", "`": "#684838", "~": "#885848", "?": "#b07058"
   },
 
   CLASS_ACCENT: {
-    warrior: "rgba(220,200,160,0.22)",
-    ranger:  "rgba(140,200,140,0.18)",
-    mage:    "rgba(180,160,240,0.20)"
+    warrior: "rgba(240,200,140,0.28)",
+    ranger:  "rgba(160,220,140,0.24)",
+    mage:    "rgba(200,170,255,0.26)"
   }
 };
 
@@ -76,13 +76,12 @@ HR.displayH = (scale) => Math.ceil((HR.getFootRow() + 1) * HR.SCALE * (scale ?? 
 HR.getFootOffset = () => HR.displayH();
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
 HR.getDrawY = () => HR.getGroundY() - HR.displayH();
+HR.getMenuScale = () => HR.MENU_TARGET_PX / ((HR.getFootRow() + 1) * HR.SCALE);
 
 HR.getHeroLoadout = (classKey, hero) => {
   const overrides = hero?.equipment || null;
   return typeof HM !== "undefined" ? HM.getLoadout(classKey, overrides) : null;
 };
-
-/* ---- Zeichen-Hilfen ---- */
 
 function hrPixelFilled(rows, r, c) {
   if (r < 0 || r >= rows.length || c < 0 || c >= rows[r].length) return false;
@@ -106,7 +105,7 @@ function hrDrawRows(c, rows, x, y, flip, sc, pal) {
   }
 }
 
-/** Dezente 1-Pixel-Outline – 8 Richtungen für bessere Silhouette */
+/** 1 px dunkle Outline – Lesbarkeit trotz kleiner Größe */
 function hrDrawRowsOutlined(c, rows, x, y, flip, sc, pal) {
   const s = sc || HR.SCALE;
   const P = pal || HR.PAL;
@@ -138,31 +137,32 @@ function hrPose(state, frame) {
   if (state === "idle") {
     const t = f / HR.ANIM.idle.n * Math.PI * 2;
     p.breath = Math.sin(t) > 0.2 ? 1 : 0;
-    p.sway = Math.round(Math.sin(t * 0.7) * 1.2);
-    p.capeWave = Math.round(Math.sin(t * 0.55 + 1) * 1.5);
-    p.weaponSway = Math.sin(t * 0.45) * 0.07;
+    p.sway = Math.round(Math.sin(t * 0.7));
+    p.capeWave = Math.round(Math.sin(t * 0.55 + 1) * 1.2);
+    p.weaponSway = Math.sin(t * 0.45) * 0.06;
     p.armL = -1;
     p.armR = Math.sin(t * 0.5) > 0 ? 0 : 1;
   } else if (state === "walk") {
-    const cycle = [0, 1, 1, 0, -1, -1, 0, 0];
-    const ph = cycle[f % 8];
+    const cycle = [0, 1, 1, 0, -1, -1];
+    const ph = cycle[f % 6];
     p.legL = ph; p.legR = -ph;
     p.armL = -ph; p.armR = ph;
     p.sway = f % 2;
-    p.breath = f % 4 === 2 ? 1 : 0;
+    p.breath = f % 3 === 1 ? 1 : 0;
   } else if (state === "attack") {
-    p.armR = 2 + f;
-    p.armL = -2 - Math.floor(f / 2);
+    p.armR = 1 + f;
+    p.armL = -1 - Math.floor(f / 2);
     p.legL = 1; p.legR = -1;
-    p.lean = f; p.sway = f;
+    p.lean = f;
+    p.sway = f;
   } else if (state === "hurt") {
     p.lean = 1 + f;
-    p.armL = -2; p.armR = 2;
+    p.armL = -1; p.armR = 1;
     p.drop = f;
   } else if (state === "death") {
     p.death = f + 1;
     p.drop = f + 1;
-    p.armL = 3; p.armR = 3;
+    p.armL = 2; p.armR = 2;
     p.legL = 2; p.legR = 2;
   }
   return p;
@@ -193,15 +193,15 @@ function hrResolveAnchor(item, rawDx, rawDy, pose, flip) {
   const attach = item.attach || "handR";
   if (attach === "handL") {
     const base = HM.getAnchor("handL", rawDx, rawDy, pose, flip);
-    return { x: base.x + (flip ? 5 : -5), y: base.y };
+    return { x: base.x + (flip ? 4 : -4), y: base.y };
   }
   if (attach === "handR") {
     const base = HM.getAnchor("handR", rawDx, rawDy, pose, flip);
-    return { x: base.x + (flip ? -5 : 5), y: base.y };
+    return { x: base.x + (flip ? -4 : 4), y: base.y };
   }
   if (attach === "back") {
     const base = HM.getAnchor("back", rawDx, rawDy, pose, flip);
-    return { x: base.x + (flip ? -7 : 7), y: base.y };
+    return { x: base.x + (flip ? -5 : 5), y: base.y };
   }
   return HM.getAnchor("torso", rawDx, rawDy, pose, flip);
 }
@@ -210,7 +210,7 @@ function hrDrawLayerList(c, list, rawDx, rawDy, flip, sc, pose, attacking, aimAn
   list.forEach((layer) => {
     if (layer.kind === "effect") {
       const ax = HM.getAnchor("torso", rawDx, rawDy, pose, flip);
-      layer.effect.draw(c, ax.x, ax.y - 8, 0, attacking);
+      layer.effect.draw(c, ax.x, ax.y - 6, 0, attacking);
       return;
     }
     const item = layer.item;
@@ -224,23 +224,20 @@ function hrDrawLayerList(c, list, rawDx, rawDy, flip, sc, pose, attacking, aimAn
   });
 }
 
-/** Dezente Helden-Randbeleuchtung – hebt vom dunklen Wald ab */
 function hrDrawHeroRim(c, dx, dy, w, h, classKey) {
   const cx = dx + w / 2;
-  const cy = dy + h * 0.38;
+  const cy = dy + h * 0.36;
   c.save();
-  const accent = HR.CLASS_ACCENT[classKey] || "rgba(200,190,170,0.12)";
-  const g = c.createRadialGradient(cx, cy, w * 0.08, cx, cy, w * 0.75);
+  const accent = HR.CLASS_ACCENT[classKey] || "rgba(220,210,190,0.18)";
+  const g = c.createRadialGradient(cx, cy, w * 0.06, cx, cy, w * 0.85);
   g.addColorStop(0, accent);
-  g.addColorStop(0.45, "rgba(235,225,210,0.12)");
+  g.addColorStop(0.5, "rgba(255,248,230,0.14)");
   g.addColorStop(1, "rgba(0,0,0,0)");
   c.globalCompositeOperation = "screen";
   c.fillStyle = g;
-  c.fillRect(dx - 6, dy - 6, w + 12, h + 12);
+  c.fillRect(dx - 4, dy - 4, w + 8, h + 8);
   c.restore();
 }
-
-/* ---- Animation ---- */
 
 HR.getAnimState = (h, moving) => {
   if (typeof game !== "undefined" && (game.isDead || h.deathAnim)) return "death";
@@ -267,14 +264,13 @@ HR.updateAnim = (h, dt, moving) => {
 
 HR.drawShadow = (c, dx, w, groundY, strong) => {
   c.save();
-  c.fillStyle = strong ? "rgba(0,0,0,0.48)" : "rgba(0,0,0,0.38)";
+  c.fillStyle = strong ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.35)";
   c.beginPath();
-  c.ellipse(dx + w / 2, groundY + 2, w * (strong ? 0.48 : 0.42), strong ? 6 : 4.5, 0, 0, Math.PI * 2);
+  c.ellipse(dx + w / 2, groundY + 1, w * (strong ? 0.5 : 0.44), strong ? 5 : 3.5, 0, 0, Math.PI * 2);
   c.fill();
   c.restore();
 };
 
-/** Kern-Render – In-Game & Menü teilen sich dieselbe Pipeline */
 function hrRenderHero(c, opts) {
   const {
     x, h, classKey, aimX, aimY, groundY,
@@ -289,7 +285,7 @@ function hrRenderHero(c, opts) {
   const outlined = true;
 
   const loadout = HR.getHeroLoadout(classKey, h);
-  const leanOff = animState === "hurt" ? (animFrame || 0) * 1.5 : 0;
+  const leanOff = animState === "hurt" ? (animFrame || 0) * 1.2 : 0;
   const dx = x + (opts.atkOff || 0) + (opts.hurtOff || 0) - leanOff * (flip ? -1 : 1);
   const dy = groundY - dispH;
   const cx = dx + dispW / 2;
@@ -301,7 +297,7 @@ function hrRenderHero(c, opts) {
   const body = hrGetBodyGrid(loadout, st, frame);
 
   let aimAngle = Math.atan2(aimY - cy, aimX - cx);
-  if (!attacking && Math.abs(aimX - cx) < 12) aimAngle = flip ? 2.4 : -0.7;
+  if (!attacking && Math.abs(aimX - cx) < 10) aimAngle = flip ? 2.4 : -0.7;
 
   if (!menuMode && typeof drawCharShadow === "function" && opts.world) {
     drawCharShadow(c, cx, groundY, dispW, getCharStyle(opts.world), 0, false);
@@ -321,7 +317,7 @@ function hrRenderHero(c, opts) {
   hrDrawRowsOutlined(c, body, rawDx, rawDy, flip, HR.SCALE);
   hrDrawLayerList(c, front, rawDx, rawDy, flip, HR.SCALE, pose, attacking, aimAngle, outlined);
   const fxAnchor = HM.getAnchor("torso", rawDx, rawDy, pose, flip);
-  effects.forEach((layer) => layer.effect.draw(c, fxAnchor.x, fxAnchor.y - 10, frame, attacking));
+  effects.forEach((layer) => layer.effect.draw(c, fxAnchor.x, fxAnchor.y - 8, frame, attacking));
 
   c.restore();
 
@@ -330,14 +326,8 @@ function hrRenderHero(c, opts) {
   if (!menuMode && opts.world) {
     if (typeof applyWorldCharTint === "function") {
       c.save();
-      c.globalAlpha = 0.18;
+      c.globalAlpha = 0.06;
       applyWorldCharTint(c, dx, dy, dispW, dispH, opts.world);
-      c.restore();
-    }
-    if (typeof drawCharFeetFog === "function") {
-      c.save();
-      c.globalAlpha = 0.08;
-      drawCharFeetFog(c, dx, dy, dispW, dispH, opts.world);
       c.restore();
     }
   }
@@ -355,34 +345,34 @@ HR.draw = (c, opts) => {
   });
 };
 
-/** Heldenkarte im Startmenü – große Idle-Vorschau mit Beleuchtung */
+/** Heldenkarte – Bühne mit ~68 px Held (Spec: 64–72 px) */
 HR.drawHeroCard = (c, classKey, w, h, frame) => {
   c.clearRect(0, 0, w, h);
   c.imageSmoothingEnabled = false;
 
   const grad = c.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "#243040");
-  grad.addColorStop(0.5, "#2a3848");
-  grad.addColorStop(1, "#1a2028");
+  grad.addColorStop(0, "#2a3848");
+  grad.addColorStop(0.55, "#324050");
+  grad.addColorStop(1, "#1e2830");
   c.fillStyle = grad;
   c.fillRect(0, 0, w, h);
 
   c.save();
-  c.globalAlpha = 0.55;
-  const spot = c.createRadialGradient(w * 0.5, h * 0.46, 4, w * 0.5, h * 0.46, w * 0.62);
-  spot.addColorStop(0, "rgba(255,240,210,0.55)");
-  spot.addColorStop(0.55, "rgba(255,230,200,0.12)");
+  c.globalAlpha = 0.65;
+  const spot = c.createRadialGradient(w * 0.5, h * 0.48, 2, w * 0.5, h * 0.48, w * 0.58);
+  spot.addColorStop(0, "rgba(255,248,220,0.65)");
+  spot.addColorStop(0.45, "rgba(255,235,200,0.18)");
   spot.addColorStop(1, "rgba(0,0,0,0)");
   c.fillStyle = spot;
   c.fillRect(0, 0, w, h);
   c.restore();
 
-  c.strokeStyle = "rgba(255,255,255,0.08)";
+  c.strokeStyle = "rgba(255,255,255,0.1)";
   c.strokeRect(0.5, 0.5, w - 1, h - 1);
 
   const baseSpriteH = (HR.getFootRow() + 1) * HR.SCALE;
   const baseSpriteW = HR.NW * HR.SCALE;
-  const cardScale = Math.min((h * 0.88) / baseSpriteH, (w * 0.78) / baseSpriteW);
+  const cardScale = Math.min(HR.MENU_TARGET_PX / baseSpriteH, (w * 0.72) / baseSpriteW);
   const dispW = Math.ceil(baseSpriteW * cardScale);
   const dispH = Math.ceil(baseSpriteH * cardScale);
 
@@ -392,11 +382,11 @@ HR.drawHeroCard = (c, classKey, w, h, frame) => {
     attackAnim: 0, hurtAnim: 0, deathAnim: false, equipment: null
   };
   const ox = Math.floor((w - dispW) / 2);
-  const groundY = h - Math.max(14, Math.floor(h * 0.06));
+  const groundY = h - Math.max(12, Math.floor(h * 0.05));
 
   hrRenderHero(c, {
     x: ox, h: fakeHero, classKey,
-    aimX: ox + dispW * 0.78, aimY: groundY - dispH * 0.42,
+    aimX: ox + dispW * 0.75, aimY: groundY - dispH * 0.4,
     groundY, displayScale: cardScale, menuMode: true,
     animState: "idle", animFrame: frame || 0
   });
