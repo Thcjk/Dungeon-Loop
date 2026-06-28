@@ -727,7 +727,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=48");
+    const res = await fetch("sounds.json?v=49");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -2052,6 +2052,7 @@ function onDeath() {
 function showGameOver() {
 
   const world = getWorld();
+  emitCombatEvent("game_over");
   $("gameover-panel").classList.remove("hidden");
   $("gameover-summary").textContent =
     "Level " + game.dungeonLevel + " · " + world.name + "\n" +
