@@ -556,6 +556,9 @@ const game = {
 let WAVE_DATA = null;
 let SOUND_MAP = null;
 const audioCache = {};
+let musicTrack = null;
+let musicKey = null;
+let audioUnlocked = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -724,23 +727,76 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json");
+    const res = await fetch("sounds.json?v=45");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
 }
 
+function getSoundSrc(key) {
+  return SOUND_MAP?.files?.[key] || null;
+}
+
+function resolveAudioSrc(src) {
+  if (!src) return null;
+  if (/^https?:\/\//.test(src)) return src;
+  try { return new URL(src, location.href).href; } catch (_) { return src; }
+}
+
+function unlockAudio() {
+  audioUnlocked = true;
+}
+
 function playSound(key) {
-  if (!SOUND_MAP?.enabled || !SOUND_MAP.files?.[key]) return;
-  const src = SOUND_MAP.files[key];
+  if (!SOUND_MAP?.enabled) return;
+  const src = getSoundSrc(key);
+  if (!src) return;
+  const vol = SOUND_MAP.sfxVolume ?? SOUND_MAP.volume ?? 0.5;
   if (!audioCache[src]) {
-    const a = new Audio(src);
-    a.volume = SOUND_MAP.volume ?? 0.5;
+    const a = new Audio(resolveAudioSrc(src));
+    a.volume = vol;
     audioCache[src] = a;
   }
   const audio = audioCache[src];
-  audio.volume = SOUND_MAP.volume ?? 0.5;
+  audio.volume = vol;
   audio.currentTime = 0;
   audio.play().catch(() => {});
+}
+
+function playMusic(key) {
+  if (!SOUND_MAP?.enabled || !key) return;
+  const src = getSoundSrc(key);
+  if (!src) return;
+  if (musicKey === key && musicTrack) {
+    musicTrack.play().catch(() => {});
+    return;
+  }
+  stopMusic();
+  musicKey = key;
+  musicTrack = new Audio(resolveAudioSrc(src));
+  musicTrack.loop = true;
+  musicTrack.volume = SOUND_MAP.musicVolume ?? 0.32;
+  musicTrack.play().catch(() => {});
+}
+
+function stopMusic() {
+  if (musicTrack) {
+    musicTrack.pause();
+    musicTrack.currentTime = 0;
+    musicTrack = null;
+    musicKey = null;
+  }
+}
+
+function playWorldMusic(world) {
+  if (!world) return;
+  const key = WAVE_DATA?.worldAmbient?.[world.name];
+  if (key) playMusic(key);
+  else if (SOUND_MAP?.music?.game) playMusic("music_game");
+}
+
+function playGameMusic() {
+  if (getSoundSrc("music_game")) playMusic("music_game");
+  else playWorldMusic(getWorld());
 }
 
 function emitCombatEvent(eventKey) {
@@ -866,7 +922,7 @@ function bindEvents() {
     });
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
-  bind("btn-load-player", loadPlayer);
+  bind("btn-load-player", () => { unlockAudio(); loadPlayer(); });
   bind("btn-start-run", startRun);
   bind("btn-pause", togglePause);
   bind("btn-restart", restartRun);
@@ -1256,6 +1312,7 @@ function startRun() {
   $("btn-pause").textContent = "Pause (P)";
   safeSpawnWave();
   game.combatReady = true;
+  playWorldMusic(getWorld());
   addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
   updateClassHint();
   requestAnimationFrame(() => {
@@ -1942,8 +1999,7 @@ function onEnemyKill(e) {
     initWorldBackground();
     startWorldTransition(newWorld);
     addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, aber machbar!", "boss");
-    const ambKey = WAVE_DATA?.worldAmbient?.[newWorld.name];
-    if (ambKey) playSound(ambKey);
+    playWorldMusic(newWorld);
     emitCombatEvent("world_change");
   }
   addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "");
@@ -1963,6 +2019,7 @@ function onEnemyKill(e) {
 
 function onDeath() {
   game.isDead = true;
+  stopMusic();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   game.totalGold += game.runGold;
   savePlayer();
