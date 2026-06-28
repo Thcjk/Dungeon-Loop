@@ -99,16 +99,16 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  min-height: 280px;
+  min-height: 300px;
   margin-bottom: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: radial-gradient(ellipse at 50% 42%, rgba(255, 240, 210, 0.18) 0%, rgba(42, 56, 72, 0.95) 55%, rgba(26, 32, 40, 1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: radial-gradient(ellipse at 50% 44%, rgba(255, 248, 225, 0.28) 0%, rgba(52, 68, 88, 0.92) 50%, rgba(30, 38, 48, 1) 100%);
 }
 #hero-card-canvas {
   image-rendering: pixelated;
   width: 100%;
-  max-width: 240px;
-  height: auto;
+  max-width: 260px;
+  height: 300px;
   display: block;
 }
 .hero-card-stats {

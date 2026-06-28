@@ -845,7 +845,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=58");
+    const res = await fetch("sounds.json?v=59");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -2920,14 +2920,14 @@ function render() {
 
   /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste 1 / 2) */
   if (game.isRunning) {
-    ctx.font = "bold 7px Courier New";
+    ctx.font = "bold 8px Courier New";
     [0, 1].forEach((slotIdx) => {
       const ab = getEquippedAbilityAtSlot(slotIdx);
       if (!ab) return;
       const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
-      ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.75)";
+      ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.85)";
       const label = (slotIdx + 1) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
-      ctx.fillText(label, h.x, h.y - 14 - slotIdx * 8);
+      ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
     });
   }
 
