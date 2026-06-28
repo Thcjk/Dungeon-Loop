@@ -33,7 +33,8 @@
     "explosion": { "label": "Explosion", "sound": "explosion" },
     "coin": { "label": "Gold eingesammelt", "sound": "coin" },
     "level_up": { "label": "Level Up", "sound": "level_up" },
-    "world_change": { "label": "Neue Welt", "sound": "world_change" }
+    "world_change": { "label": "Neue Welt", "sound": "world_change" },
+    "game_over": { "label": "Game Over", "sound": "game_over" }
   },
   "worldAmbient": {
     "Dunkler Wald": "ambient_forest",
