@@ -1,7 +1,7 @@
 const HR = {
   W: 34,
   H: 48,
-  DISPLAY_SCALE: 1,
+  DISPLAY_SCALE: 0.7,
   MENU_FILL: 0.78,
   ANIM: {
     idle: { n: 4, t: 0.28 },
