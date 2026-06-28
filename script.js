@@ -845,7 +845,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=56");
+    const res = await fetch("sounds.json?v=57");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -998,13 +998,20 @@ function setEquippedAbility(slotIdx, abilityId) {
   game.meta.abilities[ck].equipped[slotIdx] = abilityId;
   saveMeta();
   renderAbilityPanel();
+  updateClassHint();
   updateStatus();
 }
 
-function getEquippedAbilities() {
+function getEquippedAbilityAtSlot(slotIdx) {
   const ck = game.classKey;
-  const eq = game.meta?.abilities[ck]?.equipped || [];
-  return eq.filter(Boolean).map((id) => getAbilityById(ck, id)).filter(Boolean);
+  const id = game.meta?.abilities[ck]?.equipped?.[slotIdx];
+  if (!id) return null;
+  return getAbilityById(ck, id);
+}
+
+function getEquippedAbilities() {
+  const eq = game.meta?.abilities[game.classKey]?.equipped || [];
+  return eq.map((id) => (id ? getAbilityById(game.classKey, id) : null)).filter(Boolean);
 }
 
 function getEffectiveAbilityCd(ab) {
@@ -1030,7 +1037,7 @@ function renderAbilityPanel() {
   let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Max. 2 Fähigkeiten ausrüsten</p>';
   html += '<div class="ability-equip-row">';
   [0, 1].forEach((slotIdx) => {
-    html += '<label class="label">Spezialfähigkeit ' + (slotIdx + 1) + '</label>';
+    html += '<label class="label">Taste ' + (slotIdx + 1) + '</label>';
     html += '<select class="input ability-select" data-slot="' + slotIdx + '">';
     html += '<option value="">– Keine –</option>';
     owned.forEach((id) => {
@@ -1316,7 +1323,8 @@ function bindEvents() {
   window.addEventListener("keydown", (e) => {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
-    if (e.key === "1" && game.isRunning) useSpecial();
+    if (e.key === "1" && game.isRunning) useEquippedAbility(0);
+    if (e.key === "2" && game.isRunning) useEquippedAbility(1);
     if (e.key.toLowerCase() === "f") toggleFullscreen();
     if (e.key.toLowerCase() === "u" && !$("game-section").classList.contains("hidden")) {
       if (document.activeElement?.tagName === "INPUT") return;
@@ -1339,13 +1347,15 @@ function updateClassHint() {
   const cls = CLASSES[game.classKey];
   const hint = $("controls-hint");
   if (!hint || !cls) return;
-  const eq = getEquippedAbilities().map((a) => a.name).join(", ") || "Standard";
+  const slots = [0, 1].map((i) => getEquippedAbilityAtSlot(i)).filter(Boolean);
+  const eq = slots.map((a) => a.name).join(", ") || "–";
+  const keyHint = "<kbd>1</kbd>/<kbd>2</kbd> Spezial";
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
   } else {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
   }
 }
 
@@ -2402,40 +2412,26 @@ function castAbility(ab, h, st) {
   return true;
 }
 
-/** Auto-Cast: ausgerüstete Fähigkeiten nacheinander (nicht gleichzeitig) */
-function updateEquippedAbilities(dt, h, st) {
-  if (game.abilityCastLock > 0) { game.abilityCastLock -= dt; return; }
+/** Cooldowns & Buffs – kein Auto-Cast */
+function updateAbilityState(dt, h) {
+  if (game.abilityCastLock > 0) game.abilityCastLock -= dt;
   if (h.warriorBuff > 0) h.warriorBuff -= dt;
-
   Object.keys(h.abilityCds).forEach((k) => { h.abilityCds[k] += dt; });
-
-  const equipped = getEquippedAbilities();
-  if (!equipped.length) return;
-
-  for (const ab of equipped) {
-    const cd = getEffectiveAbilityCd(ab);
-    if ((h.abilityCds[ab.id] || 0) < cd) continue;
-    if (!canCastAbility(ab, h, st)) continue;
-    if (castAbility(ab, h, st)) {
-      h.abilityCds[ab.id] = 0;
-      break;
-    }
-  }
 }
 
-function useSpecial() {
-  /** Taste 1: erste ausgerüstete Fähigkeit manuell auslösen (Fallback) */
+function useEquippedAbility(slotIdx) {
   const h = game.hero;
   if (!h || game.isPaused || !game.isRunning || game.isDead || game.abilityCastLock > 0) return;
+  const ab = getEquippedAbilityAtSlot(slotIdx);
+  if (!ab) return;
   const st = heroStats();
-  const equipped = getEquippedAbilities();
-  if (!equipped.length) return;
-  const ab = equipped[0];
   const cd = getEffectiveAbilityCd(ab);
   if ((h.abilityCds[ab.id] || 0) < cd) return;
   if (!canCastAbility(ab, h, st)) return;
   if (castAbility(ab, h, st)) h.abilityCds[ab.id] = 0;
 }
+
+function useSpecial() { useEquippedAbility(0); }
 
 // ============================================
 // GAME LOOP
@@ -2500,8 +2496,8 @@ function updateFrame(dt) {
   // Angriff nur wenn Maus auf Gegner in Reichweite
   if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
 
-  /** Auto-Cast ausgerüsteter Spezialfähigkeiten (max. 2, nacheinander) */
-  if (game.isRunning && !game.isPaused && !game.isDead) updateEquippedAbilities(dt, h, st);
+  /** Spezialfähigkeiten: Cooldowns (nur manuell über Taste 1/2) */
+  if (game.isRunning && !game.isPaused && !game.isDead) updateAbilityState(dt, h);
 
   // Ambient-Partikel (Parallax-Welt)
   updateWorldAmbient(dt, getWorld());
@@ -2922,15 +2918,16 @@ function render() {
     }
   });
 
-  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden */
-  const equipped = getEquippedAbilities();
-  if (equipped.length && game.isRunning) {
+  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste 1 / 2) */
+  if (game.isRunning) {
     ctx.font = "bold 8px Courier New";
-    ctx.fillStyle = "rgba(200,160,255,0.9)";
-    equipped.forEach((ab, i) => {
+    [0, 1].forEach((slotIdx) => {
+      const ab = getEquippedAbilityAtSlot(slotIdx);
+      if (!ab) return;
       const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
       ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.75)";
-      ctx.fillText(ab.name.substring(0, 6) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s"), h.x, h.y - 22 - i * 10);
+      const label = (slotIdx + 1) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
+      ctx.fillText(label, h.x, h.y - 22 - slotIdx * 10);
     });
   }
 
@@ -3014,14 +3011,16 @@ function updateStatus() {
   if (accEl) accEl.textContent = getMetaLevel();
   const h = game.hero;
   if (h) {
-    const equipped = getEquippedAbilities();
-    if (equipped.length) {
-      const cds = equipped.map((ab) => {
-        const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
-        return left <= 0 ? ab.name.charAt(0) : Math.ceil(left) + "s";
-      });
-      $("special-status").textContent = cds.join(" | ");
-      $("special-status").style.color = cds.some((c) => !c.endsWith("s")) ? "#2ecc71" : "";
+    const parts = [0, 1].map((slotIdx) => {
+      const ab = getEquippedAbilityAtSlot(slotIdx);
+      if (!ab) return null;
+      const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+      const cd = left <= 0 ? "✓" : Math.ceil(left) + "s";
+      return (slotIdx + 1) + ":" + ab.name.charAt(0) + cd;
+    }).filter(Boolean);
+    if (parts.length) {
+      $("special-status").textContent = parts.join(" | ");
+      $("special-status").style.color = parts.some((p) => p.includes("✓")) ? "#2ecc71" : "";
     } else {
       $("special-status").textContent = "–";
       $("special-status").style.color = "";
