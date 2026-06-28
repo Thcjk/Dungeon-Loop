@@ -10,7 +10,7 @@
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Maus auf Gegner = angreifen | 1 = Spezial | U = Upgrades</p>
+    <p class="subtitle">Maus auf Gegner = angreifen | Spezialfähigkeiten automatisch | U = Upgrades</p>
   </header>
 
   <main class="container">
@@ -37,6 +37,13 @@
           <span class="class-desc">Zauber – mittlere Reichweite, Mana</span>
         </button>
       </div>
+
+      <!-- Fähigkeiten: freischalten (Level+Gold) & ausrüsten (max. 2) -->
+      <div class="ability-section" id="ability-section">
+        <h3 class="ability-heading">Spezialfähigkeiten</h3>
+        <div id="ability-panel" class="ability-panel"></div>
+      </div>
+
       <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
       <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten.</p>
     </section>
@@ -122,6 +129,7 @@
             <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
             <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
             <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
+            <div class="status-item"><span class="status-label">Account</span><span class="status-value" id="account-level">1</span></div>
           </div>
 
           <div class="loot-display hidden" id="loot-display">
@@ -130,6 +138,10 @@
           </div>
 
           <div class="controls">
+            <div class="audio-toggles">
+              <button type="button" class="btn btn-audio toggle-on" id="btn-toggle-music">Musik AN</button>
+              <button type="button" class="btn btn-audio toggle-on" id="btn-toggle-sfx">Sound AN</button>
+            </div>
             <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
             <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
             <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades (U)</button>
@@ -153,8 +165,9 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop – Pixel Edition</p></footer>
-  <script src="world-render.js?v=41"></script>
-  <script src="hero-render.js?v=41"></script>
-  <script src="script.js?v=50"></script>
+  <script src="world-render.js?v=51"></script>
+  <script src="hero-render.js?v=51"></script>
+  <script src="abilities.js?v=51"></script>
+  <script src="script.js?v=51"></script>
 </body>
 </html>
