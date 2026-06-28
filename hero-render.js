@@ -1,8 +1,8 @@
-/* Hero Renderer – komplett neues Spieler-Charaktersystem (32×48 → 2× Skalierung) */
+/* Hero Renderer – kompakt wie Gegner (14×14 Grid, 3× Skalierung → ~42×42 px) */
 const HR = {
-  NW: 32,
-  NH: 48,
-  SCALE: 2,
+  NW: 14,
+  NH: 14,
+  SCALE: 3,
   PAL: {
     ".": null,
     "0": "#14100e", "1": "#2a221c", "2": "#3d342c",
@@ -29,8 +29,26 @@ const HR = {
   }
 };
 
+HR._footRow = null;
+
+HR.getFootRow = () => {
+  if (HR._footRow != null) return HR._footRow;
+  let last = 0;
+  ["warrior", "ranger", "mage"].forEach((cls) => {
+    Object.keys(HR.ANIM).forEach((st) => {
+      for (let f = 0; f < HR.ANIM[st].n; f++) {
+        hrGetBody(cls, st, f).forEach((row, r) => {
+          if (/[^.]/.test(row)) last = Math.max(last, r);
+        });
+      }
+    });
+  });
+  HR._footRow = last;
+  return last;
+};
+
 HR.displayW = () => HR.NW * HR.SCALE;
-HR.displayH = () => HR.NH * HR.SCALE;
+HR.displayH = () => (HR.getFootRow() + 1) * HR.SCALE;
 HR.getFootOffset = () => HR.displayH();
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
 HR.getDrawY = () => HR.getGroundY() - HR.displayH();
@@ -73,100 +91,86 @@ function hrGrid(g) {
 }
 
 function hrHead(g, cx, y, skin, hair, cls) {
-  hrFill(g, cx - 3, y, cx + 3, y + 1, "0");
-  hrFill(g, cx - 4, y + 1, cx + 4, y + 2, hair);
-  hrFill(g, cx - 4, y + 2, cx + 4, y + 5, hair);
-  hrFill(g, cx - 3, y + 3, cx + 3, y + 6, skin);
-  hrSet(g, cx - 2, y + 4, "z"); hrSet(g, cx + 2, y + 4, "z");
-  hrSet(g, cx - 1, y + 4, "y"); hrSet(g, cx + 1, y + 4, "y");
-  hrSet(g, cx, y + 5, "4");
+  hrFill(g, cx - 2, y, cx + 2, y, "0");
+  hrFill(g, cx - 3, y + 1, cx + 3, y + 2, hair);
+  hrFill(g, cx - 2, y + 2, cx + 2, y + 4, skin);
+  hrSet(g, cx - 1, y + 3, "z"); hrSet(g, cx + 1, y + 3, "z");
+  hrSet(g, cx, y + 4, "4");
   if (cls === "warrior") {
-    hrRow(g, y + 2, cx - 2, "878");
-    hrSet(g, cx, y + 6, "6");
+    hrRow(g, y + 1, cx - 1, "878");
+    hrSet(g, cx, y + 4, "6");
   }
   if (cls === "ranger") {
-    hrFill(g, cx - 4, y + 1, cx + 4, y + 4, "v");
-    hrSet(g, cx - 1, y + 4, "4"); hrSet(g, cx + 1, y + 4, "4");
+    hrFill(g, cx - 3, y + 1, cx + 3, y + 2, "v");
+    hrSet(g, cx - 1, y + 3, "4"); hrSet(g, cx + 1, y + 3, "4");
   }
   if (cls === "mage") {
-    hrFill(g, cx - 4, y, cx + 4, y + 3, "o");
-    hrFill(g, cx - 3, y + 1, cx + 3, y + 5, "p");
-    hrSet(g, cx, y + 4, "x");
+    hrFill(g, cx - 3, y, cx + 3, y + 2, "o");
+    hrFill(g, cx - 2, y + 1, cx + 2, y + 3, "p");
+    hrSet(g, cx, y + 3, "x");
   }
 }
 
 function hrTorso(g, cx, y, cls, breath) {
   const by = breath | 0;
   if (cls === "warrior") {
-    hrFill(g, cx - 5, y + by, cx + 5, y + 3 + by, "0");
-    hrFill(g, cx - 4, y + 1 + by, cx + 4, y + 8 + by, "c");
-    hrFill(g, cx - 3, y + 2 + by, cx + 3, y + 7 + by, "d");
-    hrFill(g, cx - 2, y + 3 + by, cx + 2, y + 6 + by, "e");
-    hrRow(g, y + 8 + by, cx - 3, "fff");
-    hrFill(g, cx - 4, y + 9 + by, cx + 4, y + 10 + by, "g");
-    hrSet(g, cx, y + 5 + by, "k");
+    hrFill(g, cx - 3, y + by, cx + 3, y + 1 + by, "0");
+    hrFill(g, cx - 2, y + 1 + by, cx + 2, y + 4 + by, "c");
+    hrFill(g, cx - 1, y + 2 + by, cx + 1, y + 3 + by, "e");
+    hrRow(g, y + 4 + by, cx - 2, "fgf");
   } else if (cls === "ranger") {
-    hrFill(g, cx - 4, y + by, cx + 4, y + 2 + by, "0");
-    hrFill(g, cx - 3, y + 1 + by, cx + 3, y + 8 + by, "g");
-    hrFill(g, cx - 2, y + 2 + by, cx + 2, y + 7 + by, "h");
-    hrRow(g, y + 8 + by, cx - 2, "fff");
-    hrFill(g, cx - 3, y + 9 + by, cx + 3, y + 10 + by, "f");
-    hrSet(g, cx + 4, y + 3 + by, "s");
-    hrSet(g, cx + 4, y + 4 + by, "t");
-    hrSet(g, cx + 4, y + 5 + by, "u");
+    hrFill(g, cx - 2, y + by, cx + 2, y + 1 + by, "0");
+    hrFill(g, cx - 2, y + 1 + by, cx + 2, y + 4 + by, "g");
+    hrFill(g, cx - 1, y + 2 + by, cx + 1, y + 3 + by, "h");
+    hrRow(g, y + 4 + by, cx - 1, "fff");
+    hrSet(g, cx + 3, y + 2 + by, "t");
   } else {
-    hrFill(g, cx - 4, y + by, cx + 4, y + 2 + by, "0");
-    hrFill(g, cx - 5, y + 1 + by, cx + 5, y + 10 + by, "o");
-    hrFill(g, cx - 4, y + 2 + by, cx + 4, y + 9 + by, "p");
-    hrFill(g, cx - 3, y + 3 + by, cx + 3, y + 8 + by, "q");
-    hrRow(g, y + 5 + by, cx - 2, "wxw");
-    hrRow(g, y + 9 + by, cx - 2, "fff");
+    hrFill(g, cx - 2, y + by, cx + 2, y + 1 + by, "0");
+    hrFill(g, cx - 3, y + 1 + by, cx + 3, y + 4 + by, "o");
+    hrFill(g, cx - 2, y + 2 + by, cx + 2, y + 3 + by, "q");
+    hrRow(g, y + 3 + by, cx - 1, "wx");
   }
 }
 
 function hrArm(g, cx, y, side, swing, cls) {
   const s = side < 0 ? -1 : 1;
-  const ax = cx + s * 5 + (swing * s | 0);
-  const ay = y + 2 - Math.abs(swing);
+  const ax = cx + s * 3 + (swing * s | 0);
+  const ay = y + 1 - Math.abs(swing);
   const col = cls === "warrior" ? "c" : cls === "ranger" ? "g" : "p";
   const hand = cls === "warrior" ? "d" : "h";
-  hrFill(g, ax, ay, ax + s, ay + 4, "0");
-  hrFill(g, ax, ay + 1, ax + s, ay + 3, col);
-  hrSet(g, ax + (s > 0 ? 1 : 0), ay + 4, hand);
+  hrFill(g, ax, ay, ax, ay + 2, "0");
+  hrSet(g, ax, ay + 1, col);
+  hrSet(g, ax + (s > 0 ? 0 : 0), ay + 2, hand);
 }
 
 function hrLeg(g, cx, y, side, phase, cls) {
   const s = side < 0 ? -1 : 1;
-  const px = cx + s * 2 + (phase * s | 0);
+  const px = cx + s * 1 + (phase * s | 0);
   const py = y + (phase > 0 ? 1 : 0);
-  const sole = HR.NH - 1;
   const boot = cls === "mage" ? "o" : "l";
-  const boot2 = cls === "mage" ? "p" : "m";
   const thigh = cls === "warrior" ? "a" : cls === "ranger" ? "f" : "o";
-  hrFill(g, px, py, px + 1, sole, "0");
-  hrFill(g, px, py, px + 1, py + 8, thigh);
-  hrFill(g, px, sole - 4, px + 1, sole - 1, boot);
-  hrSet(g, px - (s < 0 ? 1 : 0), sole, boot2);
-  hrSet(g, px + (s > 0 ? 1 : 0), sole, boot2);
+  hrSet(g, px, py, "0");
+  hrSet(g, px, py + 1, thigh);
+  hrSet(g, px, py + 2, boot);
 }
 
 function hrCape(g, cx, y, sway, cls) {
   if (cls === "warrior") {
-    hrFill(g, cx - 6, y + 2, cx - 5, y + 12 + sway, "q");
-    hrFill(g, cx + 5, y + 2, cx + 6, y + 11 - sway, "q");
+    hrSet(g, cx - 4, y + 2 + sway, "q");
+    hrSet(g, cx + 4, y + 2 - sway, "q");
   }
   if (cls === "mage") {
-    hrFill(g, cx - 7, y + 1, cx - 5, y + 14 + sway, "n");
-    hrFill(g, cx + 5, y + 1, cx + 7, y + 13 - sway, "n");
+    hrSet(g, cx - 4, y + 1 + sway, "n");
+    hrSet(g, cx + 4, y + 1 - sway, "n");
   }
 }
 
 function hrBuildBody(cls, pose) {
   const g = hrBlank();
-  const cx = 16;
-  const headY = 1 + (pose.death > 0 ? pose.death * 2 : 0);
-  const torsoY = 9 + (pose.death > 1 ? 3 : 0);
-  const legY = 28 + (pose.death > 2 ? 4 : 0);
+  const cx = 7;
+  const headY = 0 + (pose.death > 0 ? pose.death : 0);
+  const torsoY = 5 + (pose.death > 1 ? 2 : 0);
+  const legY = 10 + (pose.death > 2 ? 1 : 0);
   const skin = "3", hair = cls === "mage" ? "o" : cls === "ranger" ? "7" : "6";
   hrHead(g, cx, headY, skin, hair, cls);
   hrTorso(g, cx, torsoY, cls, pose.breath);
@@ -176,12 +180,12 @@ function hrBuildBody(cls, pose) {
   hrLeg(g, cx, legY, -1, pose.legL, cls);
   hrLeg(g, cx, legY, 1, pose.legR, cls);
   if (cls === "ranger") {
-    hrFill(g, cx + 6, torsoY + 2, cx + 7, torsoY + 7, "s");
-    hrFill(g, cx + 6, torsoY + 3, cx + 7, torsoY + 6, "t");
+    hrSet(g, cx + 3, torsoY + 2, "s");
+    hrSet(g, cx + 3, torsoY + 3, "t");
   }
   if (cls === "mage") {
-    hrFill(g, cx - 7, torsoY + 6, cx - 5, torsoY + 8, "f");
-    hrSet(g, cx - 6, torsoY + 7, "x");
+    hrSet(g, cx - 4, torsoY + 3, "f");
+    hrSet(g, cx - 4, torsoY + 4, "x");
   }
   return hrGrid(g);
 }
@@ -194,21 +198,20 @@ function hrPose(cls, state, frame) {
     p.sway = (f % 4) < 2 ? 0 : 1;
     p.armL = -1; p.armR = 1;
   } else if (state === "walk") {
-    const w = [0, 1, 2, 1, 0, -1];
+    const w = [0, 1, 1, 0, -1, -1];
     p.legL = w[f % 6]; p.legR = -w[f % 6];
     p.armL = -w[f % 6]; p.armR = w[f % 6];
     p.sway = f % 2;
   } else if (state === "attack") {
-    p.armR = 2 + f;
-    p.armL = -2 - f;
+    p.armR = 1 + f;
+    p.armL = -1 - f;
     p.legL = 1; p.legR = 0;
-    if (cls === "warrior") p.armR = 3 + f;
   } else if (state === "hurt") {
-    p.hurt = 1 + f;
-    p.armL = -2; p.armR = 2;
+    p.hurt = 1;
+    p.armL = -1; p.armR = 1;
   } else if (state === "death") {
     p.death = f + 1;
-    p.armL = 3; p.armR = 4;
+    p.armL = 2; p.armR = 2;
   }
   return p;
 }
@@ -220,50 +223,39 @@ function hrGetBody(cls, state, frame) {
   return HR._cache[k];
 }
 
-/* ---- Ausrüstung (neu gezeichnet) ---- */
+/* ---- Ausrüstung (skaliert mit 3×) ---- */
 HR.GEAR = {
   sword: [
-    "......00......",".....0ee0.....",".....0ee0.....",".....0ee0.....",
-    ".....0dd0.....",".....0dd0.....",".....0kk0.....",".....0ff0.....",
-    ".....0ff0.....",".....0ff0.....",".....0tt0.....",".....0tt0.....",
-    ".....0ss0.....",".....0ss0.....","......00......"
+    "..00..",".0ee0.",".0ee0.",".0dd0.",".0dd0.",".0ff0.",".0tt0.","..00.."
   ],
   sword_swing: [
-    "......00......",".....0ee0.....","....0eee0.....","...0eee0......",
-    "..0eee0.......",".0eee0........","0kkk0.........","0ff0..........",
-    "0ff0..........","0tt0..........","0ss0..........",".00..........."
+    "..00..",".0ee0.","0eee0.","0dd0..","0ff0..",".0tt0.","..00.."
   ],
   shield: [
-    "....0000....","...0ggh0...","..0gDDh0..",".0gDDDh0.",
-    ".0gDDDh0.","..0gGh0..","...0ff0...","....00...."
+    "..00..",".0gD0.","0gDD0.","0gDD0.",".0gG0.","..00.."
   ],
   bow: [
-    ".....00.....","....0uu0....","...0u..u0...","..0u....u0..",
-    "..0u....u0..","...0u..u0...","....0uu0....",".....00....."
+    "..0..",".0u0.","0u.u0","0u.u0",".0u0.","..0.."
   ],
   bow_draw: [
-    ".....00.....","....0uu0....","...0u..u0...","..0u.e.u0..",
-    "..0u.e.u0..","...0u..u0...","....0uu0....",".....00....."
+    "..0..",".0u0.","0ueu0","0ueu0",".0u0.","..0.."
   ],
   staff: [
-    "......00......",".....0uu0.....",".....0uu0.....",".....0uu0.....",
-    ".....0tt0.....",".....0tt0.....",".....0qq0.....",".....0qq0.....",
-    ".....0rr0.....",".....0xx0.....","......00......"
+    "..00..",".0uu0.",".0tt0.",".0qq0.",".0xx0.","..00.."
   ],
   staff_cast: [
-    "......00......",".....0uu0.....",".....0tt0.....",".....0qq0.....",
-    "....0qrrq0....","...0qrrrq0...","..0qrrrrq0..","...0rrrr0...","....0xx0...."
+    "..00..",".0tt0.","0qrr0","0qrr0",".0xx0.","..00.."
   ],
   spellbook: [
-    "..00..",".0ff0.","0fxxf0","0fxxf0",".0ff0.","..00.."
+    ".00.","0ff0","0xx0",".00."
   ]
 };
 
 HR.getAnimState = (h, moving) => {
-  if (game.isDead || h.deathAnim) return "death";
+  if (typeof game !== "undefined" && (game.isDead || h.deathAnim)) return "death";
   if (h.hurtAnim > 0.05) return "hurt";
   if (h.attackAnim > 0.04) return "attack";
-  if (moving && game.isRunning && !game.isPaused) return "walk";
+  if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) return "walk";
   return "idle";
 };
 
@@ -289,43 +281,29 @@ HR.drawGear = (c, cls, cx, cy, angle, attacking, flip) => {
   if (flip) c.scale(-1, 1);
   c.rotate(angle);
   if (cls === "warrior") {
-    hrDrawRows(c, HR.GEAR.shield, -10, -6, false, sc);
-    const sw = attacking ? HR.GEAR.sword_swing : HR.GEAR.sword;
-    hrDrawRows(c, sw, 2, -18, false, sc);
+    hrDrawRows(c, HR.GEAR.shield, -5, -3, false, sc);
+    hrDrawRows(c, attacking ? HR.GEAR.sword_swing : HR.GEAR.sword, 1, -10, false, sc);
   } else if (cls === "ranger") {
-    hrDrawRows(c, attacking ? HR.GEAR.bow_draw : HR.GEAR.bow, -4, -12, false, sc);
+    hrDrawRows(c, attacking ? HR.GEAR.bow_draw : HR.GEAR.bow, -2, -6, false, sc);
   } else {
-    hrDrawRows(c, attacking ? HR.GEAR.staff_cast : HR.GEAR.staff, -2, -20, false, sc);
+    hrDrawRows(c, attacking ? HR.GEAR.staff_cast : HR.GEAR.staff, -1, -10, false, sc);
     if (attacking) {
-      c.globalAlpha = 0.35 + Math.sin(performance.now() * 0.015) * 0.2;
+      c.globalAlpha = 0.4;
       c.fillStyle = "#68d898";
-      c.beginPath(); c.arc(0, -22, 5, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(0, -12, 3, 0, Math.PI * 2); c.fill();
       c.globalAlpha = 1;
     }
-    hrDrawRows(c, HR.GEAR.spellbook, -12, 2, false, sc);
+    hrDrawRows(c, HR.GEAR.spellbook, -6, 1, false, sc);
   }
   c.restore();
 };
 
-HR.drawGlow = (c, dx, dy, w, h, groundY) => {
+HR.drawShadow = (c, dx, w, groundY) => {
   c.save();
-  const pad = 10;
-  const footY = groundY;
-  c.fillStyle = "rgba(0,0,0,0.42)";
+  c.fillStyle = "rgba(0,0,0,0.35)";
   c.beginPath();
-  c.ellipse(dx + w / 2, footY + 1, w * 0.42, 6, 0, 0, Math.PI * 2);
+  c.ellipse(dx + w / 2, groundY + 1, w * 0.38, 4, 0, 0, Math.PI * 2);
   c.fill();
-  c.fillStyle = "rgba(40,32,24,0.55)";
-  c.fillRect(dx + w * 0.15, footY - 1, w * 0.7, 3);
-  const g = c.createRadialGradient(dx + w / 2, dy + h * 0.42, 4, dx + w / 2, dy + h * 0.42, w * 0.9);
-  g.addColorStop(0, "rgba(255,252,230,0.45)");
-  g.addColorStop(0.5, "rgba(255,235,170,0.2)");
-  g.addColorStop(1, "rgba(255,220,140,0)");
-  c.fillStyle = g;
-  c.fillRect(dx - pad, dy - pad, w + pad * 2, h + pad * 2);
-  c.strokeStyle = "rgba(255,255,255,0.65)";
-  c.lineWidth = 2;
-  c.strokeRect(dx - 4, dy - 2, w + 8, h + 4);
   c.restore();
 };
 
@@ -345,30 +323,29 @@ HR.draw = (c, opts) => {
   if (!attacking && Math.abs(aimX - cx) < 8) angle = flip ? 2.5 : -0.65;
 
   drawCharShadow(c, cx, groundY, h.w, getCharStyle(world), 0, false);
-  HR.drawGlow(c, dx, dy, h.w, h.h, groundY);
+  HR.drawShadow(c, dx, h.w, groundY);
   if (classKey === "warrior") {
     c.save(); c.translate(cx, cy);
     if (flip) c.scale(-1, 1);
-    hrDrawRows(c, HR.GEAR.shield, -14, -4, false, HR.SCALE);
+    hrDrawRows(c, HR.GEAR.shield, -7, -2, false, HR.SCALE);
     c.restore();
   }
   hrDrawRows(c, body, dx, dy, flip, HR.SCALE);
-  /* Held ohne Welt-Fog/Tint – sonst im Wald unsichtbar */
   HR.drawGear(c, classKey, cx, cy, angle, attacking, flip);
 };
 
 HR.drawPreview = (c, classKey, w, h) => {
   c.clearRect(0, 0, w, h);
   const body = hrGetBody(classKey, "idle", 0);
-  const bw = HR.NW * HR.SCALE;
-  const bh = HR.NH * HR.SCALE;
+  const bw = HR.displayW();
+  const bh = HR.displayH();
   const ox = Math.floor((w - bw) / 2);
-  const oy = Math.floor((h - bh) / 2) + 4;
+  const oy = Math.floor((h - bh) / 2) + 8;
   const cx = ox + bw / 2;
   const cy = oy + bh * 0.42;
   if (classKey === "warrior") {
     c.save(); c.translate(cx, cy);
-    hrDrawRows(c, HR.GEAR.shield, -14, -4, false, HR.SCALE);
+    hrDrawRows(c, HR.GEAR.shield, -7, -2, false, HR.SCALE);
     c.restore();
   }
   hrDrawRows(c, body, ox, oy, false, HR.SCALE);
