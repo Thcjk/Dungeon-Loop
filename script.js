@@ -787,7 +787,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=52");
+    const res = await fetch("sounds.json?v=53");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -1761,6 +1761,8 @@ function createHero() {
     warriorBuff: 0,
     warriorBuffMult: 1,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
+    /** Modulare Ausrüstung – überschreibt Loadout-Teile (Helm, Waffe, Schild …) */
+    equipment: null,
     facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0,
     animState: "idle", animFrame: 0, animTime: 0, deathAnim: false, deathDone: false
   };
