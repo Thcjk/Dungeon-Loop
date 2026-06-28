@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – Pixel Canvas Edition
-   Maus über Canvas = Auto-Angriff | 1 = Spezial
+   Maus auf Gegner = Angriff | 1 = Spezial
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
@@ -911,11 +911,11 @@ function updateClassHint() {
   const hint = $("controls-hint");
   if (!hint || !cls) return;
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Pfeile</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Schießen</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   } else {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> drüber = <strong>Auto-Zauber</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Zaubern</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
   }
 }
 
@@ -971,7 +971,7 @@ async function loadPlayer() {
   game.playerName = name;
   if (!supabase) {
     game.totalGold = 0; game.upgrades = emptyUpgrades();
-    enterGame("Los geht's! Maus über das Spiel zum Kämpfen.");
+    enterGame("Los geht's! Maus auf Gegner zum Angreifen.");
     return;
   }
   const { data, error } = await supabase.from("dungeon_players").select("*").eq("name", name).maybeSingle();
@@ -1061,6 +1061,21 @@ function hasTargetableEnemy(maxRange) {
   return game.enemies.some((e) => isEnemyTargetable(e, maxRange));
 }
 
+function getHoveredEnemy(maxRange) {
+  if (!mouse.onCanvas || !game.hero) return null;
+  const aim = getAim();
+  const { hx, hy } = getHeroCenter();
+  let found = null;
+  game.enemies.forEach((e) => {
+    if (!isEnemyTargetable(e, maxRange)) return;
+    if (aim.x < e.x || aim.x > e.x + e.w || aim.y < e.y || aim.y > e.y + e.h) return;
+    const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+    if (Math.hypot(ex - hx, ey - hy) > maxRange) return;
+    found = e;
+  });
+  return found;
+}
+
 function getHeroCenter() {
   const h = game.hero;
   if (!h) return { hx: 0, hy: 0 };
@@ -1088,28 +1103,23 @@ function getCombatAim() {
   const aim = getAim();
   const h = game.hero;
   if (!h) return aim;
-  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const cls = CLASSES[game.classKey];
   const maxR = cls.range || 245;
+  const hovered = getHoveredEnemy(maxR);
 
-  const aimAt = (tx, ty) => ({ x: tx, y: ty, onCanvas: true, down: mouse.down });
-
-  if (aim.onCanvas) {
-    const d = Math.hypot(aim.x - hx, aim.y - hy);
-    if (d <= maxR) {
-      const hovered = game.enemies.find((e) => {
-        if (!isEnemyTargetable(e, maxR)) return false;
-        return aim.x >= e.x && aim.x <= e.x + e.w && aim.y >= e.y && aim.y <= e.y + e.h;
-      });
-      if (hovered || d <= maxR) return aim;
-    }
+  if (hovered) {
+    return {
+      x: hovered.x + hovered.w / 2,
+      y: hovered.y + hovered.h / 2,
+      onCanvas: true,
+      down: mouse.down,
+      target: hovered
+    };
   }
 
-  const target = getNearestEnemy(maxR);
-  if (target) return aimAt(target.x + target.w / 2, target.y + target.h / 2);
-
   if (aim.onCanvas) return aim;
-  return aimAt(hx + Math.min(maxR * 0.55, 180), hy);
+  const { hx, hy } = getHeroCenter();
+  return { x: hx, y: hy, onCanvas: false, down: mouse.down };
 }
 
 function getHeroMaxX(h) {
@@ -1544,31 +1554,32 @@ function attack() {
   const cls = CLASSES[game.classKey];
   const now = performance.now();
   if (now - game.lastShot < cls.attackRate) return;
-  if (!hasTargetableEnemy(cls.range)) return;
+
+  const target = getHoveredEnemy(cls.range);
+  if (!target) return;
 
   if (cls.attackType === "melee") {
-    if (warriorMeleeAttack()) game.lastShot = now;
+    if (warriorMeleeAttack(target)) game.lastShot = now;
   } else if (cls.attackType === "ranged") {
-    if (rangerShoot(cls)) game.lastShot = now;
+    if (rangerShoot(cls, target)) game.lastShot = now;
   } else if (cls.attackType === "magic") {
-    if (mageShoot(cls)) game.lastShot = now;
+    if (mageShoot(cls, target)) game.lastShot = now;
   }
 }
 
-function warriorMeleeAttack() {
+function warriorMeleeAttack(target) {
   const h = game.hero, st = heroStats();
   const cls = CLASSES.warrior;
   const { hx, hy } = getHeroCenter();
-  const aim = getCombatAim();
-  const angle = getPrimaryMeleeAngle(Math.atan2(aim.y - hy, aim.x - hx));
-  h.facing = Math.cos(angle) >= 0 ? 1 : -1;
+  const tx = target.x + target.w / 2, ty = target.y + target.h / 2;
+  const angle = Math.atan2(ty - hy, tx - hx);
+  h.facing = tx >= hx ? 1 : -1;
   h.attackAnim = 0.14;
 
   let hitAny = false;
-  const primary = getNearestEnemy(cls.range);
   forEachEnemyInRange(cls.range, (e, ex, ey) => {
     let dmg = st.attack;
-    if (primary && e.id !== primary.id) dmg = Math.floor(dmg * (cls.aoeFalloff || 1));
+    if (e.id !== target.id) dmg = Math.floor(dmg * (cls.aoeFalloff || 1));
     const isCrit = Math.random() < st.crit;
     if (isCrit) dmg *= 2;
     dmg = Math.floor(dmg);
@@ -1590,14 +1601,13 @@ function warriorMeleeAttack() {
   return hitAny;
 }
 
-function rangerShoot(cls) {
+function rangerShoot(cls, target) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const near = getNearestEnemy(cls.range);
-  if (!near) return false;
+  if (!target || !isEnemyTargetable(target, cls.range)) return false;
 
-  let dx = near.x + near.w / 2 - hx;
-  let dy = near.y + near.h / 2 - hy;
+  let dx = target.x + target.w / 2 - hx;
+  let dy = target.y + target.h / 2 - hy;
   let dist = Math.hypot(dx, dy);
   if (dist > cls.range) return false;
 
@@ -1623,14 +1633,13 @@ function rangerShoot(cls) {
   return true;
 }
 
-function mageShoot(cls) {
+function mageShoot(cls, target) {
   const h = game.hero, st = heroStats();
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
-  const near = getNearestEnemy(cls.range);
-  if (!near) return false;
+  if (!target || !isEnemyTargetable(target, cls.range)) return false;
 
-  let dx = near.x + near.w / 2 - hx;
-  let dy = near.y + near.h / 2 - hy;
+  let dx = target.x + target.w / 2 - hx;
+  let dy = target.y + target.h / 2 - hy;
   let dist = Math.hypot(dx, dy);
   if (dist > cls.range) return false;
 
@@ -1798,7 +1807,7 @@ function updateFrame(dt) {
 
   if (game.waveIntro) updateWaveIntro();
 
-  // Auto-Angriff solange Gegner leben (Maus optional zum Zielen)
+  // Angriff nur wenn Maus auf Gegner in Reichweite
   if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
 
   // Ambient-Partikel (Parallax-Welt)
@@ -2055,12 +2064,18 @@ function render() {
   });
 
   // Gegner
+  const hoveredTarget = getHoveredEnemy(CLASSES[game.classKey].range);
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = Math.sin(e.anim) * 2;
     const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
     const drawX = e.x - lunge;
     ctx.save();
+    if (e === hoveredTarget) {
+      ctx.strokeStyle = "rgba(241,196,15,0.85)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(e.x - 3, e.y + bob - 4, e.w + 6, e.h + 8);
+    }
     if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     if (e.attackWindup > 0) {
       ctx.shadowColor = "#e74c3c";
@@ -2085,29 +2100,22 @@ function render() {
   const hurtOff = h.hurtAnim > 0 ? Math.sin(h.hurtAnim * 20) * 4 * h.hurtAnim : 0;
   const atkOff = h.attackAnim > 0 ? h.facing * 5 * h.attackAnim : 0;
 
-  // Reichweiten-Anzeige
-  if (game.isRunning && !game.isPaused && mouse.onCanvas) {
+  // Reichweiten-Anzeige nur bei Ziel unter Maus
+  const hovered = getHoveredEnemy(CLASSES[game.classKey].range);
+  if (game.isRunning && !game.isPaused && hovered) {
     const cls = CLASSES[game.classKey];
-    const aim = getAim();
-    if (cls.attackType === "melee") {
-      ctx.strokeStyle = "rgba(231,76,60,0.35)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle = cls.attackType === "ranged" ? "rgba(46,204,113,0.2)" : "rgba(155,89,182,0.25)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
-      ctx.stroke();
-      if (cls.attackType === "ranged") {
-        ctx.strokeStyle = "rgba(231,76,60,0.25)";
-        ctx.beginPath();
-        ctx.arc(hx, hy, cls.closeRange, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
+    const tx = hovered.x + hovered.w / 2, ty = hovered.y + hovered.h / 2;
+    ctx.strokeStyle = cls.attackType === "melee" ? "rgba(241,196,15,0.55)" : "rgba(46,204,113,0.45)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
+    ctx.strokeStyle = cls.attackType === "melee" ? "rgba(231,76,60,0.25)" : "rgba(46,204,113,0.18)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   ctx.save();
