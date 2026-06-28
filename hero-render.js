@@ -314,14 +314,28 @@ HR.drawGear = (c, cls, cx, cy, angle, attacking, flip) => {
   c.restore();
 };
 
-HR.drawGlow = (c, dx, dy, w, h) => {
+HR.drawGlow = (c, dx, dy, w, h, footOff) => {
   c.save();
-  const pad = 6;
-  c.fillStyle = "rgba(255,235,190,0.14)";
-  c.fillRect(dx - pad, dy - 3, w + pad * 2, h + 6);
-  c.strokeStyle = "rgba(255,255,255,0.32)";
-  c.lineWidth = 1.5;
-  c.strokeRect(dx - 3, dy - 1, w + 6, h + 2);
+  const pad = 10;
+  const footY = dy + footOff;
+  /* Boden-Kontakt – kein Schweben visuell */
+  c.fillStyle = "rgba(0,0,0,0.35)";
+  c.beginPath();
+  c.ellipse(dx + w / 2, footY + 2, w * 0.38, 5, 0, 0, Math.PI * 2);
+  c.fill();
+  /* Helden-Hervorhebung */
+  const g = c.createRadialGradient(dx + w / 2, dy + h * 0.45, 4, dx + w / 2, dy + h * 0.45, w * 0.85);
+  g.addColorStop(0, "rgba(255,248,220,0.38)");
+  g.addColorStop(0.55, "rgba(255,230,160,0.16)");
+  g.addColorStop(1, "rgba(255,220,140,0)");
+  c.fillStyle = g;
+  c.fillRect(dx - pad, dy - pad, w + pad * 2, h + pad * 2);
+  c.strokeStyle = "rgba(255,255,255,0.55)";
+  c.lineWidth = 2;
+  c.strokeRect(dx - 4, dy - 2, w + 8, h + 4);
+  c.strokeStyle = "rgba(255,220,120,0.35)";
+  c.lineWidth = 1;
+  c.strokeRect(dx - 7, dy - 4, w + 14, h + 8);
   c.restore();
 };
 
@@ -331,7 +345,8 @@ HR.draw = (c, opts) => {
   const dx = x + atkOff + hurtOff;
   const dy = y + (bob || 0);
   const cx = dx + h.w / 2;
-  const footY = dy + h.h;
+  const footOff = HR.getFootOffset();
+  const footY = dy + footOff;
   const cy = dy + h.h * 0.42;
   const attacking = h.attackAnim > 0.04;
   const st = h.animState || "idle";
