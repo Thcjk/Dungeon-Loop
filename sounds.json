@@ -5,10 +5,12 @@
   "musicVolume": 0.32,
   "description": "Dateien in sounds/ ablegen, Pfade unten anpassen, dann enabled auf true.",
   "music": {
+    "menu": "music_menu",
     "game": "music_game"
   },
   "files": {
-    "music_game": "sounds/music/game_loop.ogg",
+    "music_menu": "sounds/music/menu.mp3",
+    "music_game": "sounds/music/menu.mp3",
     "wave_spawn": "sounds/waves/wave_spawn.ogg",
     "wave_clear": "sounds/waves/wave_clear.ogg",
     "boss_spawn": "sounds/waves/boss_spawn.ogg",
@@ -28,10 +30,10 @@
     "coin": "sounds/ui/coin.ogg",
     "level_up": "sounds/ui/level_up.ogg",
     "world_change": "sounds/ui/world_change.ogg",
-    "ambient_forest": "sounds/ambient/forest.ogg",
+    "ambient_forest": "sounds/ambient/forest.mp3",
     "ambient_swamp": "sounds/ambient/swamp.ogg",
     "ambient_frost": "sounds/ambient/frost.ogg",
-    "ambient_fire": "sounds/ambient/fire.ogg",
+    "ambient_fire": "sounds/ambient/fire.mp3",
     "ambient_ruins": "sounds/ambient/ruins.ogg"
   }
 }
