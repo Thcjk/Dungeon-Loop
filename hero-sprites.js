@@ -1,15 +1,13 @@
 /* ==========================================================================
-   Dungeon Loop – Character Sprites v2
-   Vollständige Körper-Sprites pro Klasse + Equipment als separate Layer.
-   Proportionen: ~20 % Kopf | 35 % Torso | 35 % Beine | 10 % Fuß
-   Grid 16×36 → ~36 px Kampfhöhe bei Scale 1.0
+   Dungeon Loop – Character Sprites v2.1
+   Anatomie-Fokus: 20 % Kopf | 35 % Torso | 45 % Beine (16×36 Grid)
+   Spieler ~36 px → ca. 10–15 % größer als Gegner (~33 px)
    ========================================================================== */
 
 const CHR = {
   W: 16,
   H: 36,
 
-  /** Griffpunkte pro Frame (relativ zum Sprite, vor Flip) */
   GRIP: {
     handR: "handR",
     handL: "handL",
@@ -35,75 +33,108 @@ const CHR = {
     "+": "#581818", "=": "#782828"
   },
 
-  /** Equipment-Sprites – Griffpunkt = Pixel in rows, der an Hand-Raster haftet */
+  /** Waffen ~25–35 % der Körperhöhe (9–12 px) */
   EQUIP: {
     sword: {
       rows: [
-        "..e..",".eef.",".eef.",".ddf.",".ccf.",
-        ".bbf.",".aaF.",".GGH.",".HHI.",".JJJ.",
-        ".JJJ.","..J.."
-      ],
-      grip: { x: 2, y: 10 }
-    },
-    sword_attack: {
-      rows: [
-        "..e..","eef..","eef0.","ddf..","ccf..",
-        ".bbf.",".aaF.",".GGH.","..J.."
+        "..e..",
+        ".eef.",
+        ".eef.",
+        ".ddf.",
+        ".ccf.",
+        ".aaF.",
+        ".GGH.",
+        ".JJJ.",
+        "..J.."
       ],
       grip: { x: 2, y: 7 }
     },
+    sword_attack: {
+      rows: [
+        "..e..",
+        "eef..",
+        "ddf..",
+        ".aaF.",
+        ".GGH.",
+        "..J.."
+      ],
+      grip: { x: 2, y: 4 }
+    },
     shield: {
       rows: [
-        "..G..",".GHH.","GHIHG","GHIIG","GHHHG",
-        ".GHH.",".GJJ.","..J.."
+        "..G..",
+        ".GHH.",
+        "GHIHG",
+        "GHIIG",
+        "GHHHG",
+        ".GHH.",
+        "..J.."
       ],
-      grip: { x: 4, y: 4 },
-      offset: { x: -2, y: -1 }
+      grip: { x: 3, y: 4 },
+      offset: { x: -1, y: 2 }
     },
     bow: {
       rows: [
-        "..F..",".F.F.","F...F","F...F","F...F",
-        ".F.F.","..F..","..t.."
+        "..F..",
+        ".F.F.",
+        "F...F",
+        "F...F",
+        ".F.F.",
+        "..F.."
       ],
-      grip: { x: 1, y: 5 },
+      grip: { x: 1, y: 4 },
       offset: { x: 0, y: 0 },
       idleAngle: -0.35
     },
     bow_draw: {
       rows: [
-        "..F..",".Fef.","Fedef","Fedef",".Fef.",
+        "..F..",
+        ".Fef.",
+        "Fedef",
+        ".Fef.",
         "..F.."
       ],
-      grip: { x: 1, y: 4 }
+      grip: { x: 1, y: 3 }
     },
     staff: {
       rows: [
-        "..w..",".wyy.","wyxyw","wyyxw",".wyy.",
-        "..J..","..J..","..J..","..J..","..J.."
+        "..w..",
+        ".wyy.",
+        "wyxyw",
+        ".wyy.",
+        "..J..",
+        "..J..",
+        "..J..",
+        "..J..",
+        "..J.."
       ],
-      grip: { x: 2, y: 9 },
+      grip: { x: 2, y: 7 },
       offset: { x: 1, y: 0 },
       idleAngle: -0.15
     },
     staff_cast: {
       rows: [
-        "..w..",".wyy.","wyxyw","wyyxw",".wyy.",
-        "..J..","..J.."
+        "..w..",
+        ".wyy.",
+        "wyxyw",
+        ".wyy.",
+        "..J..",
+        "..J.."
       ],
-      grip: { x: 2, y: 6 }
+      grip: { x: 2, y: 5 }
     },
     orb: {
-      rows: [".wyy.","wyyxw","wyxyw","wyyxw",".wyy."],
+      rows: [".wyy.", "wyyxw", "wyxyw", "wyyxw", ".wyy."],
       attach: "staff_top",
       offset: { x: 0, y: -4 }
     },
     quiver: {
-      rows: [".t.","tut","tst","trt",".t."],
-      grip: { x: 1, y: 4 },
+      rows: [".t.", "tut", "tst", "trt", ".t."],
+      grip: { x: 1, y: 3 },
       offset: { x: 0, y: 0 }
     },
     spellbook: {
-      rows: [".==.","=CB=","=CB=",".==."],
+      rows: [".==.", "=CB=", "=CB=", ".==."],
       grip: { x: 1, y: 2 },
       offset: { x: -1, y: 1 }
     }
@@ -140,7 +171,6 @@ const CHR = {
   }
 };
 
-/* ---- Hilfsfunktion: zentrierte Zeile exakt W Zeichen ---- */
 function chrRow(s) {
   const t = s.replace(/\s/g, "");
   if (t.length >= CHR.W) return t.slice(0, CHR.W);
@@ -153,197 +183,292 @@ function chrBody(rows, grips) {
   while (rows.length < CHR.H) rows.push(".".repeat(CHR.W));
   return {
     rows: rows.slice(0, CHR.H).map(chrRow),
-    grips: grips || { handR: { x: 11, y: 11 }, handL: { x: 4, y: 11 }, back: { x: 8, y: 9 } }
+    grips: grips || { handR: { x: 11, y: 12 }, handL: { x: 4, y: 12 }, back: { x: 8, y: 10 } }
   };
 }
 
+function chrLegWalk(rows, start, end, phase) {
+  const out = rows.slice();
+  for (let i = start; i <= end; i++) {
+    if (phase === 0) {
+      if (i <= start + 3) out[i] = out[i].replace("..cc......cc..", "..ccc....ccc..");
+      else if (i <= start + 7) out[i] = out[i].replace("..cc......cc..", "...cc....cc...");
+      else out[i] = out[i].replace("..cc......cc..", "..ccc....ccc..");
+    } else if (phase === 1) {
+      out[i] = out[i].replace("..cc......cc..", "..cc........cc");
+      out[i] = out[i].replace("..ccc....ccc..", "..cc........cc");
+      out[i] = out[i].replace("...cc....cc...", "..cc........cc");
+    } else if (phase === 2) {
+      if (i <= start + 3) out[i] = out[i].replace("..cc......cc..", "...cc....cc...");
+      else if (i <= start + 7) out[i] = out[i].replace("..cc......cc..", "..ccc....ccc..");
+      else out[i] = out[i].replace("..cc......cc..", "...cc....cc...");
+    } else {
+      out[i] = out[i].replace("..cc......cc..", "..cc........cc");
+      out[i] = out[i].replace("..ccc....ccc..", "..cc........cc");
+      out[i] = out[i].replace("...cc....cc...", "..cc........cc");
+    }
+  }
+  return out;
+}
+
 /* ==========================================================================
-   KRIEGER – breite Schultern, klare Beine, Helm (Körper OHNE Waffen)
+   KRIEGER – breite Schultern, kräftige Gliedmaßen, Helm-Silhouette
    ========================================================================== */
 (function buildWarrior() {
   const base = [
-    "......cccc......",".....cbddbc.....",".....cbffbc.....",".....cbffbc.....",
-    "......cbdc......","......cbdc......",".....cbbbbc.....",
-    "..cabbbbbbaac..",".cabbecccebbaa.",".cabbecccebbaa.",".cabbecccebbaa.",
-    ".cabbbbbbbbbaa.","..cabbbbbbaac..","...cabbbbba....",
-    "....cc....cc....","....cc....cc....","....cc....cc....","....cc....cc....",
-    "....cc....cc....","....cc....cc....","....cc....cc....","....cc....cc....",
-    "....cc....cc....","....cc....cc....",".....cc..cc.....",".....cc..cc.....",
-    ".....cc..cc.....",".....cc..cc.....","......cccc......","......cccc......",
-    ".......cc.......",".......cc.......",".......cc.......",".......cc.......",
-    ".......cc.......",".......cc......."
+    /* Kopf 0–6 (~20 %) */
+    "....cccccccc....",
+    "...cbbdddbc.....",
+    "..cbddfffdbc....",
+    "..cbfeeeefbc....",
+    "..cbddfffdbc....",
+    "...cbbdddbc.....",
+    "..ccbbbbbbcc....",
+    /* Torso 7–19 (~36 %) */
+    ".cabbbbbbbbca..",
+    "cabbecccebbac.",
+    "cabbecccebbac.",
+    "cabbecccebbac.",
+    ".cabbbbbbbbca..",
+    "..cabbbbbba....",
+    "..ccaaaaaaac...",
+    "..ccaaaaaaac...",
+    "...cc....cc....",
+    "...cc....cc....",
+    "...cc....cc....",
+    "..cc......cc..",
+    "...cc....cc....",
+    /* Beine 20–35 (~44 %) */
+    "..cc......cc..",
+    "..cc......cc..",
+    "..cc......cc..",
+    "..cc......cc..",
+    "..ccc....ccc..",
+    "..ccc....ccc..",
+    "..cc......cc..",
+    "..cc......cc..",
+    "..cc......cc..",
+    "..cc......cc..",
+    "...cc....cc....",
+    "...cc....cc....",
+    "..ccc....ccc..",
+    "..ccc....ccc..",
+    "...cc....cc....",
+    "...cc....cc...."
   ];
-  const g = { handR: { x: 12, y: 10 }, handL: { x: 3, y: 11 }, back: { x: 8, y: 8 } };
 
-  const walkLeg = [
-    null,null,null,null,null,null,null,null,null,null,null,null,null,
-    "....cc....cc....","...cc......cc...","...cc......cc...","....cc....cc....",
-    "....cc....cc....","...cc......cc...","...cc......cc...","....cc....cc....",
-    "....cc....cc....","...cc......cc...","...cc......cc...",null,null,null,null,null,null,null,null
-  ];
+  const g = { handR: { x: 12, y: 12 }, handL: { x: 3, y: 13 }, back: { x: 8, y: 9 } };
 
-  const frames = {
-    idle: [chrBody(base, g)],
-    walk: [],
-    attack: [],
-    hurt: [chrBody(base.map((r, i) => i >= 7 && i <= 12 ? r.replace(/cab/g, "cab") : r), { handR: { x: 10, y: 12 }, handL: { x: 5, y: 12 }, back: { x: 8, y: 8 } })],
-    death: []
-  };
+  const frames = { idle: [], walk: [], attack: [], hurt: [], death: [] };
+
+  frames.idle = [0, 0, 1, 0].map((breath) => {
+    const rows = base.slice();
+    if (breath && rows[8]) rows[8] = "cabbeccccebbac.";
+    return chrBody(rows, { ...g, handR: { x: 12, y: 12 + breath }, handL: { x: 3, y: 13 + breath } });
+  });
 
   for (let f = 0; f < 4; f++) {
-    const legs = base.slice();
-    const ph = f % 2;
-    for (let i = 13; i <= 24; i++) {
-      if (walkLeg[i]) legs[i] = walkLeg[i];
-      else if (ph === 0 && i >= 13 && i <= 20) legs[i] = legs[i].replace("....cc....cc....", "...cc......cc...");
-      else if (ph === 1 && i >= 13 && i <= 20) legs[i] = legs[i].replace("....cc....cc....", "..cc........cc..");
-    }
-    const armShift = f % 2 === 0 ? 0 : 1;
+    const legs = chrLegWalk(base, 20, 33, f);
     frames.walk.push(chrBody(legs, {
-      handR: { x: 12 + armShift, y: 10 + (f % 2) },
-      handL: { x: 3 - armShift, y: 11 - (f % 2) },
-      back: { x: 8, y: 8 }
+      handR: { x: 12 + (f % 2), y: 12 + (f % 2) },
+      handL: { x: 3 - (f % 2), y: 13 - (f % 2) },
+      back: { x: 8, y: 9 }
     }));
   }
 
   for (let f = 0; f < 3; f++) {
-    const atk = base.slice();
-    frames.attack.push(chrBody(atk, {
-      handR: { x: 13 + f, y: 9 + f },
-      handL: { x: 3, y: 12 },
-      back: { x: 8, y: 8 }
+    frames.attack.push(chrBody(base.slice(), {
+      handR: { x: 13 + f, y: 11 + f },
+      handL: { x: 3, y: 14 },
+      back: { x: 8, y: 9 }
     }));
   }
 
-  frames.hurt[0] = chrBody(base.slice(), { handR: { x: 11, y: 12 }, handL: { x: 5, y: 13 }, back: { x: 8, y: 9 } });
+  frames.hurt = [chrBody(base.slice(), { handR: { x: 11, y: 13 }, handL: { x: 5, y: 14 }, back: { x: 8, y: 10 } })];
   frames.death = [
-    chrBody(base.map((r, i) => i > 10 ? r.replace(/c/g, "1") : r), g),
-    chrBody(base.map((r, i) => i > 8 ? r.replace(/c/g, "0") : r), g)
+    chrBody(base.map((r, i) => (i > 10 ? r.replace(/c/g, "1") : r)), g),
+    chrBody(base.map((r, i) => (i > 8 ? r.replace(/c/g, "0") : r)), g)
   ];
 
-  frames.idle = [0, 0, 1, 0].map((breath) => {
-    const rows = base.slice();
-    if (breath && rows[8]) rows[8] = "..cabbbbbbaac..";
-    return chrBody(rows, { ...g, handR: { x: 12, y: 10 + breath }, handL: { x: 3, y: 11 + breath } });
-  });
   CHR.CLASSES.warrior.frames = frames;
 })();
 
 /* ==========================================================================
-   WALDLÄUFER – Kapuze, schlank, Bogen seitlich gehalten
+   WALDLÄUFER – Kapuze, schlanker Torso, gleiche Bein-Proportionen
    ========================================================================== */
 (function buildRanger() {
   const base = [
-    "......iiii......",".....iijjii.....",".....iijjii.....",".....iijjii.....",
-    "......ijji......","......i44i......","......i55i......",
-    "...ciiiiiiiic...","..ciiiooooiic..","..ciiiooooiic..","..ciiiooooiic..",
-    "..ciiiiiiiic..","...ciiiiiic...","....ciiiiic....",
-    "....hh....hh....","....hh....hh....","....hh....hh....","....hh....hh....",
-    "....hh....hh....","....hh....hh....","....hh....hh....","....hh....hh....",
-    "....hh....hh....","....hh....hh....",".....hh..hh.....",".....hh..hh.....",
-    ".....hh..hh.....",".....hh..hh.....","......hhhh......","......hhhh......",
-    ".......hh.......",".......hh.......",".......hh.......",".......hh.......",
-    ".......hh.......",".......hh......."
+    /* Kopf / Kapuze 0–6 */
+    ".....iiii.....",
+    "....iijjjii....",
+    "...iijjjjjii...",
+    "...iijeejjii...",
+    "...iijjjjjii...",
+    "....iiiiii.....",
+    "..cciiiiiicc...",
+    /* Torso 7–19 */
+    "..ciiiiiiiic..",
+    ".ciiiooooiiic.",
+    ".ciiiooooiiic.",
+    ".ciiiooooiiic.",
+    "..ciiiiiiiic..",
+    "...ciiiiiic...",
+    "...chhhhhhc....",
+    "...chhhhhhc....",
+    "...hh....hh....",
+    "...hh....hh....",
+    "...hh....hh....",
+    "..hh......hh..",
+    "...hh....hh....",
+    /* Beine 20–35 */
+    "..hh......hh..",
+    "..hh......hh..",
+    "..hh......hh..",
+    "..hh......hh..",
+    "..hhh....hhh..",
+    "..hhh....hhh..",
+    "..hh......hh..",
+    "..hh......hh..",
+    "..hh......hh..",
+    "..hh......hh..",
+    "...hh....hh....",
+    "...hh....hh....",
+    "..hhh....hhh..",
+    "..hhh....hhh..",
+    "...hh....hh....",
+    "...hh....hh...."
   ];
-  const g = { handR: { x: 11, y: 10 }, handL: { x: 5, y: 10 }, back: { x: 7, y: 9 } };
 
-  const frames = { idle: [chrBody(base, g)], walk: [], attack: [], hurt: [], death: [] };
+  const g = { handR: { x: 11, y: 12 }, handL: { x: 5, y: 12 }, back: { x: 7, y: 10 } };
+  const frames = { idle: [], walk: [], attack: [], hurt: [], death: [] };
+
+  frames.idle = [0, 0, 1, 0].map((breath) => {
+    const rows = base.slice();
+    if (breath && rows[8]) rows[8] = ".ciiiooooiiic.";
+    return chrBody(rows, { ...g, handR: { x: 11, y: 12 + breath }, handL: { x: 5, y: 12 + breath } });
+  });
 
   for (let f = 0; f < 4; f++) {
     const legs = base.slice();
-    const ph = f % 2;
-    for (let i = 13; i <= 22; i++) {
-      if (ph === 0) legs[i] = legs[i].replace("....hh....hh....", "...hh......hh...");
-      else legs[i] = legs[i].replace("....hh....hh....", "..hh........hh..");
+    for (let i = 20; i <= 33; i++) {
+      if (f % 2 === 0) {
+        legs[i] = legs[i].replace("..hh......hh..", f % 4 === 0 ? "..hhh....hhh.." : "...hh....hh....");
+      } else {
+        legs[i] = legs[i].replace("..hh......hh..", "..hh........hh");
+      }
     }
     frames.walk.push(chrBody(legs, {
-      handR: { x: 11 + (f % 2), y: 10 },
-      handL: { x: 5 - (f % 2), y: 10 + (f % 2) },
-      back: { x: 7, y: 9 }
+      handR: { x: 11 + (f % 2), y: 12 },
+      handL: { x: 5 - (f % 2), y: 12 + (f % 2) },
+      back: { x: 7, y: 10 }
     }));
   }
 
   for (let f = 0; f < 3; f++) {
-    frames.attack.push(chrBody(base, {
-      handR: { x: 12, y: 9 },
-      handL: { x: 4 - f, y: 10 },
-      back: { x: 7, y: 9 }
+    frames.attack.push(chrBody(base.slice(), {
+      handR: { x: 12, y: 11 },
+      handL: { x: 4 - f, y: 12 },
+      back: { x: 7, y: 10 }
     }));
   }
 
-  frames.hurt = [chrBody(base, { handR: { x: 10, y: 11 }, handL: { x: 6, y: 11 }, back: { x: 7, y: 9 } })];
+  frames.hurt = [chrBody(base.slice(), { handR: { x: 10, y: 13 }, handL: { x: 6, y: 13 }, back: { x: 7, y: 10 } })];
   frames.death = [
-    chrBody(base.map(r => r.replace(/i/g, "k")), g),
-    chrBody(base.map(r => r.replace(/[hi]/g, "l")), g)
+    chrBody(base.map((r) => r.replace(/i/g, "k")), g),
+    chrBody(base.map((r) => r.replace(/[hi]/g, "l")), g)
   ];
-
-  frames.idle = [0, 0, 1, 0].map((breath) => {
-    const rows = base.slice();
-    if (breath && rows[8]) rows[8] = "..ciiiiiiiic..";
-    return chrBody(rows, { ...g, handR: { x: 11, y: 10 + breath }, handL: { x: 5, y: 10 + breath } });
-  });
 
   CHR.CLASSES.ranger.frames = frames;
 })();
 
 /* ==========================================================================
-   MAGIER – lange Robe, spitz Hut, Stab seitlich (Hand an Hüfte, nicht im Gesicht)
+   MAGIER – Spitzhut, weite Robe, natürliche Proportionen darunter
    ========================================================================== */
 (function buildMage() {
   const base = [
-    "......BBB.......",".....BBEBB......",".....BBBBB......","......BEB.......",
-    "......B4B.......","......B5B.......","......BBB.......",
-    "...zBBBBBBBBz...","..zBBBCCCCBBz..","..zBBBCCCCBBz..","..zBBBBBBBBz..",
-    "..zBBBBBBBBz..","..zBBBBBBBBz..","...zBBBBBBz...","....zBBBBz....",
-    "....zz....zz....","....zz....zz....","....zz....zz....","....zz....zz....",
-    "....zz....zz....","....zz....zz....","....zz....zz....","....zz....zz....",
-    "....zz....zz....","....zz....zz....",".....zz..zz.....",".....zz..zz.....",
-    ".....zz..zz.....",".....zz..zz.....","......zzzz......","......zzzz......",
-    ".......zz.......",".......zz.......",".......zz.......",".......zz.......",
-    ".......zz.......",".......zz......."
+    /* Hut + Kopf 0–6 */
+    "......BBB......",
+    ".....BBEBB.....",
+    "....BBBBBBB....",
+    "...BBBBEBBBB...",
+    "...BBB44BBB....",
+    "....BBBBBBB....",
+    "..ccBBBBBBcc...",
+    /* Torso / Robe 7–19 */
+    "..zBBBBBBBBz..",
+    ".zBBBCCCCBBz.",
+    ".zBBBCCCCBBz.",
+    ".zBBBBBBBBBz.",
+    "..zBBBBBBBBz..",
+    "...zBBBBBBz....",
+    "...zzzzzzzz....",
+    "...zzzzzzzz....",
+    "...zz....zz....",
+    "...zz....zz....",
+    "...zz....zz....",
+    "..zz......zz..",
+    "...zz....zz....",
+    /* Beine / Robensaum 20–35 */
+    "..zz......zz..",
+    "..zz......zz..",
+    "..zz......zz..",
+    "..zz......zz..",
+    "..zzz....zzz..",
+    "..zzz....zzz..",
+    "..zz......zz..",
+    "..zz......zz..",
+    "..zz......zz..",
+    "..zz......zz..",
+    "...zz....zz....",
+    "...zz....zz....",
+    "..zzz....zzz..",
+    "..zzz....zzz..",
+    "...zz....zz....",
+    "...zz....zz...."
   ];
-  const g = { handR: { x: 11, y: 13 }, handL: { x: 4, y: 14 }, back: { x: 8, y: 10 } };
 
-  const frames = { idle: [chrBody(base, g)], walk: [], attack: [], hurt: [], death: [] };
+  const g = { handR: { x: 11, y: 14 }, handL: { x: 4, y: 15 }, back: { x: 8, y: 11 } };
+  const frames = { idle: [], walk: [], attack: [], hurt: [], death: [] };
+
+  frames.idle = [0, 0, 1, 0].map((breath) => {
+    const rows = base.slice();
+    if (breath && rows[8]) rows[8] = ".zBBBCCCCBBz.";
+    return chrBody(rows, { ...g, handR: { x: 11, y: 14 + breath }, handL: { x: 4, y: 15 + breath } });
+  });
 
   for (let f = 0; f < 4; f++) {
     const legs = base.slice();
-    const ph = f % 2;
-    for (let i = 14; i <= 23; i++) {
-      if (ph === 0) legs[i] = legs[i].replace("....zz....zz....", "...zz......zz...");
-      else legs[i] = legs[i].replace("....zz....zz....", "..zz........zz..");
+    for (let i = 20; i <= 33; i++) {
+      if (f % 2 === 0) {
+        legs[i] = legs[i].replace("..zz......zz..", f % 4 === 0 ? "..zzz....zzz.." : "...zz....zz....");
+      } else {
+        legs[i] = legs[i].replace("..zz......zz..", "..zz........zz");
+      }
     }
     frames.walk.push(chrBody(legs, {
-      handR: { x: 11, y: 13 },
-      handL: { x: 4 + (f % 2), y: 14 },
-      back: { x: 8, y: 10 }
+      handR: { x: 11, y: 14 },
+      handL: { x: 4 + (f % 2), y: 15 },
+      back: { x: 8, y: 11 }
     }));
   }
 
   for (let f = 0; f < 3; f++) {
-    frames.attack.push(chrBody(base, {
-      handR: { x: 12 + f, y: 12 },
-      handL: { x: 4, y: 14 },
-      back: { x: 8, y: 10 }
+    frames.attack.push(chrBody(base.slice(), {
+      handR: { x: 12 + f, y: 13 },
+      handL: { x: 4, y: 15 },
+      back: { x: 8, y: 11 }
     }));
   }
 
-  frames.hurt = [chrBody(base, { handR: { x: 10, y: 14 }, handL: { x: 5, y: 15 }, back: { x: 8, y: 10 } })];
+  frames.hurt = [chrBody(base.slice(), { handR: { x: 10, y: 15 }, handL: { x: 5, y: 16 }, back: { x: 8, y: 11 } })];
   frames.death = [
-    chrBody(base.map(r => r.replace(/z/g, "A")), g),
-    chrBody(base.map(r => r.replace(/[zB]/g, "1")), g)
+    chrBody(base.map((r) => r.replace(/z/g, "A")), g),
+    chrBody(base.map((r) => r.replace(/[zB]/g, "1")), g)
   ];
-
-  frames.idle = [0, 0, 1, 0].map((breath) => {
-    const rows = base.slice();
-    if (breath && rows[8]) rows[8] = "..zBBBBBBBBz..";
-    return chrBody(rows, { ...g, handR: { x: 11, y: 13 + breath } });
-  });
 
   CHR.CLASSES.mage.frames = frames;
 })();
 
-/** Frame für Animationszustand abrufen */
 CHR.getFrame = (classKey, animState, frameIndex, attacking) => {
   const cls = CHR.CLASSES[classKey] || CHR.CLASSES.warrior;
   let state = animState || "idle";

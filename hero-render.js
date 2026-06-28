@@ -4,7 +4,7 @@
    ========================================================================== */
 
 const HR = {
-  /** Kampf: ~36 px (Spec 30–40), lesbar, schlank */
+  /** Kampf: ~36 px – ca. 10–15 % größer als Gegner (~33 px) */
   DISPLAY_SCALE: 1.0,
   MENU_FILL: 0.86,
   OUTLINE: "rgba(4,2,8,0.95)",
@@ -227,7 +227,8 @@ function hrRenderCharacter(c, opts) {
 
     /* Magier: leuchtende Kugel oben am Stab */
     if (clsDef.orb && !attacking) {
-      const staffTopY = gHandR.y - 14;
+      const staffGrip = weaponDef.grip?.y ?? 7;
+      const staffTopY = gHandR.y - staffGrip;
       hrDrawEquip(c, clsDef.orb, gHandR.x + (flip ? -1 : 1), staffTopY, flip, null, true);
     }
   }
