@@ -727,7 +727,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=47");
+    const res = await fetch("sounds.json?v=48");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
