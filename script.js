@@ -19,16 +19,16 @@ const GROUND = 308;
 const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
-  heroMinX: 20,
-  heroMaxX: 320,
+  heroMinX: 16,
+  heroMaxX: 560,
   enemyRightMargin: 205,
   enemySpacing: 50,
   enemyMeleeReach: 52,
   enemyBossReach: 68,
   introSpeed: 82,
   introOffscreen: 55,
-  enemyChaseSpeed: 102,
-  enemyBossChaseSpeed: 84,
+  enemyChaseSpeed: 118,
+  enemyBossChaseSpeed: 96,
   enemySeparation: 18,
   screenEdgePad: 8,
   minVisiblePx: 14
@@ -1112,10 +1112,16 @@ function getCombatAim() {
   return aimAt(hx + Math.min(maxR * 0.55, 180), hy);
 }
 
+function getHeroMaxX(h) {
+  return Math.min(CW - h.w - COMBAT_LAYOUT.screenEdgePad, COMBAT_LAYOUT.heroMaxX);
+}
+
 function enemyInCombatRange(e, h) {
   const gap = getEnemyGap(e, h);
   const reach = getEnemyReach(e);
-  return gap <= reach && gap >= -24 && e.x + e.w > h.x;
+  if (gap <= reach && gap >= -36) return true;
+  const dist = Math.abs((e.x + e.w * 0.5) - (h.x + h.w * 0.5));
+  return dist <= reach + (e.w + h.w) * 0.32;
 }
 
 function getEnemyReach(e) {
@@ -1128,7 +1134,7 @@ function getEnemyGap(e, h) {
 
 function getEnemyChaseGap(e) {
   const reach = getEnemyReach(e);
-  return Math.max(6, reach - 8);
+  return Math.max(4, reach - 12);
 }
 
 function getEnemyMoveSpeed(e) {
@@ -1143,13 +1149,17 @@ function separateEnemies(e, h, dt) {
     if (other === e || other.dead || other.hp <= 0) return;
     const dx = (e.x + e.w * 0.5) - (other.x + other.w * 0.5);
     const dist = Math.abs(dx);
-    const minDist = COMBAT_LAYOUT.enemySeparation + (e.w + other.w) * 0.16;
+    const minDist = COMBAT_LAYOUT.enemySeparation + (e.w + other.w) * 0.14;
     if (dist >= minDist || dist < 0.1) return;
-    const push = (minDist - dist) * 2.4 * dt;
+    const push = (minDist - dist) * 1.8 * dt;
     const otherGap = getEnemyGap(other, h);
-    if (myGap > otherGap + 4) e.x += push;
-    else if (myGap < otherGap - 4) e.x -= push * 0.35;
-    else e.x += dx > 0 ? push * 0.5 : -push * 0.5;
+    // Hintere Gegner nicht vom Helden wegdrücken – nur leicht seitlich ausweichen
+    if (myGap > otherGap + 6) {
+      e.x -= push * 0.15;
+      return;
+    }
+    if (myGap < otherGap - 4) e.x -= push * 0.35;
+    else e.x += dx > 0 ? push * 0.45 : -push * 0.45;
   });
 }
 
@@ -1159,26 +1169,33 @@ function updateEnemyMovement(e, h, dt) {
   const heroEdge = h.x + h.w;
   const gap = getEnemyGap(e, h);
   const idealGap = getEnemyChaseGap(e);
+  const targetX = heroEdge + idealGap;
+  const reach = getEnemyReach(e);
   let speed = getEnemyMoveSpeed(e);
 
-  if (e.attackWindup > 0.45) speed *= 0.35;
-  else if (e.attackAnim > 0) speed *= 0.55;
+  if (e.attackWindup > 0.4) speed *= 0.5;
+  else if (e.attackAnim > 0) speed *= 0.68;
 
   const inRange = enemyInCombatRange(e, h);
-  e.isChasing = !inRange;
+  e.isChasing = !inRange || !!e.walkingIn;
 
-  if (!inRange) {
-    const wantX = heroEdge + idealGap;
-    if (e.x > wantX + 0.5) e.x -= speed * dt;
-    else if (gap < -14) e.x += speed * dt * 0.5;
-  } else if (gap < -10) {
-    e.x += Math.min(speed * dt * 0.55, -gap - 8);
+  if (e.walkingIn) {
+    if (e.x > targetX + 2) e.x -= speed * dt;
+    else if (gap > reach) e.x -= speed * dt * 0.92;
+    e.x = Math.max(h.x - e.w * 0.25, e.x);
+    return;
   }
 
-  const minX = heroEdge - e.w * 0.12;
-  const maxX = CW + COMBAT_LAYOUT.introOffscreen + (e.index || 0) * 40;
-  e.x = Math.max(minX, Math.min(maxX, e.x));
+  if (!inRange) {
+    if (e.x > targetX + 1) e.x -= speed * dt;
+    else if (gap > reach) e.x -= speed * dt * 0.95;
+    else if (gap < -10) e.x += speed * dt * 0.85;
+  } else {
+    if (gap < -10) e.x += Math.min(speed * dt * 0.75, -gap - 6);
+    else if (gap > idealGap + 8) e.x -= Math.min(speed * dt * 0.55, gap - idealGap);
+  }
 
+  e.x = Math.max(h.x - e.w * 0.25, Math.min(CW + COMBAT_LAYOUT.introOffscreen + 20, e.x));
   separateEnemies(e, h, dt);
 }
 
@@ -1445,7 +1462,7 @@ function updateWaveIntro() {
 
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0 || !e.walkingIn) return;
-    if (e.x > CW - 42) pending = true;
+    if (e.x > CW - 28) pending = true;
     else e.walkingIn = false;
   });
 
@@ -1770,7 +1787,7 @@ function updateFrame(dt) {
     const spd = CLASSES[game.classKey].moveSpeed;
     if (keys.a) { h.x -= spd * dt; h.facing = -1; }
     if (keys.d) { h.x += spd * dt; h.facing = 1; }
-    const maxX = Math.min(COMBAT_LAYOUT.heroMaxX, CW * 0.48 - h.w);
+    const maxX = getHeroMaxX(h);
     h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
   h.y = GROUND - h.h;
@@ -1801,18 +1818,17 @@ function updateFrame(dt) {
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
 
-    if (e.walkingIn && e.x > CW - 42) {
+    if (e.walkingIn && e.x > CW - 28) {
       e.attackWindup = 0;
       return;
     }
 
     if (!enemyInCombatRange(e, h)) {
       e.attackWindup = 0;
-      e.attackTimer = Math.max(0, (e.attackTimer || 0) - dt * 0.35);
       return;
     }
 
-    if ((e.attackTimer || 0) <= 0) e.attackTimer = 0.12;
+    if ((e.attackTimer || 0) <= 0) e.attackTimer = 0.04;
 
     e.attackTimer += dt;
     const interval = e.attackInterval || 0.75;
