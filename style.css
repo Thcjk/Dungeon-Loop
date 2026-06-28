@@ -38,7 +38,7 @@ body {
 
 .setup-card.collapsed { padding: 0.5rem 1rem; }
 .setup-card.collapsed h2, .setup-card.collapsed .label, .setup-card.collapsed .input,
-.setup-card.collapsed .class-select, .setup-card.collapsed #btn-load-player { display: none; }
+.setup-card.collapsed .setup-layout, .setup-card.collapsed #btn-load-player { display: none; }
 .setup-card.collapsed .ability-section { margin-top: 0; padding-top: 0.5rem; }
 .setup-card.collapsed .ability-heading { font-size: 0.65rem; margin-bottom: 0.4rem; }
 .setup-card.collapsed #load-hint { margin: 0; color: #2ecc71; }
@@ -47,7 +47,21 @@ body {
 .input { width: 100%; padding: 0.6rem; font-family: inherit; font-size: 0.9rem; background: var(--bg); border: 2px solid var(--border); color: var(--text); outline: none; }
 .input:focus { border-color: var(--gold); }
 
-.class-select { display: flex; gap: 0.6rem; margin-bottom: 0.8rem; }
+.setup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 0.2rem;
+}
+.setup-main { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+
+.class-select { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
+.class-tabs .class-btn {
+  flex: 1; min-height: auto; padding: 0.55rem 0.45rem;
+  align-items: center; text-align: center;
+}
+.class-tabs .class-desc { font-size: 0.62rem; line-height: 1.25; color: var(--muted); }
 .class-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
   padding: 0.6rem; background: var(--bg); border: 2px solid var(--border); color: var(--text);
@@ -57,10 +71,87 @@ body {
 .class-btn.warrior.selected { border-color: var(--warrior); }
 .class-btn.ranger.selected  { border-color: var(--ranger); }
 .class-btn.mage.selected    { border-color: var(--mage); }
+
+/* Heldenkarte – große Menü-Vorschau */
+.hero-card {
+  position: sticky;
+  top: 0.75rem;
+}
+.hero-card-frame {
+  background: linear-gradient(180deg, #1a2430 0%, #141820 100%);
+  border: 2px solid var(--border);
+  padding: 0.85rem 0.75rem 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.hero-card.warrior .hero-card-frame { border-color: rgba(192, 57, 43, 0.55); }
+.hero-card.ranger .hero-card-frame  { border-color: rgba(39, 174, 96, 0.55); }
+.hero-card.mage .hero-card-frame    { border-color: rgba(142, 68, 173, 0.55); }
+
+.hero-card-title {
+  text-align: center;
+  font-size: 0.82rem;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+}
+.hero-card-portrait {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 268px;
+  margin-bottom: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: radial-gradient(ellipse at 50% 38%, rgba(240, 220, 180, 0.12) 0%, rgba(0, 0, 0, 0) 68%);
+}
+#hero-card-canvas {
+  image-rendering: pixelated;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
+}
+.hero-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.6rem;
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.45rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.hero-stat {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  font-size: 0.68rem;
+}
+.hero-stat-icon { font-size: 0.75rem; line-height: 1; }
+.hero-stat-label { color: var(--muted); }
+.hero-stat strong { color: var(--text); font-size: 0.78rem; justify-self: end; }
+.hero-card-weapon {
+  text-align: center;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.hero-weapon-label {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.hero-card-weapon strong {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--gold);
+  line-height: 1.35;
+}
+
 .class-name { font-size: 0.8rem; font-weight: bold; }
 .class-desc { font-size: 0.65rem; color: var(--muted); text-align: center; }
-.preview-sprite { image-rendering: pixelated; width: 80px; height: 88px; }
-
 .btn {
   padding: 0.6rem 1rem; font-family: inherit; font-size: 0.85rem; font-weight: bold;
   border: 2px solid var(--border); cursor: pointer; color: var(--text); background: var(--bg);
@@ -544,14 +635,17 @@ kbd {
 
 @media (max-width: 800px) {
   .game-layout { grid-template-columns: 1fr; }
+  .setup-layout { grid-template-columns: 1fr; }
+  .hero-card { position: static; order: -1; }
   .class-select { flex-direction: column; }
+  .class-tabs .class-btn { min-height: 52px; }
   .upgrade-grid { flex-direction: column; }
   .ability-equip-row { grid-template-columns: 1fr; }
   .header h1 { font-size: 1.35rem; }
   .subtitle { font-size: 0.72rem; }
   .btn, .btn-large { min-height: 48px; font-size: 0.9rem; padding: 0.75rem 1rem; }
   .btn-audio { min-height: 48px; font-size: 0.75rem; }
-  .class-btn { min-height: 88px; padding: 0.85rem; }
+  .class-btn { min-height: 52px; padding: 0.65rem; }
   .class-name { font-size: 0.9rem; }
   .class-desc { font-size: 0.72rem; }
   .status-value { font-size: 0.95rem; }

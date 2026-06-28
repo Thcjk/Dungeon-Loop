@@ -333,6 +333,12 @@ const MONSTER_SPRITE = {
   Feuerdämon: "boss_feuer", Drachenwächter: "boss_drache", Nekromant: "boss_nekro"
 };
 
+const CLASS_WEAPONS = {
+  warrior: "Eisenschwert + Schild",
+  ranger: "Langbogen",
+  mage: "Arkaner Stab"
+};
+
 const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
@@ -749,13 +755,64 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   });
 }
 
+let heroCardRaf = null;
+let heroCardFrame = 0;
+let heroCardTime = 0;
+
+function updateHeroCardUI() {
+  const cls = CLASSES[game.classKey];
+  if (!cls) return;
+  const card = $("hero-card");
+  const title = $("hero-card-class");
+  if (title) title.textContent = cls.name.toUpperCase();
+  if ($("hero-stat-hp")) $("hero-stat-hp").textContent = cls.hp;
+  if ($("hero-stat-atk")) $("hero-stat-atk").textContent = cls.attack;
+  if ($("hero-stat-def")) $("hero-stat-def").textContent = cls.defense;
+  if ($("hero-weapon-name")) $("hero-weapon-name").textContent = CLASS_WEAPONS[game.classKey] || cls.name;
+  if (card) {
+    card.classList.remove("warrior", "ranger", "mage");
+    card.classList.add(game.classKey);
+  }
+}
+
+function tickHeroCard() {
+  const cv = $("hero-card-canvas");
+  if (!cv || !HR || $("setup-section")?.classList.contains("collapsed")) {
+    heroCardRaf = null;
+    return;
+  }
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = false;
+  heroCardTime += 1 / 60;
+  if (heroCardTime >= HR.ANIM.idle.t) {
+    heroCardTime = 0;
+    heroCardFrame = (heroCardFrame + 1) % HR.ANIM.idle.n;
+  }
+  HR.drawHeroCard(c, game.classKey, cv.width, cv.height, heroCardFrame);
+  heroCardRaf = requestAnimationFrame(tickHeroCard);
+}
+
+function startHeroCardLoop() {
+  if (heroCardRaf) cancelAnimationFrame(heroCardRaf);
+  heroCardFrame = 0;
+  heroCardTime = 0;
+  updateHeroCardUI();
+  heroCardRaf = requestAnimationFrame(tickHeroCard);
+}
+
+function stopHeroCardLoop() {
+  if (heroCardRaf) cancelAnimationFrame(heroCardRaf);
+  heroCardRaf = null;
+}
+
 function drawPreviews() {
-  document.querySelectorAll(".preview-sprite").forEach((cv) => {
+  updateHeroCardUI();
+  const cv = $("hero-card-canvas");
+  if (cv && HR) {
     const c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
-    const key = cv.dataset.preview;
-    if (key && HR) HR.drawPreview(c, key, cv.width, cv.height);
-  });
+    HR.drawHeroCard(c, game.classKey, cv.width, cv.height, 0);
+  }
 }
 
 // ============================================
@@ -770,6 +827,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadAudioPrefs();
   initParallaxBackground(getWorld());
   drawPreviews();
+  startHeroCardLoop();
   bindEvents();
   renderUpgradeButtons();
   renderAbilityPanel();
@@ -787,7 +845,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=54");
+    const res = await fetch("sounds.json?v=55");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -1230,6 +1288,7 @@ function bindEvents() {
       btn.classList.add("selected");
       game.classKey = btn.dataset.class;
       updateClassHint();
+      updateHeroCardUI();
       renderAbilityPanel();
     });
   });
@@ -1367,6 +1426,7 @@ async function loadPlayer() {
 }
 
 function enterGame(msg) {
+  stopHeroCardLoop();
   $("game-section").classList.remove("hidden");
   hideUpgrades();
   $("setup-section").classList.add("collapsed");
@@ -1378,7 +1438,10 @@ function enterGame(msg) {
 }
 
 function emptyUpgrades() { const u = {}; UPGRADES.forEach((x) => u[x.key] = 0); return u; }
-function selectClass(k) { document.querySelectorAll(".class-btn").forEach((b) => b.classList.toggle("selected", b.dataset.class === k)); }
+function selectClass(k) {
+  document.querySelectorAll(".class-btn").forEach((b) => b.classList.toggle("selected", b.dataset.class === k));
+  updateHeroCardUI();
+}
 
 async function savePlayer() {
   if (!supabase || !game.playerId) return;
