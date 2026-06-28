@@ -30,7 +30,7 @@
     "coin": "sounds/ui/coin.wav",
     "level_up": "sounds/ui/level_up.wav",
     "world_change": "sounds/ui/world_change.ogg",
-    "game_over": "sounds/ui/game_over.ogg",
+    "game_over": "sounds/ui/game_over.wav",
     "ambient_forest": "sounds/ambient/forest.mp3",
     "ambient_swamp": "sounds/ambient/swamp.ogg",
     "ambient_frost": "sounds/ambient/frost.ogg",
