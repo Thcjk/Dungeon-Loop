@@ -99,15 +99,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  min-height: 268px;
+  min-height: 280px;
   margin-bottom: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: radial-gradient(ellipse at 50% 38%, rgba(240, 220, 180, 0.12) 0%, rgba(0, 0, 0, 0) 68%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(ellipse at 50% 42%, rgba(255, 240, 210, 0.18) 0%, rgba(42, 56, 72, 0.95) 55%, rgba(26, 32, 40, 1) 100%);
 }
 #hero-card-canvas {
   image-rendering: pixelated;
   width: 100%;
-  max-width: 220px;
+  max-width: 240px;
   height: auto;
   display: block;
 }
