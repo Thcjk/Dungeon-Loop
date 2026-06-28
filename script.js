@@ -336,9 +336,10 @@ const MONSTER_SPRITE = {
 const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
-    hp: 165, attack: 24, defense: 11, crit: 0.06, mana: 0, magicDamage: 0,
-    range: 88, attackRate: 420, moveSpeed: 125,
-    special: "Schildschlag", specialCd: 7, specialRange: 98,
+    hp: 115, attack: 19, defense: 5, crit: 0.05, mana: 0, magicDamage: 0,
+    range: 82, attackRate: 480, moveSpeed: 122,
+    aoeFalloff: 0.72,
+    special: "Schildschlag", specialCd: 8, specialRange: 90, specialMult: 2.2,
     desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
   },
   ranger: {
@@ -529,7 +530,7 @@ const BALANCE = {
   lootChance: 0.15,
   xpPerLevel: 175,
   levelScalePow: 1.082,
-  levelUpHealPct: 0.15,
+  levelUpHealPct: 0.10,
   waveCooldown: 2.15,
   minWaveCooldown: 0.95
 };
@@ -823,11 +824,16 @@ function spawnExplosion(x, y, radius) {
   emitCombatEvent("explosion");
 }
 
+function calcPlayerDamage(rawAttack, defense) {
+  const pierce = Math.floor(rawAttack * 0.22);
+  return Math.max(1, Math.max(pierce, rawAttack - defense));
+}
+
 function enemyAttackPlayer(e, h, st) {
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  const dmg = Math.max(1, e.attack - st.defense);
+  const dmg = calcPlayerDamage(e.attack, st.defense);
 
   e.attackAnim = e.isBoss ? 0.45 : 0.32;
   spawnMeleeSlash(ex, ey, angle, {
@@ -1542,8 +1548,10 @@ function warriorMeleeAttack() {
   h.attackAnim = 0.14;
 
   let hitAny = false;
+  const primary = getNearestEnemy(cls.range);
   forEachEnemyInRange(cls.range, (e, ex, ey) => {
     let dmg = st.attack;
+    if (primary && e.id !== primary.id) dmg = Math.floor(dmg * (cls.aoeFalloff || 1));
     const isCrit = Math.random() < st.crit;
     if (isCrit) dmg *= 2;
     dmg = Math.floor(dmg);
@@ -1667,7 +1675,7 @@ function useSpecial() {
     spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
     spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 16, range: cls.specialRange * 0.9, owner: "player", big: true });
     forEachEnemyInRange(cls.specialRange, (e, ex, ey) => {
-      const dmg = Math.floor(st.attack * 2.8);
+      const dmg = Math.floor(st.attack * (cls.specialMult || 2.2));
       e.hp -= dmg; e.hitFlash = 10;
       spawnDamage(ex, e.y, dmg, true);
       spawnImpactRing(ex, ey, 22, "#f1c40f", 12);
