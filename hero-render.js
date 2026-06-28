@@ -1,17 +1,19 @@
 /* ==========================================================================
    Dungeon Loop – Hero Renderer
-   Spec: schlank, 22–28 px im Spiel, 64–72 px im Menü, hoher Kontrast
+   Ziel: leicht größer als Gegner (~33 px), gut lesbar, Menü füllt Rahmen
    ========================================================================== */
 
 const HR = {
   NW: 22,
-  NH: 26,
+  NH: 28,
   SCALE: 2,
-  /** In-Game ~26 px Höhe (Spec: 22–28 px, max. 1/5 Bildschirm) */
-  DISPLAY_SCALE: 0.46,
-  /** Startmenü ~68 px Höhe (Spec: 64–72 px, 2–3× Spiel) */
-  MENU_TARGET_PX: 68,
-  OUTLINE: "rgba(8,6,12,0.92)",
+  /** Gegner (Goblin) ≈ 11×3 = 33 px – Held ~14 % größer ≈ 38 px */
+  ENEMY_REF_PX: 33,
+  HERO_VS_ENEMY: 1.14,
+  DISPLAY_SCALE: 0.68,
+  /** Menü: Held füllt ~86 % der Kartenhöhe */
+  MENU_FILL: 0.86,
+  OUTLINE: "rgba(6,4,10,0.95)",
   CX: 11,
 
   ANIM: {
@@ -56,9 +58,9 @@ const HR = {
   },
 
   CLASS_ACCENT: {
-    warrior: "rgba(240,200,140,0.28)",
-    ranger:  "rgba(160,220,140,0.24)",
-    mage:    "rgba(200,170,255,0.26)"
+    warrior: "rgba(255,220,160,0.38)",
+    ranger:  "rgba(180,240,150,0.32)",
+    mage:    "rgba(210,180,255,0.34)"
   }
 };
 
@@ -76,7 +78,11 @@ HR.displayH = (scale) => Math.ceil((HR.getFootRow() + 1) * HR.SCALE * (scale ?? 
 HR.getFootOffset = () => HR.displayH();
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
 HR.getDrawY = () => HR.getGroundY() - HR.displayH();
-HR.getMenuScale = () => HR.MENU_TARGET_PX / ((HR.getFootRow() + 1) * HR.SCALE);
+HR.getMenuScale = (canvasH, canvasW) => {
+  const baseH = (HR.getFootRow() + 1) * HR.SCALE;
+  const baseW = HR.NW * HR.SCALE;
+  return Math.min((canvasH * HR.MENU_FILL) / baseH, (canvasW * 0.84) / baseW);
+};
 
 HR.getHeroLoadout = (classKey, hero) => {
   const overrides = hero?.equipment || null;
@@ -224,18 +230,30 @@ function hrDrawLayerList(c, list, rawDx, rawDy, flip, sc, pose, attacking, aimAn
   });
 }
 
+function hrDrawHeroGroundGlow(c, cx, groundY, w, menuMode) {
+  c.save();
+  const r = w * (menuMode ? 0.65 : 0.55);
+  const g = c.createRadialGradient(cx, groundY, 1, cx, groundY - w * 0.15, r);
+  g.addColorStop(0, menuMode ? "rgba(255,245,220,0.35)" : "rgba(255,240,210,0.22)");
+  g.addColorStop(0.5, menuMode ? "rgba(255,230,190,0.12)" : "rgba(255,220,180,0.08)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle = g;
+  c.fillRect(cx - r, groundY - w, r * 2, w);
+  c.restore();
+}
+
 function hrDrawHeroRim(c, dx, dy, w, h, classKey) {
   const cx = dx + w / 2;
   const cy = dy + h * 0.36;
   c.save();
-  const accent = HR.CLASS_ACCENT[classKey] || "rgba(220,210,190,0.18)";
-  const g = c.createRadialGradient(cx, cy, w * 0.06, cx, cy, w * 0.85);
+  const accent = HR.CLASS_ACCENT[classKey] || "rgba(240,230,210,0.28)";
+  const g = c.createRadialGradient(cx, cy, w * 0.05, cx, cy, w * 0.95);
   g.addColorStop(0, accent);
-  g.addColorStop(0.5, "rgba(255,248,230,0.14)");
+  g.addColorStop(0.4, "rgba(255,250,235,0.18)");
   g.addColorStop(1, "rgba(0,0,0,0)");
   c.globalCompositeOperation = "screen";
   c.fillStyle = g;
-  c.fillRect(dx - 4, dy - 4, w + 8, h + 8);
+  c.fillRect(dx - 8, dy - 8, w + 16, h + 16);
   c.restore();
 }
 
@@ -302,6 +320,7 @@ function hrRenderHero(c, opts) {
   if (!menuMode && typeof drawCharShadow === "function" && opts.world) {
     drawCharShadow(c, cx, groundY, dispW, getCharStyle(opts.world), 0, false);
   }
+  hrDrawHeroGroundGlow(c, cx, groundY, dispW, menuMode);
   HR.drawShadow(c, dx, dispW, groundY, menuMode);
 
   c.save();
@@ -322,15 +341,7 @@ function hrRenderHero(c, opts) {
   c.restore();
 
   hrDrawHeroRim(c, dx, dy, dispW, dispH, classKey);
-
-  if (!menuMode && opts.world) {
-    if (typeof applyWorldCharTint === "function") {
-      c.save();
-      c.globalAlpha = 0.06;
-      applyWorldCharTint(c, dx, dy, dispW, dispH, opts.world);
-      c.restore();
-    }
-  }
+  /* Kein Welt-Tint auf dem Helden – bleibt im Vordergrund sichtbar */
 }
 
 HR.draw = (c, opts) => {
@@ -345,36 +356,34 @@ HR.draw = (c, opts) => {
   });
 };
 
-/** Heldenkarte – Bühne mit ~68 px Held (Spec: 64–72 px) */
+/** Heldenkarte – Held füllt den Rahmen (2–3× Spielgröße) */
 HR.drawHeroCard = (c, classKey, w, h, frame) => {
   c.clearRect(0, 0, w, h);
   c.imageSmoothingEnabled = false;
 
   const grad = c.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "#2a3848");
-  grad.addColorStop(0.55, "#324050");
-  grad.addColorStop(1, "#1e2830");
+  grad.addColorStop(0, "#344458");
+  grad.addColorStop(0.5, "#3a4a60");
+  grad.addColorStop(1, "#283038");
   c.fillStyle = grad;
   c.fillRect(0, 0, w, h);
 
   c.save();
-  c.globalAlpha = 0.65;
-  const spot = c.createRadialGradient(w * 0.5, h * 0.48, 2, w * 0.5, h * 0.48, w * 0.58);
-  spot.addColorStop(0, "rgba(255,248,220,0.65)");
-  spot.addColorStop(0.45, "rgba(255,235,200,0.18)");
+  c.globalAlpha = 0.75;
+  const spot = c.createRadialGradient(w * 0.5, h * 0.5, 4, w * 0.5, h * 0.48, Math.max(w, h) * 0.55);
+  spot.addColorStop(0, "rgba(255,252,235,0.75)");
+  spot.addColorStop(0.4, "rgba(255,240,200,0.25)");
   spot.addColorStop(1, "rgba(0,0,0,0)");
   c.fillStyle = spot;
   c.fillRect(0, 0, w, h);
   c.restore();
 
-  c.strokeStyle = "rgba(255,255,255,0.1)";
+  c.strokeStyle = "rgba(255,255,255,0.12)";
   c.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-  const baseSpriteH = (HR.getFootRow() + 1) * HR.SCALE;
-  const baseSpriteW = HR.NW * HR.SCALE;
-  const cardScale = Math.min(HR.MENU_TARGET_PX / baseSpriteH, (w * 0.72) / baseSpriteW);
-  const dispW = Math.ceil(baseSpriteW * cardScale);
-  const dispH = Math.ceil(baseSpriteH * cardScale);
+  const cardScale = HR.getMenuScale(h, w);
+  const dispW = Math.ceil(HR.NW * HR.SCALE * cardScale);
+  const dispH = Math.ceil((HR.getFootRow() + 1) * HR.SCALE * cardScale);
 
   const fakeHero = {
     w: dispW, h: dispH,
@@ -382,11 +391,11 @@ HR.drawHeroCard = (c, classKey, w, h, frame) => {
     attackAnim: 0, hurtAnim: 0, deathAnim: false, equipment: null
   };
   const ox = Math.floor((w - dispW) / 2);
-  const groundY = h - Math.max(12, Math.floor(h * 0.05));
+  const groundY = h - Math.max(18, Math.floor(h * 0.04));
 
   hrRenderHero(c, {
     x: ox, h: fakeHero, classKey,
-    aimX: ox + dispW * 0.75, aimY: groundY - dispH * 0.4,
+    aimX: ox + dispW * 0.78, aimY: groundY - dispH * 0.42,
     groundY, displayScale: cardScale, menuMode: true,
     animState: "idle", animFrame: frame || 0
   });

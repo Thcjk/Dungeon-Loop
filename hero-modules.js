@@ -74,12 +74,15 @@ HM.PARTS = {
       hrModRow(g, y + by,     cx - 2, "0ab0");
       hrModRow(g, y + 1 + by, cx - 2, "cdc0");
       hrModRow(g, y + 2 + by, cx - 2, "def0");
-      hrModRow(g, y + 3 + by, cx - 2, "bab0");
+      hrModRow(g, y + 3 + by, cx - 2, "efe0");
+      hrModRow(g, y + 4 + by, cx - 2, "bab0");
       hrModSet(g, cx, y + 1 + by, "f");
-      hrModSet(g, cx, y + 2 + by, "e");
+      hrModSet(g, cx, y + 2 + by, "f");
       hrModSet(g, cx - 2, y + 2 + by, "V");
       hrModSet(g, cx + 2, y + 2 + by, "V");
-      hrModSet(g, cx, y + 3 + by, "]");
+      hrModSet(g, cx, y + 4 + by, "]");
+      hrModSet(g, cx - 2, y + 3 + by, "J");
+      hrModSet(g, cx + 2, y + 3 + by, "J");
     }
   },
   torso_leather: {
@@ -231,78 +234,79 @@ HM.ITEMS = {
   sword_broad: {
     layer: "weapon", slot: "weapon", z: "front",
     rows: [
-      "..0..",".0f0.",".0ef.",".0de.",".0cd.",
-      ".0bc.",".0ab.",".0FF.",".0GG.",".0JJ.","..0.."
+      "..0...",".0ff0.",".0eff0.",".0eef0.",".0def0.",
+      ".0cde0.",".0bcd0.",".0abc0.",".0FFG0.",".0GGH0.",
+      ".0HHI0.",".0JJJ0.","..0..."
     ],
-    grip: { x: 1, y: 9 }, attach: "handR", idleAngle: -0.75
+    grip: { x: 2, y: 11 }, attach: "handR", idleAngle: -0.75
   },
   sword_broad_swing: {
     layer: "weapon", slot: "weapon_attack", z: "front",
     rows: [
-      "..0..","0eef.","0eef0","0de..","0cd..",
-      ".0bc.",".0FF.","..0G.","..0.."
+      "..0..","0eeff.","0eeef0","0def..","0cde..",
+      ".0bcd.",".0FFG.",".0GGH.","..0J.","..0.."
     ],
-    grip: { x: 1, y: 6 }, attach: "handR"
+    grip: { x: 2, y: 7 }, attach: "handR"
   },
   shield_round: {
     layer: "shield", slot: "shield", z: "back",
     rows: [
-      "..0..",".0GF.","0GHH0","0HIP0","0GHH0",
-      ".0GF.",".0JJ.","..0.."
+      "..0..",".0GF0.","0GHHH0","0HIPI0","0HIPI0",
+      "0GHHH0",".0GF0.",".0JJJ.",".0JJ0.","..0.."
     ],
-    attach: "handL", offset: { x: -8, y: -3 }
+    attach: "handL", offset: { x: -9, y: -4 }
   },
   bow_long: {
     layer: "weapon", slot: "weapon", z: "front",
     rows: [
-      "..0..",".0F.","0F.F0","0F..F","0F.F0",
-      ".0F.",".0t.","..0.."
+      "..0..",".0FF.","0F..F0","0F...F","0F...F",
+      "0F...F","0F..F0",".0FF.",".0tt.",".0ss.","..0.."
     ],
-    grip: { x: 1, y: 5 }, attach: "handR", idleAngle: -0.55
+    grip: { x: 2, y: 6 }, attach: "handR", idleAngle: -0.55
   },
   bow_long_draw: {
     layer: "weapon", slot: "weapon_attack", z: "front",
     rows: [
-      "..0..",".0F.","0Fef0","0Fede","0Fef0",
-      ".0F.","..0.."
+      "..0..",".0FF.","0Fefe0","0Fedee","0Fefe0",
+      ".0FF.","..0.."
     ],
-    grip: { x: 1, y: 4 }, attach: "handR"
+    grip: { x: 2, y: 5 }, attach: "handR"
   },
   arrow_standard: {
     layer: "weapon", slot: "weapon_extra", z: "front",
-    rows: [".0.","0e0","ede","0e0",".0."],
-    attach: "handR", offset: { x: 5, y: -6 }, onlyWhen: "attack"
+    rows: [".0.","0ef0","0ede0","0ef0",".0."],
+    attach: "handR", offset: { x: 6, y: -7 }, onlyWhen: "attack"
   },
   staff_arcane: {
     layer: "weapon", slot: "weapon", z: "front",
     rows: [
-      "..0..",".0JJ.",".0HH.",".0GG.",".0FF.",
-      ".0JJ.",".0JJ.",".0JJ.","..0.."
+      "..0..",".0ww0.","0wyyw0","0wyxyw","0wyyw0",
+      ".0JJ0.",".0JJ0.",".0JJ0.",".0JJ0.",".0JJ0.","..0.."
     ],
-    grip: { x: 1, y: 7 }, attach: "handR", idleAngle: -0.45
+    grip: { x: 2, y: 9 }, attach: "handR", idleAngle: -0.45
   },
   staff_orb: {
     layer: "weapon", slot: "weapon_extra", z: "front",
-    rows: [".0ww.","0wyyw","0wyxw","0wyyw",".0ww."],
-    attach: "handR", offset: { x: -1, y: -18 }, onlyWhen: "idle"
+    rows: ["..0ww0..",".0wyyw0.","0wyxxyw0",".0wyyw0.","..0ww0.."],
+    attach: "handR", offset: { x: -1, y: -20 }, onlyWhen: "idle"
   },
   staff_arcane_cast: {
     layer: "weapon", slot: "weapon_attack", z: "front",
     rows: [
-      "..0..",".0JJ.","0wyyw","0wyxy","0wyyw",
-      ".0ww.","..0.."
+      "..0..",".0ww0.","0wyyxw","0wyxxy","0wyyxw",
+      ".0ww0.",".0JJ0.","..0.."
     ],
-    grip: { x: 1, y: 5 }, attach: "handR"
+    grip: { x: 2, y: 6 }, attach: "handR"
   },
   spellbook: {
     layer: "offhand", slot: "offhand", z: "front",
-    rows: [".00.","0==0","0CB0","0CB0",".00."],
-    attach: "handL", offset: { x: -8, y: 1 }
+    rows: [".00.","0==0","0CB0","0CB0","0CB0",".00."],
+    attach: "handL", offset: { x: -9, y: 1 }
   },
   quiver_standard: {
     layer: "quiver", slot: "quiver", z: "back",
-    rows: [".0.","0t0","0s0","0r0",".0."],
-    attach: "back", offset: { x: 5, y: -6 }
+    rows: [".0.","0t0","0s0","0r0","0q0",".0."],
+    attach: "back", offset: { x: 5, y: -7 }
   }
 };
 
@@ -314,8 +318,8 @@ HM.EFFECTS = {
       c.globalAlpha = attacking ? 0.75 : 0.35;
       c.fillStyle = attacking ? "#d8b8ff" : "#a888e0";
       const t = frame * 0.8;
-      [[-6, -12], [6, -10], [0, -16]].forEach(([ox, oy], i) => {
-        c.fillRect(ax + ox + Math.sin(t + i) * 1.5, ay + oy + Math.cos(t + i) * 1.5, 2, 2);
+      [[-8, -14], [8, -12], [0, -18]].forEach(([ox, oy], i) => {
+        c.fillRect(ax + ox + Math.sin(t + i) * 2, ay + oy + Math.cos(t + i) * 2, 3, 3);
       });
       c.restore();
     }
@@ -388,7 +392,7 @@ HM.composeBodyGrid = (loadout, pose) => {
   const headY  = 2 + pose.drop;
   const torsoY = 8 + pose.drop + (pose.death > 1 ? 2 : 0);
   const beltY  = 13 + pose.drop + (pose.death > 1 ? 2 : 0);
-  const legY   = 15 + pose.drop + (pose.death > 2 ? 2 : 0);
+  const legY   = 16 + pose.drop + (pose.death > 2 ? 2 : 0);
   const ctx = { cx, headY, torsoY, beltY, legY, pose };
 
   HM.LAYER_ORDER.forEach((layerKey) => {
