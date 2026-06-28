@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Dungeon Loop – Character Renderer v2
+   Dungeon Loop – Character Renderer v3
    Vollständige Körper-Sprites + Equipment-Layer (kein Pixel-Zusammenbau)
    ========================================================================== */
 
 const HR = {
-  /** Kampf: ~36 px – ca. 10–15 % größer als Gegner (~33 px) */
+  /** Kampf: ~38 px – ca. 15 % größer als Gegner (~33 px) */
   DISPLAY_SCALE: 1.0,
   MENU_FILL: 0.86,
   OUTLINE: "rgba(4,2,8,0.95)",
@@ -222,7 +222,11 @@ function hrRenderCharacter(c, opts) {
   const weaponId = attacking ? (clsDef.weaponAttack || clsDef.weapon) : clsDef.weapon;
   const weaponDef = CHR.EQUIP[weaponId];
   if (weaponId && weaponDef) {
-    const baseAngle = attacking ? aimAngle : (weaponDef.idleAngle ?? (flip ? 2.3 : -0.65));
+    const baseAngle = attacking
+      ? aimAngle
+      : (flip && weaponDef.idleAngle != null
+        ? Math.PI - weaponDef.idleAngle
+        : (weaponDef.idleAngle ?? (flip ? 2.3 : -0.65)));
     hrDrawEquip(c, weaponId, gHandR.x, gHandR.y, flip, baseAngle, true);
 
     /* Magier: leuchtende Kugel oben am Stab */
