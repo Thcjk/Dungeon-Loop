@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "volume": 0.55,
   "sfxVolume": 0.55,
   "musicVolume": 0.32,
@@ -13,8 +13,8 @@
     "wave_clear": "sounds/waves/wave_clear.ogg",
     "boss_spawn": "sounds/waves/boss_spawn.ogg",
     "boss_defeated": "sounds/waves/boss_defeated.ogg",
-    "player_melee": "sounds/combat/sword_swing.ogg",
-    "player_melee_hit": "sounds/combat/sword_hit.ogg",
+    "player_melee": "sounds/combat/sword_swing.wav",
+    "player_melee_hit": "sounds/combat/sword_swing.wav",
     "player_arrow": "sounds/combat/arrow_shoot.ogg",
     "player_magic": "sounds/combat/magic_cast.ogg",
     "player_staff": "sounds/combat/staff_hit.ogg",
