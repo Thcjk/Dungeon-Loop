@@ -59,7 +59,7 @@ body {
 .class-btn.mage.selected    { border-color: var(--mage); }
 .class-name { font-size: 0.8rem; font-weight: bold; }
 .class-desc { font-size: 0.65rem; color: var(--muted); text-align: center; }
-.preview-sprite { image-rendering: pixelated; width: 72px; height: 72px; }
+.preview-sprite { image-rendering: pixelated; width: 80px; height: 88px; }
 
 .btn {
   padding: 0.6rem 1rem; font-family: inherit; font-size: 0.85rem; font-weight: bold;
