@@ -1314,8 +1314,9 @@ function createHero() {
   };
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
-    y: GROUND - HR.displayH(), vx: 0, vy: 0,
+    y: GROUND - HR.getFootOffset(), vx: 0, vy: 0,
     w: HR.displayW(), h: HR.displayH(),
+    footOff: HR.getFootOffset(),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
     attack: cls.attack + ub("upgrade_attack"),

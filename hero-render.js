@@ -32,6 +32,19 @@ const HR = {
 HR.displayW = () => HR.NW * HR.SCALE;
 HR.displayH = () => HR.NH * HR.SCALE;
 
+HR.getFootRow = () => {
+  if (HR._footRow != null) return HR._footRow;
+  let last = 0;
+  ["warrior", "ranger", "mage"].forEach((cls) => {
+    const rows = hrGetBody(cls, "idle", 0);
+    rows.forEach((row, r) => { if (/[^.]/.test(row)) last = Math.max(last, r); });
+  });
+  HR._footRow = last;
+  return last;
+};
+
+HR.getFootOffset = () => (HR.getFootRow() + 1) * HR.SCALE;
+
 function hrDrawRows(c, rows, x, y, flip, sc) {
   const s = sc || HR.SCALE;
   for (let r = 0; r < rows.length; r++) {
