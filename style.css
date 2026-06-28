@@ -39,6 +39,8 @@ body {
 .setup-card.collapsed { padding: 0.5rem 1rem; }
 .setup-card.collapsed h2, .setup-card.collapsed .label, .setup-card.collapsed .input,
 .setup-card.collapsed .class-select, .setup-card.collapsed #btn-load-player { display: none; }
+.setup-card.collapsed .ability-section { margin-top: 0; padding-top: 0.5rem; }
+.setup-card.collapsed .ability-heading { font-size: 0.65rem; margin-bottom: 0.4rem; }
 .setup-card.collapsed #load-hint { margin: 0; color: #2ecc71; }
 
 .label { font-size: 0.75rem; color: var(--muted); margin: 0.4rem 0 0.2rem; display: block; }
@@ -63,8 +65,11 @@ body {
   padding: 0.6rem 1rem; font-family: inherit; font-size: 0.85rem; font-weight: bold;
   border: 2px solid var(--border); cursor: pointer; color: var(--text); background: var(--bg);
   text-transform: uppercase; letter-spacing: 1px;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s, box-shadow 0.15s;
+  min-height: 44px;
 }
-.btn:hover:not(:disabled) { border-color: var(--gold); }
+.btn:hover:not(:disabled) { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
+.btn:active:not(:disabled) { transform: translateY(0); }
 .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .btn-primary { background: #3a1520; border-color: var(--hp); color: #fff; width: 100%; }
 .btn-secondary { background: #1a2030; }
@@ -395,10 +400,59 @@ kbd {
 
 .loot-display { background: var(--bg); border: 1px solid var(--border); padding: 0.5rem; margin-bottom: 0.6rem; font-size: 0.8rem; text-align: center; }
 .loot-label { color: var(--muted); }
-.loot-item.rarity-common    { color: #aaa; }
+.loot-item.rarity-normal    { color: #aaa; }
 .loot-item.rarity-rare      { color: #3498db; }
 .loot-item.rarity-epic      { color: #9b59b6; }
 .loot-item.rarity-legendary { color: var(--gold); font-weight: bold; }
+.loot-item.rarity-mythic    { color: #bb86fc; font-weight: bold; text-shadow: 0 0 8px rgba(187,134,252,0.5); }
+
+/* === Fähigkeiten-Panel === */
+.ability-section {
+  margin: 0.8rem 0;
+  padding: 0.75rem;
+  background: rgba(8, 10, 18, 0.5);
+  border: 1px solid rgba(240, 192, 64, 0.25);
+  border-radius: 6px;
+}
+.ability-heading {
+  font-size: 0.75rem;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.ability-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.6rem; }
+.ability-meta strong { color: var(--xp); }
+.ability-equip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem; }
+.ability-select { font-size: 0.8rem; min-height: 44px; padding: 0.5rem; }
+.ability-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 280px; overflow-y: auto; }
+.ability-card {
+  padding: 0.55rem 0.65rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+.ability-card.owned { border-color: rgba(46, 204, 113, 0.35); }
+.ability-card.locked { opacity: 0.55; }
+.ability-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+.ability-cd { color: var(--muted); font-size: 0.62rem; }
+.ability-desc { color: var(--muted); line-height: 1.35; margin-bottom: 0.35rem; }
+.ability-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.ability-owned { color: #2ecc71; font-size: 0.65rem; }
+.ability-locked { color: var(--hp); font-size: 0.65rem; }
+.ability-buy { color: var(--gold); font-size: 0.65rem; }
+
+/* === Audio-Toggles === */
+.audio-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.2rem; }
+.btn-audio {
+  font-size: 0.68rem;
+  padding: 0.55rem 0.4rem;
+  min-height: 44px;
+  letter-spacing: 0.5px;
+}
+.btn-audio.toggle-on { border-color: #2ecc71; color: #2ecc71; background: rgba(46,204,113,0.08); }
+.btn-audio.toggle-off { border-color: #666; color: #888; background: rgba(0,0,0,0.3); opacity: 0.75; }
 
 .upgrade-overlay {
   position: absolute;
@@ -466,13 +520,18 @@ kbd {
 .upgrade-tip-text { font-size: 0.6rem; color: var(--muted); display: block; margin-top: 0.2rem; line-height: 1.3; }
 .upgrade-cost { color: var(--gold); font-weight: bold; white-space: nowrap; }
 
-.combat-log { list-style: none; max-height: 160px; overflow-y: auto; font-size: 0.7rem; }
+.combat-log { list-style: none; max-height: 180px; overflow-y: auto; font-size: 0.72rem; line-height: 1.45; }
 .combat-log-full { max-height: 200px; }
-.combat-log li { padding: 0.25rem 0; border-bottom: 1px solid #1a2030; color: var(--muted); }
-.combat-log li:last-child { color: var(--text); border: none; }
-.combat-log li.crit { color: #f39c12; }
+.combat-log li { padding: 0.3rem 0.2rem; border-bottom: 1px solid #1a2030; color: var(--muted); }
+.combat-log li:last-child { color: var(--text); border: none; font-weight: bold; }
+.combat-log li.heal { color: #2ecc71; }
+.combat-log li.damage { color: #e74c3c; }
+.combat-log li.crit { color: #f39c12; font-weight: bold; }
+.combat-log li.magic { color: #5dade2; }
 .combat-log li.loot { color: #3498db; }
-.combat-log li.boss { color: var(--gold); }
+.combat-log li.loot-legendary { color: #f1c40f; font-weight: bold; }
+.combat-log li.loot-mythic { color: #bb86fc; font-weight: bold; }
+.combat-log li.boss { color: #e67e22; font-weight: bold; }
 .combat-log li.special { color: var(--mage); }
 .combat-log li.death { color: var(--hp); }
 
@@ -487,4 +546,20 @@ kbd {
   .game-layout { grid-template-columns: 1fr; }
   .class-select { flex-direction: column; }
   .upgrade-grid { flex-direction: column; }
+  .ability-equip-row { grid-template-columns: 1fr; }
+  .header h1 { font-size: 1.35rem; }
+  .subtitle { font-size: 0.72rem; }
+  .btn, .btn-large { min-height: 48px; font-size: 0.9rem; padding: 0.75rem 1rem; }
+  .btn-audio { min-height: 48px; font-size: 0.75rem; }
+  .class-btn { min-height: 88px; padding: 0.85rem; }
+  .class-name { font-size: 0.9rem; }
+  .class-desc { font-size: 0.72rem; }
+  .status-value { font-size: 0.95rem; }
+  .combat-log { font-size: 0.78rem; max-height: 140px; }
+  .sidebar-log { min-height: 160px; }
+  .controls-hint { font-size: 0.55rem; padding: 6px 8px; }
+  .hud { padding: 8px 10px; }
+  .hud-player { min-width: 180px; }
+  .ability-list { max-height: 220px; }
+  .input { font-size: 1rem; min-height: 48px; }
 }

@@ -499,12 +499,32 @@ const WORLD_CHAR_STYLE = {
   }
 };
 
-const LOOT_TYPES = ["Waffe","Rüstung","Amulett","Zauberbuch"];
+/** Loot-Typen je Klasse – erweitertes Beutesystem */
+const LOOT_TYPES_BY_CLASS = {
+  warrior: ["Schwert", "Schild", "Rüstung", "Amulett"],
+  ranger:  ["Bogen", "Rüstung", "Amulett"],
+  mage:    ["Stab", "Zauberbuch", "Rüstung", "Amulett"]
+};
+const LOOT_PREFIXES = [
+  "Verzaubertes", "Uraltes", "Dunkles", "Strahlendes", "Verfluchtes",
+  "Meister-", "Runen-", "Drachen-", "Schatten-", "Kristall-"
+];
+const LOOT_SUFFIXES = {
+  Schwert: [" der Macht", " des Kriegers", " der Flammen"],
+  Schild:  [" der Treue", " des Wächters"],
+  Bogen:   [" der Präzision", " des Windes", " des Jägers"],
+  Stab:    [" der Weisheit", " der Elemente", " des Archon"],
+  Zauberbuch: [" der Geheimnisse", " der Runen"],
+  Rüstung: [" der Standhaftigkeit", " des Helden"],
+  Amulett: [" des Glücks", " der Vitalität", " der Kritischen Treffer"]
+};
+/** Seltenheiten: Normal → Mythisch mit zufälligen Werten */
 const RARITIES = [
-  { name: "Gewöhnlich", chance: 0.5, mult: 1, css: "rarity-common" },
-  { name: "Selten", chance: 0.3, mult: 2, css: "rarity-rare" },
-  { name: "Episch", chance: 0.15, mult: 3.5, css: "rarity-epic" },
-  { name: "Legendär", chance: 0.05, mult: 6, css: "rarity-legendary" }
+  { name: "Normal",    chance: 0.40, mult: 1,   css: "rarity-normal",    logCss: "loot" },
+  { name: "Selten",    chance: 0.28, mult: 2,   css: "rarity-rare",      logCss: "loot" },
+  { name: "Episch",    chance: 0.18, mult: 3.5, css: "rarity-epic",      logCss: "loot" },
+  { name: "Legendär",  chance: 0.10, mult: 6,   css: "rarity-legendary", logCss: "loot-legendary" },
+  { name: "Mythisch",  chance: 0.04, mult: 11,  css: "rarity-mythic",    logCss: "loot-mythic" }
 ];
 const LOOT_EFFECTS = [
   { key: "attack", label: "Angriff" }, { key: "hp", label: "Leben" },
@@ -527,7 +547,7 @@ const UPGRADES = [
 const BALANCE = {
   upgradeCostPow: 1.64,
   upgradeMax: 25,
-  lootChance: 0.15,
+  lootChance: 0.18,
   xpPerLevel: 175,
   levelScalePow: 1.082,
   levelUpHealPct: 0.10,
@@ -550,7 +570,15 @@ const game = {
   specialTimer: 0, lastShot: 0,
   scrollX: 0, waveCooldown: 0,
   waveIntro: false, combatReady: false,
-  loopId: null
+  loopId: null,
+  /** Meta-Fortschritt (persistent via localStorage) */
+  meta: null,
+  /** Boss-Einblendung { name, hp, maxHp, timer } */
+  bossIntro: null,
+  /** Dezente Bildschirm-Effekte */
+  critFlash: 0, zoomPulse: 0,
+  /** Fähigkeiten-Cast-Sperre (keine gleichzeitigen Spezialfähigkeiten) */
+  abilityCastLock: 0
 };
 
 let WAVE_DATA = null;
@@ -559,6 +587,35 @@ const audioCache = {};
 let musicTrack = null;
 let musicKey = null;
 let audioUnlocked = false;
+
+/** Audio-Einstellungen – unabhängig für Musik & Soundeffekte (localStorage) */
+const AUDIO_PREFS_KEY = "dungeon_loop_audio";
+let audioPrefs = { musicEnabled: true, sfxEnabled: true };
+
+/** Meta-Fortschritt – Fähigkeiten-Freischaltung & Account-Level */
+const META_STORAGE_KEY = "dungeon_loop_meta";
+
+/** Gegner-KI: unterschiedliche Kampfstile pro Monstertyp */
+const ENEMY_AI = {
+  _default:   { style: "melee",  speedMult: 1,    atkMult: 1,    intervalMult: 1 },
+  Goblin:     { style: "fast",   speedMult: 1.38, atkMult: 0.88, intervalMult: 0.82 },
+  Wolf:       { style: "jump",   speedMult: 1.28, atkMult: 1.05, intervalMult: 0.9 },
+  Frostwolf:  { style: "jump",   speedMult: 1.22, atkMult: 1.1,  intervalMult: 0.88 },
+  "Höllenhund": { style: "jump", speedMult: 1.3,  atkMult: 1.15, intervalMult: 0.85 },
+  Skelett:    { style: "slow",   speedMult: 0.68, atkMult: 1.42, intervalMult: 1.25 },
+  Zombie:     { style: "slow",   speedMult: 0.62, atkMult: 1.38, intervalMult: 1.3 },
+  Eisgolem:   { style: "slow",   speedMult: 0.58, atkMult: 1.55, intervalMult: 1.35 },
+  "Lava-Golem": { style: "slow", speedMult: 0.55, atkMult: 1.6,  intervalMult: 1.4 },
+  Ritter:     { style: "slow",   speedMult: 0.72, atkMult: 1.35, intervalMult: 1.15 },
+  Hexe:       { style: "ranged", speedMult: 0.88, atkMult: 0.82, intervalMult: 1.1, range: 185 },
+  Frostmagier:{ style: "ranged", speedMult: 0.92, atkMult: 0.85, intervalMult: 1.05, range: 200 },
+  Feuergeist: { style: "ranged", speedMult: 1.05, atkMult: 0.9,  intervalMult: 0.95, range: 175 },
+  Geist:      { style: "ranged", speedMult: 0.95, atkMult: 0.88, intervalMult: 1.0,  range: 190 },
+  Spinne:     { style: "fast",   speedMult: 1.15, atkMult: 0.95, intervalMult: 0.88 },
+  Bandit:     { style: "fast",   speedMult: 1.2,  atkMult: 1.0,  intervalMult: 0.92 },
+  Schleim:    { style: "melee",  speedMult: 0.85, atkMult: 0.75, intervalMult: 1.05 },
+  _boss:      { style: "boss",   speedMult: 0.95, atkMult: 1.2,  intervalMult: 0.88 }
+};
 
 const $ = (id) => document.getElementById(id);
 
@@ -709,10 +766,13 @@ document.addEventListener("DOMContentLoaded", () => {
   canvas = $("game-canvas");
   ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+  game.meta = loadMeta();
+  loadAudioPrefs();
   initParallaxBackground(getWorld());
   drawPreviews();
   bindEvents();
   renderUpgradeButtons();
+  renderAbilityPanel();
   initSupabase();
   loadGameData();
 });
@@ -727,7 +787,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=50");
+    const res = await fetch("sounds.json?v=51");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   tryMenuMusic();
@@ -758,8 +818,206 @@ function unlockAudio() {
   tryMenuMusic();
 }
 
+function loadAudioPrefs() {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_KEY);
+    if (raw) audioPrefs = { ...audioPrefs, ...JSON.parse(raw) };
+  } catch (_) { /* Standardwerte behalten */ }
+  updateAudioToggleUI();
+}
+
+function saveAudioPrefs() {
+  try { localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(audioPrefs)); } catch (_) {}
+}
+
+function toggleMusic() {
+  audioPrefs.musicEnabled = !audioPrefs.musicEnabled;
+  saveAudioPrefs();
+  updateAudioToggleUI();
+  if (!audioPrefs.musicEnabled) stopMusic();
+  else if (game.isRunning && !game.isDead) playWorldMusic(getWorld());
+  else tryMenuMusic();
+}
+
+function toggleSfx() {
+  audioPrefs.sfxEnabled = !audioPrefs.sfxEnabled;
+  saveAudioPrefs();
+  updateAudioToggleUI();
+}
+
+function updateAudioToggleUI() {
+  const mBtn = $("btn-toggle-music");
+  const sBtn = $("btn-toggle-sfx");
+  if (mBtn) {
+    mBtn.textContent = audioPrefs.musicEnabled ? "Musik AN" : "Musik AUS";
+    mBtn.classList.toggle("toggle-on", audioPrefs.musicEnabled);
+    mBtn.classList.toggle("toggle-off", !audioPrefs.musicEnabled);
+  }
+  if (sBtn) {
+    sBtn.textContent = audioPrefs.sfxEnabled ? "Sound AN" : "Sound AUS";
+    sBtn.classList.toggle("toggle-on", audioPrefs.sfxEnabled);
+    sBtn.classList.toggle("toggle-off", !audioPrefs.sfxEnabled);
+  }
+}
+
+/** Meta-Daten: Account-Level, freigeschaltete & ausgerüstete Fähigkeiten */
+function defaultMeta() {
+  return {
+    level: 1, xp: 0, totalKills: 0,
+    abilities: {
+      warrior: { unlocked: [...DEFAULT_UNLOCKED.warrior], equipped: [DEFAULT_UNLOCKED.warrior[0], null] },
+      ranger:  { unlocked: [...DEFAULT_UNLOCKED.ranger],  equipped: [DEFAULT_UNLOCKED.ranger[0], null] },
+      mage:    { unlocked: [...DEFAULT_UNLOCKED.mage],    equipped: [DEFAULT_UNLOCKED.mage[0], null] }
+    }
+  };
+}
+
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(META_STORAGE_KEY);
+    if (!raw) return defaultMeta();
+    const parsed = JSON.parse(raw);
+    const base = defaultMeta();
+    base.level = parsed.level || 1;
+    base.xp = parsed.xp || 0;
+    base.totalKills = parsed.totalKills || 0;
+    ["warrior", "ranger", "mage"].forEach((ck) => {
+      if (parsed.abilities?.[ck]) {
+        base.abilities[ck].unlocked = parsed.abilities[ck].unlocked || base.abilities[ck].unlocked;
+        base.abilities[ck].equipped = parsed.abilities[ck].equipped || base.abilities[ck].equipped;
+      }
+    });
+    return base;
+  } catch (_) { return defaultMeta(); }
+}
+
+function saveMeta() {
+  if (!game.meta) return;
+  try { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(game.meta)); } catch (_) {}
+}
+
+function addMetaXp(amount) {
+  if (!game.meta) game.meta = loadMeta();
+  game.meta.xp += amount;
+  game.meta.totalKills += amount;
+  while (game.meta.level < 99 && game.meta.xp >= metaXpForLevel(game.meta.level + 1)) {
+    game.meta.level++;
+    addLog("Account-Level " + game.meta.level + " erreicht!", "heal");
+  }
+  saveMeta();
+  renderAbilityPanel();
+}
+
+function getMetaLevel() {
+  return game.meta?.level || 1;
+}
+
+function isAbilityOwned(classKey, abilityId) {
+  return game.meta?.abilities[classKey]?.unlocked?.includes(abilityId);
+}
+
+function buyAbility(classKey, abilityId) {
+  const ab = getAbilityById(classKey, abilityId);
+  if (!ab || isAbilityOwned(classKey, abilityId)) return;
+  if (!isAbilityLevelUnlocked(getMetaLevel(), ab.slot)) return;
+  const cost = getAbilityGoldCost(ab.slot);
+  if (game.totalGold < cost) return;
+  game.totalGold -= cost;
+  game.meta.abilities[classKey].unlocked.push(abilityId);
+  saveMeta();
+  savePlayer();
+  updateTotalGold();
+  renderAbilityPanel();
+  renderUpgradeButtons();
+  addLog(ab.name + " freigeschaltet! (-" + cost + " Gold)", "heal");
+  playSound("coin");
+}
+
+function setEquippedAbility(slotIdx, abilityId) {
+  const ck = game.classKey;
+  if (!game.meta.abilities[ck]) return;
+  if (abilityId && !isAbilityOwned(ck, abilityId)) return;
+  game.meta.abilities[ck].equipped[slotIdx] = abilityId;
+  saveMeta();
+  renderAbilityPanel();
+  updateStatus();
+}
+
+function getEquippedAbilities() {
+  const ck = game.classKey;
+  const eq = game.meta?.abilities[ck]?.equipped || [];
+  return eq.filter(Boolean).map((id) => getAbilityById(ck, id)).filter(Boolean);
+}
+
+function getEffectiveAbilityCd(ab) {
+  const cdRed = (game.upgrades.upgrade_cooldown || 0) * 0.35;
+  return Math.max(2, ab.cd - cdRed);
+}
+
+function canCastAbility(ab, h, st) {
+  if (ab.manaCost && h.mana < ab.manaCost) return false;
+  const range = ab.range || CLASSES[game.classKey].range;
+  return hasTargetableEnemy(range);
+}
+
+function renderAbilityPanel() {
+  const panel = $("ability-panel");
+  if (!panel) return;
+  const ck = game.classKey;
+  const metaLv = getMetaLevel();
+  const list = getClassAbilities(ck);
+  const owned = game.meta?.abilities[ck]?.unlocked || [];
+  const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
+
+  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Max. 2 Fähigkeiten ausrüsten</p>';
+  html += '<div class="ability-equip-row">';
+  [0, 1].forEach((slotIdx) => {
+    html += '<label class="label">Spezialfähigkeit ' + (slotIdx + 1) + '</label>';
+    html += '<select class="input ability-select" data-slot="' + slotIdx + '">';
+    html += '<option value="">– Keine –</option>';
+    owned.forEach((id) => {
+      const ab = getAbilityById(ck, id);
+      if (!ab) return;
+      html += '<option value="' + id + '"' + (equipped[slotIdx] === id ? ' selected' : '') + '>' + ab.name + '</option>';
+    });
+    html += '</select>';
+  });
+  html += '</div><div class="ability-list">';
+
+  list.forEach((ab) => {
+    const ownedFlag = owned.includes(ab.id);
+    const levelOk = isAbilityLevelUnlocked(metaLv, ab.slot);
+    const cost = getAbilityGoldCost(ab.slot);
+    let status = "";
+    let btnHtml = "";
+    if (ownedFlag) {
+      status = '<span class="ability-owned">✓ Freigeschaltet</span>';
+    } else if (!levelOk) {
+      status = '<span class="ability-locked">Lv. ' + getAbilityUnlockLevel(ab.slot) + ' benötigt</span>';
+    } else {
+      status = '<span class="ability-buy">Kauf: ' + cost + ' 🪙</span>';
+      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '"' +
+        (game.totalGold < cost ? ' disabled' : '') + '>Kaufen</button>';
+    }
+    const eqMark = equipped.includes(ab.id) ? ' ★' : '';
+    html += '<div class="ability-card' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
+      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + ab.cd + 's CD</span></div>' +
+      '<p class="ability-desc">' + ab.desc + '</p>' +
+      '<div class="ability-card-foot">' + status + btnHtml + '</div></div>';
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+
+  panel.querySelectorAll(".ability-select").forEach((sel) => {
+    sel.addEventListener("change", () => setEquippedAbility(parseInt(sel.dataset.slot, 10), sel.value || null));
+  });
+  panel.querySelectorAll(".ability-buy-btn").forEach((btn) => {
+    btn.addEventListener("click", () => buyAbility(ck, btn.dataset.ability));
+  });
+}
+
 function playSound(key) {
-  if (!SOUND_MAP?.enabled) return;
+  if (!SOUND_MAP?.enabled || !audioPrefs.sfxEnabled) return;
   const src = getSoundSrc(key);
   if (!src) return;
   const vol = SOUND_MAP.sfxVolume ?? SOUND_MAP.volume ?? 0.5;
@@ -775,7 +1033,7 @@ function playSound(key) {
 }
 
 function playMusic(key) {
-  if (!SOUND_MAP?.enabled || !key) return;
+  if (!SOUND_MAP?.enabled || !audioPrefs.musicEnabled || !key) return;
   const src = getSoundSrc(key);
   if (!src) return;
   if (musicKey === key && musicTrack) {
@@ -918,9 +1176,50 @@ function enemyAttackPlayer(e, h, st) {
   h.hurtAnim = 0.28;
   game.screenShake = Math.max(game.screenShake, e.isBoss ? 8 : 5);
 
-  spawnDamage(hx, hy - 18, dmg, false, true);
+  spawnDamage(hx, hy - 18, dmg, { taken: true, boss: e.isBoss });
   emitCombatEvent("enemy_attack");
   emitCombatEvent("player_hurt");
+  if (h.hp <= 0) { h.hp = 0; onDeath(); }
+}
+
+/** Fernkampf-Gegner (Magier, Hexe) schießen Projektile */
+function enemyRangedAttack(e, h, st) {
+  const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const dx = hx - ex, dy = hy - ey;
+  const len = Math.hypot(dx, dy) || 1;
+  const dmg = Math.max(1, Math.floor(calcPlayerDamage(e.attack, st.defense) * 0.85));
+
+  e.attackAnim = 0.28;
+  game.projectiles.push({
+    x: ex, y: ey, vx: (dx / len) * 9, vy: (dy / len) * 9,
+    dmg, crit: false, sprite: "projectile_fire", life: 90,
+    owner: "enemy", trail: "#9b59b6"
+  });
+  spawnBurst(ex, ey, "#8e44ad", 4, 2);
+  emitCombatEvent("enemy_attack");
+}
+
+/** Boss-Spezialangriff: verstärkter Flächenschlag */
+function bossSpecialAttack(e, h, st) {
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+  const angle = Math.atan2(hy - ey, hx - ex);
+  const dmg = Math.floor(calcPlayerDamage(e.attack * 1.6, st.defense));
+
+  e.attackAnim = 0.55;
+  e.attackWindup = 1;
+  spawnMeleeSlash(ex, ey, angle, { life: 20, range: 70, owner: "enemy", big: true });
+  spawnExplosion(hx, hy - 10, 60);
+  game.screenShake = Math.max(game.screenShake, 10);
+  game.critFlash = 0.15;
+
+  h.hp -= dmg;
+  h.hitFlash = 16;
+  h.hurtAnim = 0.35;
+  spawnDamage(hx, hy - 18, dmg, { taken: true, boss: true });
+  addLog(e.name + " – Spezialangriff!", "boss");
+  emitCombatEvent("enemy_attack");
   if (h.hp <= 0) { h.hp = 0; onDeath(); }
 }
 
@@ -931,6 +1230,7 @@ function bindEvents() {
       btn.classList.add("selected");
       game.classKey = btn.dataset.class;
       updateClassHint();
+      renderAbilityPanel();
     });
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
@@ -945,6 +1245,8 @@ function bindEvents() {
   bind("btn-close-upgrades", hideUpgrades);
   bind("btn-reload-leaderboard", loadLeaderboard);
   bind("btn-fullscreen", toggleFullscreen);
+  bind("btn-toggle-music", toggleMusic);
+  bind("btn-toggle-sfx", toggleSfx);
 
   document.addEventListener("fullscreenchange", onFullscreenChange);
 
@@ -978,12 +1280,13 @@ function updateClassHint() {
   const cls = CLASSES[game.classKey];
   const hint = $("controls-hint");
   if (!hint || !cls) return;
+  const eq = getEquippedAbilities().map((a) => a.name).join(", ") || "Standard";
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Schwert</strong> | <kbd>1</kbd> Schildschlag | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Schießen</strong> | <kbd>1</kbd> 7 Pfeile | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
   } else {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück | <kbd>Maus</kbd> auf Gegner = <strong>Zaubern</strong> | <kbd>1</kbd> Feuerball | <kbd>U</kbd> Upgrades | <kbd>F</kbd> Vollbild";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | Auto: " + eq + " | <kbd>1</kbd> Manuell | <kbd>U</kbd> Upgrades";
   }
 }
 
@@ -1067,7 +1370,8 @@ function enterGame(msg) {
   $("game-section").classList.remove("hidden");
   hideUpgrades();
   $("setup-section").classList.add("collapsed");
-  updateTotalGold(); renderUpgradeButtons();
+  if (!game.meta) game.meta = loadMeta();
+  updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   $("load-hint").textContent = msg;
   $("game-section").scrollIntoView({ behavior: "smooth" });
   requestAnimationFrame(() => startRun());
@@ -1218,7 +1522,8 @@ function getEnemyChaseGap(e) {
 function getEnemyMoveSpeed(e) {
   if (e.walkingIn) return COMBAT_LAYOUT.introSpeed * 0.96;
   const base = e.isBoss ? COMBAT_LAYOUT.enemyBossChaseSpeed : COMBAT_LAYOUT.enemyChaseSpeed;
-  return base + (e.speed || 0) * 42;
+  const aiMult = e.aiSpeedMult || 1;
+  return (base + (e.speed || 0) * 42) * aiMult;
 }
 
 function separateEnemies(e, h, dt) {
@@ -1253,6 +1558,19 @@ function updateEnemyMovement(e, h, dt) {
 
   if (e.attackWindup > 0.4) speed *= 0.5;
   else if (e.attackAnim > 0) speed *= 0.68;
+
+  /** Wolf & schnelle Gegner: Sprung-Angriff */
+  if (e.aiStyle === "jump" && e.isChasing && !e.walkingIn) {
+    e.jumpTimer = (e.jumpTimer || 0) + dt;
+    if (e.jumpTimer >= 1.7 && gap > reach) {
+      e.x -= speed * dt * 2.8;
+      e.jumpTimer = 0;
+      e.attackAnim = 0.35;
+    }
+  }
+
+  /** Langsame Gegner: gedämpfte Bewegung, dafür stärker */
+  if (e.aiStyle === "slow") speed *= 0.82;
 
   const inRange = enemyInCombatRange(e, h);
   e.isChasing = !inRange || !!e.walkingIn;
@@ -1344,6 +1662,8 @@ function resetRun() {
   game.waveNumber = 0; game.currentWave = null;
   game.waveIntro = false; game.combatReady = true;
   game.worldParticles = [];
+  game.bossIntro = null; game.abilityCastLock = 0;
+  game.critFlash = 0; game.zoomPulse = 0;
   $("loot-display").classList.add("hidden");
   initWorldBackground();
 }
@@ -1436,11 +1756,24 @@ function createHero() {
     xpBonus: 1 + ub("upgrade_xp"),
     specialCd: Math.max(2.5, cls.specialCd - ub("upgrade_cooldown")),
     specialTimer: 0,
+    /** Individuelle Cooldowns pro ausgerüsteter Fähigkeit */
+    abilityCds: {},
+    warriorBuff: 0,
+    warriorBuffMult: 1,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
     facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0,
     animState: "idle", animFrame: 0, animTime: 0, deathAnim: false, deathDone: false
   };
   $("hud-mana-wrap").classList.toggle("hidden", game.classKey !== "mage");
+  initHeroAbilityCds(game.hero);
+}
+
+/** Cooldown-Timer für alle Klassen-Fähigkeiten initialisieren */
+function initHeroAbilityCds(h) {
+  h.abilityCds = {};
+  getClassAbilities(game.classKey).forEach((ab) => {
+    h.abilityCds[ab.id] = ab.cd * 0.4;
+  });
 }
 
 function heroStats() {
@@ -1488,8 +1821,9 @@ function getAttackScale() {
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  const ease = lv <= 12 ? 0.76 : lv <= 25 ? 0.88 : lv <= 45 ? 0.95 : 1;
-  return { hp: 4.2 * ease, atk: 2.2 * ease, rew: 3.2 };
+  /** Bosskämpfe deutlich schwieriger – skaliert mit Fortschritt */
+  const ease = lv <= 10 ? 0.82 : lv <= 25 ? 0.92 : lv <= 50 ? 1.0 : 1.08;
+  return { hp: 5.2 * ease, atk: 2.55 * ease, rew: 3.8 };
 }
 
 function getEnemyStats(isBoss) {
@@ -1554,9 +1888,14 @@ function spawnWave() {
   const world = getWorld();
   onWaveSpawn(isBoss, count);
   startWaveIntro();
-  for (let i = 0; i < count; i++) spawnEnemy(isBoss && i === 0, i);
-  if (isBoss) addLog("⚠ BOSS! Gefahr " + world.danger + "/5", "boss");
-  else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "death");
+  let bossEnemy = null;
+  for (let i = 0; i < count; i++) {
+    const e = spawnEnemy(isBoss && i === 0, i);
+    if (e && e.isBoss) bossEnemy = e;
+  }
+  if (bossEnemy) startBossIntro(bossEnemy);
+  if (isBoss) addLog("⚠ BOSS: " + (bossEnemy?.name || "Unbekannt") + "! Gefahr " + world.danger + "/5", "boss");
+  else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "damage");
   else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
 }
 
@@ -1570,27 +1909,36 @@ function spawnEnemy(isBoss, index) {
   const sp = SPRITES[spKey];
   if (!sp) {
     console.error("Sprite fehlt für:", name, spKey);
-    return;
+    return null;
   }
   const stats = getEnemyStats(isBoss);
+  const ai = getEnemyAI(name, isBoss);
   const idx = index || 0;
   const ew = spriteCharW(sp);
 
-  game.enemies.push({
+  const enemy = {
     id: ++enemyId, name, sprite: spKey, isBoss, index: idx,
     x: CW + COMBAT_LAYOUT.introOffscreen + idx * 62 + Math.random() * 18,
     walkingIn: true,
     y: GROUND - spriteCharH(sp),
     w: ew, h: spriteCharH(sp),
     maxHp: stats.hp, hp: stats.hp,
-    attack: stats.attack,
+    attack: Math.floor(stats.attack * (ai.atkMult || 1)),
     goldReward: stats.gold, xpReward: stats.xp,
-    speed: stats.speed,
-    attackInterval: stats.attackInterval,
+    speed: stats.speed * (ai.speedMult || 1),
+    attackInterval: stats.attackInterval * (ai.intervalMult || 1),
+    aiStyle: ai.style,
+    aiSpeedMult: ai.speedMult || 1,
+    isRanged: ai.style === "ranged",
+    rangedRange: ai.range || 0,
+    jumpTimer: 0,
+    bossSpecialTimer: isBoss ? 3 : 0,
     hitFlash: 0, anim: Math.random() * 6, dead: false,
     attackTimer: 0, attackAnim: 0, attackWindup: 0
-  });
+  };
+  game.enemies.push(enemy);
   if (game.currentWave) game.currentWave.enemies.push({ name, isBoss });
+  return enemy;
 }
 
 function initWorldBackground() {
@@ -1754,69 +2102,274 @@ function mageShoot(cls, target) {
   return true;
 }
 
-function useSpecial() {
-  const h = game.hero;
-  if (h.specialTimer < h.specialCd || game.isPaused || !game.isRunning || game.isDead) return;
-  const st = heroStats();
-  const cls = CLASSES[game.classKey];
-  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+function getEnemyAI(name, isBoss) {
+  if (isBoss) return ENEMY_AI._boss;
+  return ENEMY_AI[name] || ENEMY_AI._default;
+}
 
-  if (game.classKey === "warrior") {
-    if (!hasTargetableEnemy(cls.specialRange)) return;
-    h.specialTimer = 0;
-    h.attackAnim = 0.2;
-    const angle = getPrimaryMeleeAngle(Math.atan2(getCombatAim().y - hy, getCombatAim().x - hx));
-    h.facing = Math.cos(angle) >= 0 ? 1 : -1;
-    spawnMeleeSlash(hx, hy, angle, { life: 20, range: cls.specialRange, owner: "player", big: true });
-    spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 16, range: cls.specialRange * 0.9, owner: "player", big: true });
-    forEachEnemyInRange(cls.specialRange, (e, ex, ey) => {
-      const dmg = Math.floor(st.attack * (cls.specialMult || 2.2));
-      e.hp -= dmg; e.hitFlash = 10;
-      spawnDamage(ex, e.y, dmg, true);
-      spawnImpactRing(ex, ey, 22, "#f1c40f", 12);
-      emitCombatEvent("enemy_hit");
-      if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
-    });
-    addLog("Schildschlag! – Nahkampf-Spezial", "special");
-    spawnBurst(hx, hy, "#e74c3c", 12, 5);
-    game.screenShake = Math.max(game.screenShake, 4);
-    emitCombatEvent("player_special_warrior");
+function startBossIntro(bossEnemy) {
+  game.bossIntro = {
+    name: bossEnemy.name,
+    hp: bossEnemy.hp,
+    maxHp: bossEnemy.maxHp,
+    timer: 2.8
+  };
+  game.screenShake = Math.max(game.screenShake, 6);
+  game.zoomPulse = 0.08;
+  playSound("boss_spawn");
+}
 
-  } else if (game.classKey === "ranger") {
-    if (!hasTargetableEnemy(cls.range)) return;
-    h.specialTimer = 0;
-    h.attackAnim = 0.15;
-    const aim = getCombatAim();
-    const baseAngle = Math.atan2(aim.y - hy, aim.x - hx);
-    for (let a = -3; a <= 3; a++) {
-      const ang = baseAngle + a * 0.12;
-      game.projectiles.push({
-        x: hx, y: hy, vx: Math.cos(ang) * 16, vy: Math.sin(ang) * 16,
-        dmg: Math.floor(st.attack * 2), crit: Math.random() < st.crit + 0.25,
-        sprite: "projectile_arrow", life: 80, owner: "player", pierce: true, trail: "#f1c40f"
-      });
+function updateBossIntro(dt) {
+  if (!game.bossIntro) return;
+  game.bossIntro.timer -= dt;
+  if (game.bossIntro.timer <= 0) game.bossIntro = null;
+}
+
+function getPrimaryTarget(range) {
+  const hovered = getHoveredEnemy(range);
+  if (hovered) return hovered;
+  let best = null, bestDist = Infinity;
+  const hx = game.hero.x + game.hero.w / 2, hy = game.hero.y + game.hero.h / 2;
+  game.enemies.forEach((e) => {
+    if (!isEnemyTargetable(e, range)) return;
+    const d = Math.hypot(e.x + e.w / 2 - hx, e.y + e.h / 2 - hy);
+    if (d < bestDist) { bestDist = d; best = e; }
+  });
+  return best;
+}
+
+function dealAbilityDamage(e, rawDmg, opts) {
+  const o = opts || {};
+  let dmg = Math.floor(rawDmg);
+  if (o.critRoll && Math.random() < o.critRoll) { dmg *= 2; o.crit = true; }
+  e.hp -= dmg;
+  e.hitFlash = o.big ? 10 : 7;
+  spawnDamage(e.x + e.w / 2, e.y, dmg, {
+    crit: o.crit, magic: o.magic, boss: e.isBoss
+  });
+  spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, o.ring || 18, o.color || "#ecf0f1", 10);
+  emitCombatEvent("enemy_hit");
+  if (o.crit) { game.critFlash = 0.12; game.screenShake = Math.max(game.screenShake, 4); }
+  if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+  return dmg;
+}
+
+function damageEnemiesInRadius(cx, cy, radius, rawDmg, opts) {
+  game.enemies.forEach((e) => {
+    if (!isEnemyOnScreen(e) || e.walkingIn || e.dead || e.hp <= 0) return;
+    if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) <= radius) {
+      dealAbilityDamage(e, rawDmg, opts);
     }
-    spawnBurst(hx, hy, "#27ae60", 8, 3);
-    addLog("Präzisionsschuss! – 7 Pfeile", "special");
-    emitCombatEvent("player_special_ranger");
+  });
+}
 
-  } else if (game.classKey === "mage") {
-    if (!hasTargetableEnemy(cls.range)) return;
-    if (h.mana < cls.manaCost) { addLog("Nicht genug Mana!"); return; }
-    h.mana -= cls.manaCost;
-    h.specialTimer = 0;
-    h.attackAnim = 0.18;
-    const aim = getCombatAim();
-    const ang = Math.atan2(aim.y - hy, aim.x - hx);
-    game.projectiles.push({
-      x: hx, y: hy, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6,
-      dmg: Math.floor(st.magicDamage * 3), crit: false,
-      sprite: "projectile_fire", life: 55, owner: "player", explosive: true, big: true, trail: "#f39c12"
-    });
-    spawnBurst(hx, hy, "#e67e22", 10, 4);
-    addLog("Feuerball! – Explosion", "special");
-    emitCombatEvent("player_special_mage");
+/** Fähigkeit ausführen – Schaden, Cooldown, Animation & Partikel */
+function castAbility(ab, h, st) {
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const cls = CLASSES[game.classKey];
+  const range = ab.range || cls.range;
+  const target = getPrimaryTarget(range);
+  if (!target && ab.type !== "melee_aoe" && ab.type !== "buff_shout") return false;
+  if (ab.manaCost && h.mana < ab.manaCost) return false;
+  if (ab.manaCost) h.mana -= ab.manaCost;
+
+  h.attackAnim = 0.18;
+  game.abilityCastLock = 0.4;
+  addLog(ab.name + "!", "magic");
+  emitCombatEvent(ab.sound || "player_special_" + game.classKey);
+  spawnBurst(hx, hy, ab.particle || ab.color, 10, 4);
+  game.screenShake = Math.max(game.screenShake, ab.type === "aoe_ground" ? 5 : 3);
+
+  const atkBase = game.classKey === "mage" ? st.magicDamage : st.attack;
+  const buffMult = h.warriorBuff > 0 ? h.warriorBuffMult : 1;
+
+  switch (ab.type) {
+    case "melee_aoe": {
+      const angle = target ? Math.atan2(target.y + target.h / 2 - hy, target.x + target.w / 2 - hx) : 0;
+      h.facing = Math.cos(angle) >= 0 ? 1 : -1;
+      spawnMeleeSlash(hx, hy, angle, { life: 20, range, owner: "player", big: true });
+      spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 16, range: range * 0.9, owner: "player", big: true });
+      forEachEnemyInRange(range, (e, ex) => {
+        dealAbilityDamage(e, atkBase * ab.dmgMult * buffMult, {
+          critRoll: st.crit + (ab.critBonus || 0), magic: game.classKey === "mage",
+          color: ab.color, big: true
+        });
+      });
+      break;
+    }
+    case "melee_spin": {
+      const hits = ab.hits || 3;
+      for (let i = 0; i < hits; i++) {
+        const ang = (Math.PI * 2 / hits) * i;
+        spawnMeleeSlash(hx, hy, ang, { life: 12, range: range * 0.85, owner: "player" });
+      }
+      forEachEnemyInRange(range, (e) => {
+        dealAbilityDamage(e, atkBase * ab.dmgMult * buffMult * 0.85, {
+          critRoll: st.crit, color: ab.color
+        });
+      });
+      break;
+    }
+    case "melee_single": {
+      if (!target) return false;
+      const tx = target.x + target.w / 2;
+      h.facing = tx >= hx ? 1 : -1;
+      const ang = Math.atan2(target.y + target.h / 2 - hy, tx - hx);
+      spawnMeleeSlash(hx, hy, ang, { life: 18, range, owner: "player", big: true });
+      dealAbilityDamage(target, atkBase * ab.dmgMult * buffMult, {
+        critRoll: st.crit + (ab.critBonus || 0), color: ab.color, big: true
+      });
+      break;
+    }
+    case "aoe_ground": {
+      const tx = target ? target.x + target.w / 2 : hx + h.facing * 80;
+      const ty = target ? target.y + target.h / 2 : hy;
+      spawnExplosion(tx, ty, ab.radius || 100);
+      game.attackEffects.push({
+        type: "explosion", x: tx, y: ty, radius: ab.radius || 100,
+        life: 22, maxLife: 22, color: ab.color
+      });
+      damageEnemiesInRadius(tx, ty, ab.radius || 100, atkBase * ab.dmgMult, {
+        magic: game.classKey === "mage", color: ab.color, big: true
+      });
+      break;
+    }
+    case "buff_shout": {
+      h.warriorBuff = ab.buffDuration || 5;
+      h.warriorBuffMult = 1.35;
+      forEachEnemyInRange(range, (e) => {
+        dealAbilityDamage(e, atkBase * ab.dmgMult, { color: ab.color });
+      });
+      spawnBurst(hx, hy, "#f1c40f", 14, 5);
+      addLog("Kriegsschrei – Angriff verstärkt!", "heal");
+      break;
+    }
+    case "projectile_burst":
+    case "projectile_rain": {
+      const aim = target || { x: hx + 100, y: hy, w: 0, h: 0 };
+      const baseAngle = Math.atan2(aim.y + aim.h / 2 - hy, aim.x + aim.w / 2 - hx);
+      const count = ab.count || 7;
+      const spread = ab.spread || 0.12;
+      for (let i = 0; i < count; i++) {
+        const ang = ab.type === "projectile_rain"
+          ? baseAngle + (Math.random() - 0.5) * 1.2
+          : baseAngle + (i - (count - 1) / 2) * spread;
+        game.projectiles.push({
+          x: hx, y: hy - Math.random() * 20,
+          vx: Math.cos(ang) * (cls.projSpeed || 14),
+          vy: Math.sin(ang) * (cls.projSpeed || 14),
+          dmg: Math.floor(atkBase * ab.dmgMult),
+          crit: Math.random() < st.crit + 0.1,
+          sprite: cls.proj || "projectile_arrow",
+          life: 80, owner: "player", pierce: ab.type === "projectile_rain",
+          trail: ab.particle, magic: game.classKey === "mage"
+        });
+      }
+      break;
+    }
+    case "projectile_poison": {
+      if (!target) return false;
+      const dx = target.x + target.w / 2 - hx, dy = target.y + target.h / 2 - hy;
+      const len = Math.hypot(dx, dy) || 1;
+      game.projectiles.push({
+        x: hx, y: hy, vx: (dx / len) * 15, vy: (dy / len) * 15,
+        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        sprite: "projectile_arrow", life: 70, owner: "player",
+        trail: ab.particle, poison: ab.dotTicks || 4
+      });
+      break;
+    }
+    case "projectile_explosive": {
+      if (!target) return false;
+      const dx = target.x + target.w / 2 - hx, dy = target.y + target.h / 2 - hy;
+      const len = Math.hypot(dx, dy) || 1;
+      const spd = game.classKey === "mage" ? 7 : 14;
+      game.projectiles.push({
+        x: hx, y: hy, vx: (dx / len) * spd, vy: (dy / len) * spd,
+        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        sprite: game.classKey === "mage" ? "projectile_fire" : "projectile_arrow",
+        life: 60, owner: "player", explosive: true, big: true,
+        trail: ab.particle, magic: game.classKey === "mage"
+      });
+      break;
+    }
+    case "projectile_pierce": {
+      if (!target) return false;
+      const dx = target.x + target.w / 2 - hx, dy = target.y + target.h / 2 - hy;
+      const len = Math.hypot(dx, dy) || 1;
+      game.projectiles.push({
+        x: hx, y: hy, vx: (dx / len) * 12, vy: (dy / len) * 12,
+        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        sprite: "projectile_fire", life: 75, owner: "player",
+        pierce: true, trail: ab.particle, magic: true
+      });
+      break;
+    }
+    case "projectile_snipe": {
+      if (!target) return false;
+      const dx = target.x + target.w / 2 - hx, dy = target.y + target.h / 2 - hy;
+      const len = Math.hypot(dx, dy) || 1;
+      game.projectiles.push({
+        x: hx, y: hy, vx: (dx / len) * 20, vy: (dy / len) * 20,
+        dmg: Math.floor(atkBase * ab.dmgMult),
+        crit: Math.random() < st.crit + (ab.critBonus || 0),
+        sprite: "projectile_arrow", life: 55, owner: "player",
+        trail: ab.particle, big: true
+      });
+      break;
+    }
+    case "magic_strike": {
+      if (!target) return false;
+      const tx = target.x + target.w / 2, ty = target.y + target.h / 2;
+      for (let i = 0; i < 6; i++) {
+        game.particles.push({
+          x: tx + (Math.random() - 0.5) * 20, y: ty - 30 - i * 8,
+          vx: 0, vy: 8, life: 12, color: ab.particle, size: 3
+        });
+      }
+      dealAbilityDamage(target, atkBase * ab.dmgMult, { magic: true, color: ab.color, big: true });
+      spawnBurst(tx, ty, ab.particle, 12, 5);
+      break;
+    }
+    default:
+      return false;
   }
+  return true;
+}
+
+/** Auto-Cast: ausgerüstete Fähigkeiten nacheinander (nicht gleichzeitig) */
+function updateEquippedAbilities(dt, h, st) {
+  if (game.abilityCastLock > 0) { game.abilityCastLock -= dt; return; }
+  if (h.warriorBuff > 0) h.warriorBuff -= dt;
+
+  Object.keys(h.abilityCds).forEach((k) => { h.abilityCds[k] += dt; });
+
+  const equipped = getEquippedAbilities();
+  if (!equipped.length) return;
+
+  for (const ab of equipped) {
+    const cd = getEffectiveAbilityCd(ab);
+    if ((h.abilityCds[ab.id] || 0) < cd) continue;
+    if (!canCastAbility(ab, h, st)) continue;
+    if (castAbility(ab, h, st)) {
+      h.abilityCds[ab.id] = 0;
+      break;
+    }
+  }
+}
+
+function useSpecial() {
+  /** Taste 1: erste ausgerüstete Fähigkeit manuell auslösen (Fallback) */
+  const h = game.hero;
+  if (!h || game.isPaused || !game.isRunning || game.isDead || game.abilityCastLock > 0) return;
+  const st = heroStats();
+  const equipped = getEquippedAbilities();
+  if (!equipped.length) return;
+  const ab = equipped[0];
+  const cd = getEffectiveAbilityCd(ab);
+  if ((h.abilityCds[ab.id] || 0) < cd) return;
+  if (!canCastAbility(ab, h, st)) return;
+  if (castAbility(ab, h, st)) h.abilityCds[ab.id] = 0;
 }
 
 // ============================================
@@ -1859,6 +2412,9 @@ function updateFrame(dt) {
   if (h.attackAnim > 0) h.attackAnim -= dt * 4;
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
+  if (game.critFlash > 0) game.critFlash = Math.max(0, game.critFlash - dt * 2.5);
+  if (game.zoomPulse > 0) game.zoomPulse = Math.max(0, game.zoomPulse - dt * 0.06);
+  updateBossIntro(dt);
 
   const heroMoving = !!(game.isRunning && !game.isPaused && !game.isDead && (keys.a || keys.d));
   if (game.isRunning && !game.isPaused && !game.isDead) {
@@ -1878,6 +2434,9 @@ function updateFrame(dt) {
 
   // Angriff nur wenn Maus auf Gegner in Reichweite
   if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
+
+  /** Auto-Cast ausgerüsteter Spezialfähigkeiten (max. 2, nacheinander) */
+  if (game.isRunning && !game.isPaused && !game.isDead) updateEquippedAbilities(dt, h, st);
 
   // Ambient-Partikel (Parallax-Welt)
   updateWorldAmbient(dt, getWorld());
@@ -1903,7 +2462,28 @@ function updateFrame(dt) {
 
     if (!enemyInCombatRange(e, h)) {
       e.attackWindup = 0;
+      /** Fernkampf-Gegner: Schuss aus der Distanz */
+      if (e.isRanged && e.rangedRange > 0) {
+        const dist = Math.hypot((e.x + e.w / 2) - (h.x + h.w / 2), (e.y + e.h / 2) - (h.y + h.h / 2));
+        if (dist < e.rangedRange && dist > getEnemyReach(e)) {
+          e.attackTimer = (e.attackTimer || 0) + dt;
+          if (e.attackTimer >= (e.attackInterval || 1.2)) {
+            e.attackTimer = 0;
+            enemyRangedAttack(e, h, st);
+          }
+        }
+      }
       return;
+    }
+
+    /** Boss-Spezialangriff in Intervallen */
+    if (e.isBoss) {
+      e.bossSpecialTimer = (e.bossSpecialTimer || 0) + dt;
+      if (e.bossSpecialTimer >= 5.5) {
+        e.bossSpecialTimer = 0;
+        bossSpecialAttack(e, h, st);
+        return;
+      }
     }
 
     if ((e.attackTimer || 0) <= 0) e.attackTimer = 0.04;
@@ -1936,14 +2516,42 @@ function updateFrame(dt) {
       game.particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 8, color: p.trail, size: 2 });
     }
     if (p.life <= 0) return false;
+    if (p.owner === "enemy") {
+      const h = game.hero;
+      if (h && p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h) {
+        const st = heroStats();
+        const dmg = calcPlayerDamage(p.dmg, st.defense);
+        h.hp -= dmg;
+        h.hitFlash = 8;
+        h.hurtAnim = 0.2;
+        spawnDamage(h.x + h.w / 2, h.y, dmg, { taken: true, magic: true });
+        emitCombatEvent("player_hurt");
+        if (h.hp <= 0) { h.hp = 0; onDeath(); }
+        return false;
+      }
+    }
     if (p.owner === "player") {
       for (const e of game.enemies) {
         if (!isEnemyOnScreen(e) || e.walkingIn || e.hp <= 0) continue;
         if (p.x > e.x && p.x < e.x+e.w && p.y > e.y && p.y < e.y+e.h) {
           e.hp -= p.dmg; e.hitFlash = 6;
-          spawnDamage(e.x+e.w/2, e.y, p.dmg, p.crit);
-          spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : "#ecf0f1", 10);
+          spawnDamage(e.x + e.w / 2, e.y, p.dmg, {
+            crit: p.crit, magic: p.magic, boss: e.isBoss
+          });
+          spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : (p.magic ? "#5dade2" : "#ecf0f1"), 10);
           emitCombatEvent("enemy_hit");
+          /** Giftpfeil: Schaden über Zeit */
+          if (p.poison && e.hp > 0) {
+            const dot = Math.floor(p.dmg * 0.25);
+            for (let t = 1; t <= p.poison; t++) {
+              setTimeout(() => {
+                if (e.dead || e.hp <= 0) return;
+                e.hp -= dot;
+                spawnDamage(e.x + e.w / 2, e.y, dot, { magic: true });
+                if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+              }, t * 400);
+            }
+          }
           if (p.explosive) {
             spawnExplosion(p.x, p.y, 90);
             game.enemies.forEach((o) => {
@@ -2014,7 +2622,8 @@ function onEnemyKill(e) {
     playWorldMusic(newWorld);
     emitCombatEvent("world_change");
   }
-  addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "");
+  addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "damage");
+  addMetaXp(2);
   game.coins.push({ x: e.x+e.w/2, y: e.y, val: gold, life: 3 });
   for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
 
@@ -2024,7 +2633,7 @@ function onEnemyKill(e) {
     game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * BALANCE.levelUpHealPct));
     spawnBurst(game.hero.x + game.hero.w / 2, game.hero.y, "#2ecc71", 10, 3);
     emitCombatEvent("level_up");
-    addLog("Level Up! Held " + game.playerLevel);
+    addLog("Level Up! Held " + game.playerLevel, "heal");
   }
   if (Math.random() < BALANCE.lootChance) generateLoot();
 }
@@ -2034,6 +2643,8 @@ function onDeath() {
   stopMusic();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   game.totalGold += game.runGold;
+  addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
+  saveMeta();
   savePlayer();
   addLog("Game Over!", "death");
   let deathT = 0;
@@ -2062,12 +2673,23 @@ function showGameOver() {
   $("save-hint").textContent = "";
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
-  updateTotalGold(); renderUpgradeButtons();
+  updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   tryMenuMusic();
 }
 
-function spawnDamage(x, y, val, crit, taken) {
-  game.particles.push({ x, y: y-10, vx: 0, vy: -1.5, life: 40, text: (taken?"-":"") + val, crit, taken });
+function spawnDamage(x, y, val, arg4, arg5) {
+  /** Unterstützt altes (crit, taken) und neues Options-Objekt */
+  let opts = {};
+  if (typeof arg4 === "object" && arg4 !== null) opts = arg4;
+  else if (typeof arg4 === "boolean" && arg5) opts = { crit: arg4, taken: true };
+  else if (typeof arg4 === "boolean") opts = { crit: arg4 };
+
+  game.particles.push({
+    x, y: y - 10, vx: (Math.random() - 0.5) * 0.8, vy: -1.8,
+    life: 48, text: (opts.taken ? "-" : "") + val,
+    crit: opts.crit, taken: opts.taken, heal: opts.heal,
+    magic: opts.magic, boss: opts.boss
+  });
 }
 
 // ============================================
@@ -2078,11 +2700,14 @@ function render() {
   const world = getWorld();
   const shakeX = game.screenShake ? (Math.random() - 0.5) * game.screenShake : 0;
   const shakeY = game.screenShake ? (Math.random() - 0.5) * game.screenShake * 0.6 : 0;
+  const zoomBoost = 1 + (game.zoomPulse || 0);
 
   ctx.save();
   ctx.translate(shakeX, shakeY);
   ctx.save();
-  applyCamera(ctx);
+  ctx.translate(CAM_AX, CAM_AY);
+  ctx.scale(CAM_ZOOM * zoomBoost, CAM_ZOOM * zoomBoost);
+  ctx.translate(-CAM_AX, -CAM_AY);
 
   renderUnifiedBackground(world);
   renderWorldAtmosphere(world);
@@ -2206,24 +2831,78 @@ function render() {
 
   game.particles.forEach((p) => {
     if (p.text) {
-      ctx.font = "bold " + (p.crit ? "14" : "11") + "px Courier New";
-      ctx.fillStyle = p.taken ? "#e74c3c" : p.crit ? "#f1c40f" : "#ecf0f1";
-      ctx.fillText(p.text, p.x - 8, p.y - p.life * 0.8);
+      const t = 1 - p.life / 48;
+      let fontSize = 11;
+      if (p.crit) fontSize = 16;
+      if (p.boss) fontSize = 14;
+      if (p.heal) fontSize = 13;
+      ctx.font = "bold " + fontSize + "px Courier New";
+      ctx.globalAlpha = Math.max(0.2, 1 - t * 0.85);
+      if (p.heal) ctx.fillStyle = "#2ecc71";
+      else if (p.magic) ctx.fillStyle = "#5dade2";
+      else if (p.boss && p.taken) ctx.fillStyle = "#e67e22";
+      else if (p.taken) ctx.fillStyle = "#e74c3c";
+      else if (p.crit) ctx.fillStyle = "#f1c40f";
+      else ctx.fillStyle = "#ecf0f1";
+      if (p.crit) {
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeText(p.text, p.x - 8, p.y - p.life * 0.75);
+      }
+      ctx.fillText(p.text, p.x - 8, p.y - p.life * 0.75);
+      ctx.globalAlpha = 1;
     } else {
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x, p.y, p.size, p.size);
     }
   });
 
-  if (h.specialTimer >= h.specialCd) {
-    ctx.fillStyle = "rgba(200,160,255,0.95)";
-    ctx.font = "bold 10px Courier New";
-    ctx.fillText("[1] SPEZIAL", h.x, h.y - 22);
+  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden */
+  const equipped = getEquippedAbilities();
+  if (equipped.length && game.isRunning) {
+    ctx.font = "bold 8px Courier New";
+    ctx.fillStyle = "rgba(200,160,255,0.9)";
+    equipped.forEach((ab, i) => {
+      const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+      ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.75)";
+      ctx.fillText(ab.name.substring(0, 6) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s"), h.x, h.y - 22 - i * 10);
+    });
   }
 
   ctx.restore();
 
   renderWorldTransition(ctx);
+
+  /** Kritischer Treffer – dezenter Bildschirmblitz */
+  if (game.critFlash > 0) {
+    ctx.fillStyle = "rgba(241,196,15," + (game.critFlash * 0.35) + ")";
+    ctx.fillRect(0, 0, CW, CH);
+  }
+
+  /** Boss-Einblendung */
+  if (game.bossIntro) {
+    const bi = game.bossIntro;
+    const alpha = Math.min(1, bi.timer / 0.6);
+    ctx.fillStyle = "rgba(0,0,0," + (0.72 * alpha) + ")";
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.textAlign = "center";
+    ctx.font = "bold 28px Courier New";
+    ctx.fillStyle = "rgba(231,76,60," + alpha + ")";
+    ctx.fillText("⚠ BOSS ⚠", CW / 2, CH / 2 - 40);
+    ctx.font = "bold 18px Courier New";
+    ctx.fillStyle = "rgba(241,196,15," + alpha + ")";
+    ctx.fillText(bi.name, CW / 2, CH / 2 - 8);
+    const barW = 280, barH = 10;
+    const bx = (CW - barW) / 2, by = CH / 2 + 16;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(bx, by, barW, barH);
+    ctx.fillStyle = "rgba(241,196,15," + alpha + ")";
+    ctx.fillRect(bx, by, barW * (bi.hp / bi.maxHp), barH);
+    ctx.font = "11px Courier New";
+    ctx.fillStyle = "rgba(200,200,200," + alpha + ")";
+    ctx.fillText("Spezialangriffe – Vorsicht!", CW / 2, by + 28);
+    ctx.textAlign = "left";
+  }
 
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
@@ -2266,11 +2945,22 @@ function updateStatus() {
   $("dungeon-level").textContent = game.dungeonLevel;
   $("monsters-killed").textContent = game.monstersDefeated;
   $("player-level").textContent = game.playerLevel;
+  const accEl = $("account-level");
+  if (accEl) accEl.textContent = getMetaLevel();
   const h = game.hero;
   if (h) {
-    const ready = h.specialTimer >= h.specialCd;
-    $("special-status").textContent = ready ? "1 bereit!" : Math.ceil(h.specialCd - h.specialTimer) + "s";
-    $("special-status").style.color = ready ? "#2ecc71" : "";
+    const equipped = getEquippedAbilities();
+    if (equipped.length) {
+      const cds = equipped.map((ab) => {
+        const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+        return left <= 0 ? ab.name.charAt(0) : Math.ceil(left) + "s";
+      });
+      $("special-status").textContent = cds.join(" | ");
+      $("special-status").style.color = cds.some((c) => !c.endsWith("s")) ? "#2ecc71" : "";
+    } else {
+      $("special-status").textContent = "–";
+      $("special-status").style.color = "";
+    }
   }
 }
 
@@ -2281,18 +2971,37 @@ function updateStatus() {
 function generateLoot() {
   let roll = Math.random(), cum = 0, rarity = RARITIES[0];
   for (const r of RARITIES) { cum += r.chance; if (roll <= cum) { rarity = r; break; } }
-  const type = LOOT_TYPES[Math.floor(Math.random() * LOOT_TYPES.length)];
+
+  const types = LOOT_TYPES_BY_CLASS[game.classKey] || LOOT_TYPES_BY_CLASS.warrior;
+  const baseType = types[Math.floor(Math.random() * types.length)];
+  const prefix = LOOT_PREFIXES[Math.floor(Math.random() * LOOT_PREFIXES.length)];
+  const suffixArr = LOOT_SUFFIXES[baseType] || [""];
+  const suffix = suffixArr[Math.floor(Math.random() * suffixArr.length)];
+
+  /** Zufällige Werte: Basis × Seltenheit × Dungeon-Level ± Varianz */
+  const variance = 0.75 + Math.random() * 0.5;
   const eff = LOOT_EFFECTS[Math.floor(Math.random() * LOOT_EFFECTS.length)];
-  const val = Math.max(1, Math.floor(rarity.mult * (1 + game.dungeonLevel * 0.1)));
-  const loot = { name: rarity.name + " " + type, css: rarity.css, effect: eff.key, value: val, score: rarity.mult * val };
+  const val = Math.max(1, Math.floor(rarity.mult * variance * (1 + game.dungeonLevel * 0.12)));
+
+  const loot = {
+    name: prefix + " " + baseType + suffix,
+    rarity: rarity.name,
+    css: rarity.css,
+    effect: eff.key,
+    value: val,
+    score: rarity.mult * val
+  };
   applyLoot(loot);
   if (!game.bestLoot || loot.score > game.bestLoot.score) {
     game.bestLoot = loot;
     $("loot-display").classList.remove("hidden");
-    $("best-loot-text").textContent = loot.name + " (+" + eff.label + " " + val + ")";
+    $("best-loot-text").textContent = rarity.name + " " + loot.name + " (+" + eff.label + " " + val + ")";
     $("best-loot-text").className = "loot-item " + loot.css;
   }
-  addLog("Loot: " + loot.name, "loot");
+  addLog("Loot: " + rarity.name + " " + loot.name + " (+" + eff.label + " " + val + ")", rarity.logCss);
+  if (rarity.name === "Legendär" || rarity.name === "Mythisch") {
+    spawnBurst(game.hero.x + game.hero.w / 2, game.hero.y, rarity.name === "Mythisch" ? "#bb86fc" : "#f1c40f", 12, 4);
+  }
 }
 
 function applyLoot(loot) {
@@ -2353,7 +3062,7 @@ async function buyUpgrade(k) {
   game.totalGold -= cost;
   game.upgrades[k] = (game.upgrades[k] || 0) + 1;
   addLog("Upgrade: " + UPGRADES.find(u => u.key === k).label + " Stufe " + game.upgrades[k]);
-  await savePlayer(); updateTotalGold(); renderUpgradeButtons();
+  await savePlayer(); updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
 }
 
 function updateTotalGold() { if ($("total-gold")) $("total-gold").textContent = game.totalGold; }
