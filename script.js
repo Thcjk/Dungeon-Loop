@@ -680,105 +680,20 @@ function drawLivingChar(c, sprite, x, y, w, h, flip, world, bob, big) {
   drawCharFeetFog(c, x, y, w, h, world);
 }
 
-const HERO_WEAPON = {
-  warrior: { idle: "sword", attack: "sword_heavy", offhand: "shield" },
-  ranger:  { idle: "bow", attack: "bow_aim" },
-  mage:    { idle: "staff", attack: "staff", glow: "orb_glow" }
-};
-
-function drawHeroWeaponLayer(c, classKey, cx, cy, angle, attacking, sc) {
-  const w = HERO_WEAPON[classKey];
-  if (!w) return;
-  const wKey = attacking ? (w.attack || w.idle) : w.idle;
-  const sp = SPRITES[wKey];
-  if (!sp) return;
-  const scale = sc || WEAPON_PIXEL;
-  const glow = classKey === "mage" ? "#5dade2" : classKey === "ranger" ? "#f1c40f" : "#ecf0f1";
-  c.save();
-  c.translate(cx, cy);
-  c.rotate(angle);
-  const gripX = classKey === "mage" ? -3 : classKey === "ranger" ? -2 : 4;
-  const gripY = classKey === "mage" ? -22 : classKey === "ranger" ? -12 : -10;
-  drawWeaponSprite(c, sp, gripX, gripY, false, glow, scale);
-  if (classKey === "mage") {
-    const pulse = 0.45 + Math.sin(performance.now() * 0.02) * 0.25;
-    c.globalAlpha = pulse;
-    drawWeaponSprite(c, SPRITES.orb_glow, gripX - 1, gripY - 14, false, "#85c1e9", scale);
-    c.globalAlpha = 1;
-  }
-  if (classKey === "ranger" && attacking) {
-    c.globalAlpha = 0.65;
-    drawWeaponSprite(c, SPRITES.projectile_arrow, gripX + 8, gripY, false, "#f1c40f", scale);
-    c.globalAlpha = 1;
-  }
-  c.restore();
-}
-
-function drawHeroShieldLayer(c, flip, cx, cy, sc) {
-  const scale = sc || WEAPON_PIXEL;
-  c.save();
-  c.translate(cx, cy);
-  drawWeaponSprite(c, SPRITES.shield, flip ? 14 : -20, -4, flip, "#bdc3c7", scale);
-  c.restore();
-}
-
 function drawHero(c, h, bob, atkOff, hurtOff, world) {
-  const x = h.x + atkOff + hurtOff;
-  const y = h.y + bob;
-  const flip = h.facing < 0;
-  const cx = x + h.w / 2;
-  const cy = y + h.h / 2 + 4;
-  const body = SPRITES[game.classKey];
-  const attacking = h.attackAnim > 0.04;
-  let angle = Math.atan2(getAim().y - cy, getAim().x - cx);
-  if (!getAim().onCanvas && !attacking) angle = flip ? 2.4 : -0.75;
-
-  drawCharShadow(c, cx, h.y + h.h, h.w, getCharStyle(world), bob, false);
-
-  if (game.classKey === "warrior") drawHeroShieldLayer(c, flip, cx, cy);
-
-  drawCharSprite(c, body, x, y, flip);
-  applyWorldCharTint(c, x, y, h.w, h.h, world);
-  drawCharFeetFog(c, x, y, h.w, h.h, world);
-
-  drawHeroWeaponLayer(c, game.classKey, cx, cy, angle, attacking);
+  const aim = getCombatAim();
+  HR.draw(c, {
+    x: h.x, y: h.y, h, world, bob, atkOff, hurtOff,
+    classKey: game.classKey, aimX: aim.x, aimY: aim.y
+  });
 }
 
 function drawPreviews() {
-  const PSC = 4;
-  const WSC = 3;
   document.querySelectorAll(".preview-sprite").forEach((cv) => {
     const c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
-    c.clearRect(0, 0, cv.width, cv.height);
     const key = cv.dataset.preview;
-    const body = SPRITES[key];
-    if (!body) return;
-    const bw = body[0].length * PSC;
-    const bh = body.length * PSC;
-    const ox = Math.floor((cv.width - bw) / 2);
-    const oy = Math.floor((cv.height - bh) / 2) + 6;
-    const cx = ox + bw / 2;
-    const cy = oy + bh / 2 + 2;
-    const aim = -0.65;
-
-    if (key === "warrior") drawHeroShieldLayer(c, false, cx, cy, WSC);
-    drawCharSprite(c, body, ox, oy, false, PSC);
-
-    const w = HERO_WEAPON[key];
-    if (w) {
-      const wKey = w.idle;
-      const sp = SPRITES[wKey];
-      c.save();
-      c.translate(cx, cy);
-      c.rotate(aim);
-      const gx = key === "mage" ? -3 : key === "ranger" ? -2 : 4;
-      const gy = key === "mage" ? -18 : key === "ranger" ? -10 : -8;
-      const glow = key === "mage" ? "#5dade2" : key === "ranger" ? "#f1c40f" : "#ecf0f1";
-      drawWeaponSprite(c, sp, gx, gy, false, glow, WSC);
-      if (key === "mage") drawWeaponSprite(c, SPRITES.orb_glow, gx - 1, gy - 12, false, "#85c1e9", WSC);
-      c.restore();
-    }
+    if (key && HR) HR.drawPreview(c, key, cv.width, cv.height);
   });
 }
 
@@ -1397,11 +1312,10 @@ function createHero() {
     const up = UPGRADES.find((x) => x.key === key);
     return (u[key] || 0) * up.bonus;
   };
-  const heroSp = SPRITES[game.classKey];
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
-    y: GROUND - spriteCharH(heroSp), vx: 0, vy: 0,
-    w: spriteCharW(heroSp), h: spriteCharH(heroSp),
+    y: GROUND - HR.displayH(), vx: 0, vy: 0,
+    w: HR.displayW(), h: HR.displayH(),
     maxHp: cls.hp + ub("upgrade_health"),
     hp: cls.hp + ub("upgrade_health"),
     attack: cls.attack + ub("upgrade_attack"),
@@ -1415,7 +1329,8 @@ function createHero() {
     specialCd: Math.max(2.5, cls.specialCd - ub("upgrade_cooldown")),
     specialTimer: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
-    facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0
+    facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0,
+    animState: "idle", animFrame: 0, animTime: 0, deathAnim: false, deathDone: false
   };
   $("hud-mana-wrap").classList.toggle("hidden", game.classKey !== "mage");
 }
@@ -1834,7 +1749,7 @@ function updateFrame(dt) {
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
 
-  // A/D – frei vor/zurück im linken Bereich und Mitte
+  const heroMoving = !!(game.isRunning && !game.isPaused && !game.isDead && (keys.a || keys.d));
   if (game.isRunning && !game.isPaused && !game.isDead) {
     const spd = CLASSES[game.classKey].moveSpeed;
     if (keys.a) { h.x -= spd * dt; h.facing = -1; }
@@ -1843,6 +1758,7 @@ function updateFrame(dt) {
     h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
   h.y = GROUND - h.h;
+  if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)
   if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
@@ -2005,12 +1921,25 @@ function onEnemyKill(e) {
 }
 
 function onDeath() {
-  game.isDead = true; game.isRunning = false;
-  stopLoop();
-  render();
+  game.isDead = true;
+  if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   game.totalGold += game.runGold;
   savePlayer();
   addLog("Game Over!", "death");
+  let deathT = 0;
+  function deathFrame(now) {
+    deathT += 16;
+    if (game.hero && typeof HR !== "undefined") HR.updateAnim(game.hero, 0.016, false);
+    render();
+    if (deathT < 900 && game.hero && !game.hero.deathDone) { requestAnimationFrame(deathFrame); return; }
+    game.isRunning = false;
+    stopLoop();
+    showGameOver();
+  }
+  requestAnimationFrame(deathFrame);
+}
+
+function showGameOver() {
 
   const world = getWorld();
   $("gameover-panel").classList.remove("hidden");
