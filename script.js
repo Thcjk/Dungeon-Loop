@@ -727,9 +727,20 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=45");
+    const res = await fetch("sounds.json?v=46");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
+  tryMenuMusic();
+}
+
+function playMenuMusic() {
+  if (game.isRunning && !game.isDead) return;
+  const key = SOUND_MAP?.music?.menu || "music_menu";
+  if (getSoundSrc(key)) playMusic(key);
+}
+
+function tryMenuMusic() {
+  if (!game.isRunning || game.isDead) playMenuMusic();
 }
 
 function getSoundSrc(key) {
@@ -744,6 +755,7 @@ function resolveAudioSrc(src) {
 
 function unlockAudio() {
   audioUnlocked = true;
+  tryMenuMusic();
 }
 
 function playSound(key) {
@@ -790,8 +802,8 @@ function stopMusic() {
 function playWorldMusic(world) {
   if (!world) return;
   const key = WAVE_DATA?.worldAmbient?.[world.name];
-  if (key) playMusic(key);
-  else if (SOUND_MAP?.music?.game) playMusic("music_game");
+  if (key && getSoundSrc(key)) playMusic(key);
+  else if (getSoundSrc("music_game")) playMusic("music_game");
 }
 
 function playGameMusic() {
@@ -2050,6 +2062,7 @@ function showGameOver() {
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons();
+  tryMenuMusic();
 }
 
 function spawnDamage(x, y, val, crit, taken) {
