@@ -77,7 +77,7 @@ HM.PARTS = {
     type: "procedural",
     layer: "legs",
     draw(g, cx, legY, pose) {
-      hrModLegs(g, cx, legY, pose, { thigh: "U", shin: "T", boot: "M" });
+      hrModLegs(g, cx, legY, pose, { thigh: "W", shin: "X", boot: "N" });
     }
   },
   legs_leather: {
@@ -116,10 +116,11 @@ HM.PARTS = {
     draw(g, cx, y, pose) {
       const by = pose.breath | 0;
       hrModRow(g, y + by,     cx - 3, "0k0");
-      hrModRow(g, y + 1 + by, cx - 3, "0mn0");
-      hrModRow(g, y + 2 + by, cx - 3, "0op0");
-      hrModRow(g, y + 3 + by, cx - 3, "0pq0");
-      hrModRow(g, y + 4 + by, cx - 3, "0rs0");
+      hrModRow(g, y + 1 + by, cx - 3, "0op0");
+      hrModRow(g, y + 2 + by, cx - 3, "0pq0");
+      hrModRow(g, y + 3 + by, cx - 3, "0rs0");
+      hrModRow(g, y + 4 + by, cx - 3, "0st0");
+      hrModSet(g, cx, y + 2 + by, "p");
       hrModSet(g, cx, y + 3 + by, "s");
     }
   },
@@ -130,9 +131,10 @@ HM.PARTS = {
       hrModRow(g, y + by,     cx - 3, "0z0");
       hrModRow(g, y + 1 + by, cx - 4, "0ABA0");
       hrModRow(g, y + 2 + by, cx - 4, "0BCB0");
-      hrModRow(g, y + 3 + by, cx - 4, "0BCB0");
+      hrModRow(g, y + 3 + by, cx - 4, "0CDC0");
       hrModRow(g, y + 4 + by, cx - 3, "0CB0");
-      hrModSet(g, cx, y + 3 + by, "D");
+      hrModSet(g, cx, y + 2 + by, "D");
+      hrModSet(g, cx, y + 3 + by, "E");
     }
   },
 
@@ -188,9 +190,9 @@ HM.PARTS = {
     type: "procedural", layer: "helmet",
     draw(g, cx, y, pose) {
       const sw = (pose.sway | 0) + (pose.capeWave | 0);
-      hrModRow(g, y,     cx - 3, "00000");
-      hrModRow(g, y + 1, cx - 4, "0kkk0");
-      hrModRow(g, y + 2, cx - 4, "0kkk0");
+      hrModRow(g, y,     cx - 3, "0k0");
+      hrModRow(g, y + 1, cx - 4, "0iii0");
+      hrModRow(g, y + 2, cx - 4, "0hhh0");
       hrModSet(g, cx, y + 1, "j");
       hrModSet(g, cx + 3 + sw, y + 4, "8");
       hrModSet(g, cx + 4 + sw, y + 5, "7");
@@ -410,7 +412,7 @@ function hrModLeg(g, cx, y, side, phase, cols) {
   const s = side < 0 ? -1 : 1;
   const px = cx + s * 1 + (phase * s | 0);
   const py = y + Math.max(0, phase);
-  hrModSet(g, px, py, "0");
+  hrModSet(g, px, py, cols.thigh);
   hrModSet(g, px, py + 1, cols.thigh);
   hrModSet(g, px, py + 2, cols.shin);
   hrModSet(g, px, py + 3, cols.boot);
@@ -421,7 +423,7 @@ function hrModArm(g, cx, y, side, swing, upper, lower, hand) {
   const s = side < 0 ? -1 : 1;
   const ax = cx + s * 4 + (swing * s | 0);
   const ay = y + 1 - Math.abs(swing >> 1);
-  hrModSet(g, ax, ay, "0");
+  hrModSet(g, ax, ay, upper);
   hrModSet(g, ax, ay + 1, upper);
   hrModSet(g, ax, ay + 2, lower);
   hrModSet(g, ax, ay + 3, hand);
@@ -510,7 +512,12 @@ HM.collectCanvasLayers = (loadout, pose, attacking) => {
   return { back, front, effects };
 };
 
-HM.getAnchor = (name, icy, pose) => {
+HM.getAnchor = (name, rawDx, rawDy, pose, flip) => {
   const a = HM.ANCHORS[name] || HM.ANCHORS.torso;
-  return { x: a.x, y: icy - 14 + a.y + (pose.breath || 0) };
+  const gx = flip ? HR.NW - 1 - a.x : a.x;
+  const breath = (pose?.breath | 0) * HR.SCALE;
+  return {
+    x: rawDx + gx * HR.SCALE,
+    y: rawDy + a.y * HR.SCALE + breath
+  };
 };

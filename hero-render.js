@@ -7,11 +7,11 @@ const HR = {
   NW: 22,
   NH: 28,
   SCALE: 2,
-  /** In-Game ~18 % größer als zuvor (0.84 → 1.0) – sofort erkennbar */
-  DISPLAY_SCALE: 1.0,
-  /** Startmenü: 2.5× größer als im Spiel */
-  PREVIEW_SCALE: 2.5,
-  OUTLINE: "rgba(6,4,8,0.72)",
+  /** In-Game – gut lesbar, nicht übergroß */
+  DISPLAY_SCALE: 1.15,
+  /** Startmenü: dynamisch an Kartenrahmen angepasst (Basis 3.5×) */
+  PREVIEW_SCALE: 3.5,
+  OUTLINE: "rgba(10,8,14,0.88)",
   CX: 11,
 
   ANIM: {
@@ -25,10 +25,10 @@ const HR = {
   /** Aufgehellte Palette – besserer Kontrast im dunklen Wald */
   PAL: {
     ".": null,
-    "0": "#0c0a0a", "1": "#1a1614", "2": "#2a2420", "3": "#3a322c",
+    "0": "#181412", "1": "#242018", "2": "#342c26", "3": "#443a32",
     "4": "#c8a888", "5": "#a88868", "6": "#ecd8b8", "7": "#886848",
     "8": "#6a4838", "9": "#3a2a22",
-    "a": "#5a626a", "b": "#788490", "c": "#a0acb8", "d": "#c8d4e0",
+    "a": "#6a727a", "b": "#8894a0", "c": "#b0bcc8", "d": "#d0dce8",
     "e": "#e8f0f8", "f": "#fafcff",
     "g": "#4a5a48", "h": "#5a7258", "i": "#6a8a68", "j": "#7aa878",
     "k": "#3a4838", "l": "#2a3428",
@@ -56,9 +56,9 @@ const HR = {
   },
 
   CLASS_ACCENT: {
-    warrior: "rgba(200,180,140,0.14)",
-    ranger:  "rgba(120,180,120,0.12)",
-    mage:    "rgba(160,140,220,0.14)"
+    warrior: "rgba(220,200,160,0.22)",
+    ranger:  "rgba(140,200,140,0.18)",
+    mage:    "rgba(180,160,240,0.20)"
   }
 };
 
@@ -106,11 +106,11 @@ function hrDrawRows(c, rows, x, y, flip, sc, pal) {
   }
 }
 
-/** Dezente 1-Pixel-Outline für Lesbarkeit vor dunklem Hintergrund */
+/** Dezente 1-Pixel-Outline – 8 Richtungen für bessere Silhouette */
 function hrDrawRowsOutlined(c, rows, x, y, flip, sc, pal) {
   const s = sc || HR.SCALE;
   const P = pal || HR.PAL;
-  const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
   c.fillStyle = HR.OUTLINE;
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
@@ -189,31 +189,32 @@ function hrDrawItem(c, item, anchor, flip, sc, angle, outlined) {
   c.restore();
 }
 
-function hrResolveAnchor(item, icy, pose, flip) {
+function hrResolveAnchor(item, rawDx, rawDy, pose, flip) {
   const attach = item.attach || "handR";
   if (attach === "handL") {
-    const base = HM.getAnchor("handL", icy, pose);
-    return { x: base.x + (flip ? 4 : -4), y: base.y };
+    const base = HM.getAnchor("handL", rawDx, rawDy, pose, flip);
+    return { x: base.x + (flip ? 5 : -5), y: base.y };
   }
   if (attach === "handR") {
-    const base = HM.getAnchor("handR", icy, pose);
-    return { x: base.x + (flip ? -4 : 4), y: base.y };
+    const base = HM.getAnchor("handR", rawDx, rawDy, pose, flip);
+    return { x: base.x + (flip ? -5 : 5), y: base.y };
   }
   if (attach === "back") {
-    const base = HM.getAnchor("back", icy, pose);
-    return { x: base.x + (flip ? -6 : 6), y: base.y };
+    const base = HM.getAnchor("back", rawDx, rawDy, pose, flip);
+    return { x: base.x + (flip ? -7 : 7), y: base.y };
   }
-  return HM.getAnchor("torso", icy, pose);
+  return HM.getAnchor("torso", rawDx, rawDy, pose, flip);
 }
 
-function hrDrawLayerList(c, list, icy, flip, sc, pose, attacking, aimAngle, outlined) {
+function hrDrawLayerList(c, list, rawDx, rawDy, flip, sc, pose, attacking, aimAngle, outlined) {
   list.forEach((layer) => {
     if (layer.kind === "effect") {
-      layer.effect.draw(c, HR.CX, icy, 0, attacking);
+      const ax = HM.getAnchor("torso", rawDx, rawDy, pose, flip);
+      layer.effect.draw(c, ax.x, ax.y - 8, 0, attacking);
       return;
     }
     const item = layer.item;
-    const anchor = hrResolveAnchor(item, icy, pose, flip);
+    const anchor = hrResolveAnchor(item, rawDx, rawDy, pose, flip);
     let angle = null;
     if (item.slot === "weapon" || item.slot === "weapon_attack") {
       const base = attacking ? aimAngle : (item.idleAngle ?? (flip ? 2.4 : -0.7));
@@ -231,7 +232,7 @@ function hrDrawHeroRim(c, dx, dy, w, h, classKey) {
   const accent = HR.CLASS_ACCENT[classKey] || "rgba(200,190,170,0.12)";
   const g = c.createRadialGradient(cx, cy, w * 0.08, cx, cy, w * 0.75);
   g.addColorStop(0, accent);
-  g.addColorStop(0.55, "rgba(220,210,195,0.06)");
+  g.addColorStop(0.45, "rgba(235,225,210,0.12)");
   g.addColorStop(1, "rgba(0,0,0,0)");
   c.globalCompositeOperation = "screen";
   c.fillStyle = g;
@@ -314,13 +315,13 @@ function hrRenderHero(c, opts) {
 
   const rawDx = cx - rawW / 2;
   const rawDy = groundY - rawH;
-  const icy = rawDy + rawH * 0.38;
   const { back, front, effects } = HM.collectCanvasLayers(loadout, pose, attacking);
 
-  hrDrawLayerList(c, back, icy, flip, HR.SCALE, pose, attacking, aimAngle, outlined);
+  hrDrawLayerList(c, back, rawDx, rawDy, flip, HR.SCALE, pose, attacking, aimAngle, outlined);
   hrDrawRowsOutlined(c, body, rawDx, rawDy, flip, HR.SCALE);
-  hrDrawLayerList(c, front, icy, flip, HR.SCALE, pose, attacking, aimAngle, outlined);
-  effects.forEach((layer) => layer.effect.draw(c, HR.CX, icy, frame, attacking));
+  hrDrawLayerList(c, front, rawDx, rawDy, flip, HR.SCALE, pose, attacking, aimAngle, outlined);
+  const fxAnchor = HM.getAnchor("torso", rawDx, rawDy, pose, flip);
+  effects.forEach((layer) => layer.effect.draw(c, fxAnchor.x, fxAnchor.y - 10, frame, attacking));
 
   c.restore();
 
@@ -329,13 +330,13 @@ function hrRenderHero(c, opts) {
   if (!menuMode && opts.world) {
     if (typeof applyWorldCharTint === "function") {
       c.save();
-      c.globalAlpha = 0.55;
+      c.globalAlpha = 0.18;
       applyWorldCharTint(c, dx, dy, dispW, dispH, opts.world);
       c.restore();
     }
     if (typeof drawCharFeetFog === "function") {
       c.save();
-      c.globalAlpha = 0.22;
+      c.globalAlpha = 0.08;
       drawCharFeetFog(c, dx, dy, dispW, dispH, opts.world);
       c.restore();
     }
@@ -360,38 +361,43 @@ HR.drawHeroCard = (c, classKey, w, h, frame) => {
   c.imageSmoothingEnabled = false;
 
   const grad = c.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "#1a2430");
-  grad.addColorStop(0.45, "#243038");
-  grad.addColorStop(1, "#141820");
+  grad.addColorStop(0, "#243040");
+  grad.addColorStop(0.5, "#2a3848");
+  grad.addColorStop(1, "#1a2028");
   c.fillStyle = grad;
   c.fillRect(0, 0, w, h);
 
   c.save();
-  c.globalAlpha = 0.35;
-  const spot = c.createRadialGradient(w * 0.5, h * 0.42, 8, w * 0.5, h * 0.42, w * 0.55);
-  spot.addColorStop(0, "rgba(240,220,180,0.5)");
+  c.globalAlpha = 0.55;
+  const spot = c.createRadialGradient(w * 0.5, h * 0.46, 4, w * 0.5, h * 0.46, w * 0.62);
+  spot.addColorStop(0, "rgba(255,240,210,0.55)");
+  spot.addColorStop(0.55, "rgba(255,230,200,0.12)");
   spot.addColorStop(1, "rgba(0,0,0,0)");
   c.fillStyle = spot;
   c.fillRect(0, 0, w, h);
   c.restore();
 
-  c.strokeStyle = "rgba(255,255,255,0.06)";
+  c.strokeStyle = "rgba(255,255,255,0.08)";
   c.strokeRect(0.5, 0.5, w - 1, h - 1);
 
+  const baseSpriteH = (HR.getFootRow() + 1) * HR.SCALE;
+  const baseSpriteW = HR.NW * HR.SCALE;
+  const cardScale = Math.min((h * 0.88) / baseSpriteH, (w * 0.78) / baseSpriteW);
+  const dispW = Math.ceil(baseSpriteW * cardScale);
+  const dispH = Math.ceil(baseSpriteH * cardScale);
+
   const fakeHero = {
-    w: HR.displayW(HR.PREVIEW_SCALE), h: HR.displayH(HR.PREVIEW_SCALE),
+    w: dispW, h: dispH,
     facing: 1, animState: "idle", animFrame: frame || 0,
     attackAnim: 0, hurtAnim: 0, deathAnim: false, equipment: null
   };
-  const dispW = fakeHero.w;
-  const dispH = fakeHero.h;
   const ox = Math.floor((w - dispW) / 2);
-  const groundY = h - 28;
+  const groundY = h - Math.max(14, Math.floor(h * 0.06));
 
   hrRenderHero(c, {
     x: ox, h: fakeHero, classKey,
-    aimX: ox + dispW * 0.72, aimY: groundY - dispH * 0.35,
-    groundY, displayScale: HR.PREVIEW_SCALE, menuMode: true,
+    aimX: ox + dispW * 0.78, aimY: groundY - dispH * 0.42,
+    groundY, displayScale: cardScale, menuMode: true,
     animState: "idle", animFrame: frame || 0
   });
 };
