@@ -683,8 +683,8 @@ function drawLivingChar(c, sprite, x, y, w, h, flip, world, bob, big) {
 function drawHero(c, h, bob, atkOff, hurtOff, world) {
   const aim = getCombatAim();
   HR.draw(c, {
-    x: h.x, y: h.y, h, world, bob, atkOff, hurtOff,
-    classKey: game.classKey, aimX: aim.x, aimY: aim.y
+    x: h.x, h, world, atkOff, hurtOff,
+    classKey: game.classKey, aimX: aim.x, aimY: aim.y, groundY: GROUND
   });
 }
 
@@ -1758,7 +1758,7 @@ function updateFrame(dt) {
     const maxX = Math.min(COMBAT_LAYOUT.heroMaxX, CW * 0.48 - h.w);
     h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
-  h.y = GROUND - h.h;
+  h.y = GROUND - (h.footOff || HR.getFootOffset());
   if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)

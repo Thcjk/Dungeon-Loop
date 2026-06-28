@@ -31,19 +31,8 @@ const HR = {
 
 HR.displayW = () => HR.NW * HR.SCALE;
 HR.displayH = () => HR.NH * HR.SCALE;
-
-HR.getFootRow = () => {
-  if (HR._footRow != null) return HR._footRow;
-  let last = 0;
-  ["warrior", "ranger", "mage"].forEach((cls) => {
-    const rows = hrGetBody(cls, "idle", 0);
-    rows.forEach((row, r) => { if (/[^.]/.test(row)) last = Math.max(last, r); });
-  });
-  HR._footRow = last;
-  return last;
-};
-
-HR.getFootOffset = () => (HR.getFootRow() + 1) * HR.SCALE;
+HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
+HR.getDrawY = () => HR.getGroundY() - HR.displayH();
 
 function hrDrawRows(c, rows, x, y, flip, sc) {
   const s = sc || HR.SCALE;
@@ -356,7 +345,7 @@ HR.draw = (c, opts) => {
   if (!attacking && Math.abs(aimX - cx) < 8) angle = flip ? 2.5 : -0.65;
 
   drawCharShadow(c, cx, footY, h.w, getCharStyle(world), bob, false);
-  HR.drawGlow(c, dx, dy, h.w, h.h);
+  HR.drawGlow(c, dx, dy, h.w, h.h, footOff);
   if (classKey === "warrior") {
     c.save(); c.translate(cx, cy);
     if (flip) c.scale(-1, 1);
