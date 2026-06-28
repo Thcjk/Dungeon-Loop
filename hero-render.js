@@ -31,6 +31,7 @@ const HR = {
 
 HR.displayW = () => HR.NW * HR.SCALE;
 HR.displayH = () => HR.NH * HR.SCALE;
+HR.getFootOffset = () => HR.displayH();
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
 HR.getDrawY = () => HR.getGroundY() - HR.displayH();
 
@@ -138,12 +139,15 @@ function hrLeg(g, cx, y, side, phase, cls) {
   const s = side < 0 ? -1 : 1;
   const px = cx + s * 2 + (phase * s | 0);
   const py = y + (phase > 0 ? 1 : 0);
+  const sole = HR.NH - 1;
   const boot = cls === "mage" ? "o" : "l";
   const boot2 = cls === "mage" ? "p" : "m";
-  hrFill(g, px, py, px + 1, py + 7, "0");
-  hrFill(g, px, py, px + 1, py + 4, cls === "warrior" ? "a" : cls === "ranger" ? "f" : "o");
-  hrFill(g, px, py + 5, px + 1, py + 7, boot);
-  hrSet(g, px + (s > 0 ? 0 : -1), py + 7, boot2);
+  const thigh = cls === "warrior" ? "a" : cls === "ranger" ? "f" : "o";
+  hrFill(g, px, py, px + 1, sole, "0");
+  hrFill(g, px, py, px + 1, py + 8, thigh);
+  hrFill(g, px, sole - 4, px + 1, sole - 1, boot);
+  hrSet(g, px - (s < 0 ? 1 : 0), sole, boot2);
+  hrSet(g, px + (s > 0 ? 1 : 0), sole, boot2);
 }
 
 function hrCape(g, cx, y, sway, cls) {
@@ -160,9 +164,9 @@ function hrCape(g, cx, y, sway, cls) {
 function hrBuildBody(cls, pose) {
   const g = hrBlank();
   const cx = 16;
-  const headY = 2 + (pose.death > 0 ? pose.death * 2 : 0);
-  const torsoY = 10 + (pose.death > 1 ? 4 : 0);
-  const legY = 22 + (pose.death > 2 ? 6 : pose.hurt * 1);
+  const headY = 1 + (pose.death > 0 ? pose.death * 2 : 0);
+  const torsoY = 9 + (pose.death > 1 ? 3 : 0);
+  const legY = 28 + (pose.death > 2 ? 4 : 0);
   const skin = "3", hair = cls === "mage" ? "o" : cls === "ranger" ? "7" : "6";
   hrHead(g, cx, headY, skin, hair, cls);
   hrTorso(g, cx, torsoY, cls, pose.breath);
@@ -303,39 +307,35 @@ HR.drawGear = (c, cls, cx, cy, angle, attacking, flip) => {
   c.restore();
 };
 
-HR.drawGlow = (c, dx, dy, w, h, footOff) => {
+HR.drawGlow = (c, dx, dy, w, h, groundY) => {
   c.save();
   const pad = 10;
-  const footY = dy + footOff;
-  /* Boden-Kontakt – kein Schweben visuell */
-  c.fillStyle = "rgba(0,0,0,0.35)";
+  const footY = groundY;
+  c.fillStyle = "rgba(0,0,0,0.42)";
   c.beginPath();
-  c.ellipse(dx + w / 2, footY + 2, w * 0.38, 5, 0, 0, Math.PI * 2);
+  c.ellipse(dx + w / 2, footY + 1, w * 0.42, 6, 0, 0, Math.PI * 2);
   c.fill();
-  /* Helden-Hervorhebung */
-  const g = c.createRadialGradient(dx + w / 2, dy + h * 0.45, 4, dx + w / 2, dy + h * 0.45, w * 0.85);
-  g.addColorStop(0, "rgba(255,248,220,0.38)");
-  g.addColorStop(0.55, "rgba(255,230,160,0.16)");
+  c.fillStyle = "rgba(40,32,24,0.55)";
+  c.fillRect(dx + w * 0.15, footY - 1, w * 0.7, 3);
+  const g = c.createRadialGradient(dx + w / 2, dy + h * 0.42, 4, dx + w / 2, dy + h * 0.42, w * 0.9);
+  g.addColorStop(0, "rgba(255,252,230,0.45)");
+  g.addColorStop(0.5, "rgba(255,235,170,0.2)");
   g.addColorStop(1, "rgba(255,220,140,0)");
   c.fillStyle = g;
   c.fillRect(dx - pad, dy - pad, w + pad * 2, h + pad * 2);
-  c.strokeStyle = "rgba(255,255,255,0.55)";
+  c.strokeStyle = "rgba(255,255,255,0.65)";
   c.lineWidth = 2;
   c.strokeRect(dx - 4, dy - 2, w + 8, h + 4);
-  c.strokeStyle = "rgba(255,220,120,0.35)";
-  c.lineWidth = 1;
-  c.strokeRect(dx - 7, dy - 4, w + 14, h + 8);
   c.restore();
 };
 
 HR.draw = (c, opts) => {
-  const { x, y, h, world, bob, atkOff, hurtOff, classKey, aimX, aimY } = opts;
+  const { x, h, world, atkOff, hurtOff, classKey, aimX, aimY } = opts;
   const flip = h.facing < 0;
+  const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
   const dx = x + atkOff + hurtOff;
-  const dy = y + (bob || 0);
+  const dy = groundY - HR.displayH();
   const cx = dx + h.w / 2;
-  const footOff = HR.getFootOffset();
-  const footY = dy + footOff;
   const cy = dy + h.h * 0.42;
   const attacking = h.attackAnim > 0.04;
   const st = h.animState || "idle";
@@ -344,8 +344,8 @@ HR.draw = (c, opts) => {
   let angle = Math.atan2(aimY - cy, aimX - cx);
   if (!attacking && Math.abs(aimX - cx) < 8) angle = flip ? 2.5 : -0.65;
 
-  drawCharShadow(c, cx, footY, h.w, getCharStyle(world), bob, false);
-  HR.drawGlow(c, dx, dy, h.w, h.h, footOff);
+  drawCharShadow(c, cx, groundY, h.w, getCharStyle(world), 0, false);
+  HR.drawGlow(c, dx, dy, h.w, h.h, groundY);
   if (classKey === "warrior") {
     c.save(); c.translate(cx, cy);
     if (flip) c.scale(-1, 1);
