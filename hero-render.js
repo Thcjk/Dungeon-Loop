@@ -1,141 +1,21 @@
-/* ==========================================================================
-   Dungeon Loop – Character Renderer v3
-   Vollständige Körper-Sprites + Equipment-Layer (kein Pixel-Zusammenbau)
-   ========================================================================== */
-
 const HR = {
-  /** Kampf: ~38 px – ca. 15 % größer als Gegner (~33 px) */
-  DISPLAY_SCALE: 1.0,
-  MENU_FILL: 0.86,
-  OUTLINE: "rgba(4,2,8,0.95)",
-
+  W: 34,
+  H: 48,
+  DISPLAY_SCALE: 1,
+  MENU_FILL: 0.78,
   ANIM: {
-    idle:   { n: 4, t: 0.28 },
-    walk:   { n: 4, t: 0.075 },
-    attack: { n: 3, t: 0.07 },
-    hurt:   { n: 1, t: 0.14 },
-    death:  { n: 2, t: 0.22 }
-  },
-
-  CLASS_ACCENT: {
-    warrior: "rgba(255,220,160,0.32)",
-    ranger:  "rgba(170,240,140,0.28)",
-    mage:    "rgba(210,180,255,0.30)"
+    idle: { n: 4, t: 0.28 },
+    walk: { n: 4, t: 0.09 },
+    attack: { n: 3, t: 0.08 },
+    hurt: { n: 1, t: 0.14 },
+    death: { n: 2, t: 0.22 }
   }
 };
 
-/* ---- Zeichen-Hilfen ---- */
-
-function hrPxFilled(rows, r, c) {
-  if (r < 0 || r >= rows.length || c < 0 || c >= rows[r].length) return false;
-  const ch = rows[r][c];
-  return ch && ch !== "." && CHR.PAL[ch];
-}
-
-function hrDrawRows(c, rows, x, y, flip, pal) {
-  const P = pal || CHR.PAL;
-  for (let r = 0; r < rows.length; r++) {
-    const row = rows[r];
-    for (let col = 0; col < row.length; col++) {
-      const colr = P[row[col]];
-      if (!colr) continue;
-      const dc = flip ? row.length - 1 - col : col;
-      c.fillStyle = colr;
-      c.fillRect(Math.floor(x + dc), Math.floor(y + r), 1, 1);
-    }
-  }
-}
-
-function hrDrawOutlined(c, rows, x, y, flip, pal) {
-  const P = pal || CHR.PAL;
-  const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
-  c.fillStyle = HR.OUTLINE;
-  for (let r = 0; r < rows.length; r++) {
-    const row = rows[r];
-    for (let col = 0; col < row.length; col++) {
-      if (!hrPxFilled(rows, r, col)) continue;
-      const dc = flip ? row.length - 1 - col : col;
-      const px = Math.floor(x + dc);
-      const py = Math.floor(y + r);
-      for (const [dr, dcol] of dirs) {
-        if (!hrPxFilled(rows, r + dr, col + dcol)) {
-          c.fillRect(px + dcol, py + dr, 1, 1);
-        }
-      }
-    }
-  }
-  hrDrawRows(c, rows, x, y, flip, P);
-}
-
-function hrFlipGrip(grip, flip, w) {
-  if (!flip) return { x: grip.x, y: grip.y };
-  return { x: w - 1 - grip.x, y: grip.y };
-}
-
-function hrCanvasGrip(rawX, rawY, grip, flip) {
-  const g = hrFlipGrip(grip, flip, CHR.W);
-  return { x: rawX + g.x, y: rawY + g.y };
-}
-
-function hrDrawEquip(c, equipId, anchorX, anchorY, flip, angle, outlined) {
-  const eq = CHR.EQUIP[equipId];
-  if (!eq) return;
-  const off = eq.offset || { x: 0, y: 0 };
-  const grip = eq.grip || { x: 0, y: 0 };
-  c.save();
-  c.translate(anchorX + (flip ? -off.x : off.x), anchorY + off.y);
-  if (flip) c.scale(-1, 1);
-  if (angle != null) c.rotate(angle);
-  const drawFn = outlined ? hrDrawOutlined : hrDrawRows;
-  drawFn(c, eq.rows, -grip.x, -grip.y, false);
-  c.restore();
-}
-
-function hrDrawShadow(c, cx, footY, w, strong) {
-  c.save();
-  c.fillStyle = strong ? "rgba(0,0,0,0.48)" : "rgba(0,0,0,0.34)";
-  c.beginPath();
-  c.ellipse(cx, footY + 1, w * 0.44, strong ? 4 : 3, 0, 0, Math.PI * 2);
-  c.fill();
-  c.restore();
-}
-
-function hrDrawGroundGlow(c, cx, footY, w, menu) {
-  c.save();
-  const r = w * (menu ? 0.7 : 0.58);
-  const g = c.createRadialGradient(cx, footY, 1, cx, footY - w * 0.2, r);
-  g.addColorStop(0, menu ? "rgba(255,248,225,0.4)" : "rgba(255,240,210,0.24)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  c.fillStyle = g;
-  c.fillRect(cx - r, footY - w, r * 2, w);
-  c.restore();
-}
-
-function hrDrawRim(c, dx, dy, w, h, classKey) {
-  const cx = dx + w / 2;
-  const cy = dy + h * 0.35;
-  c.save();
-  const accent = HR.CLASS_ACCENT[classKey] || "rgba(240,230,210,0.2)";
-  const g = c.createRadialGradient(cx, cy, 2, cx, cy, w * 0.85);
-  g.addColorStop(0, accent);
-  g.addColorStop(0.45, "rgba(255,250,235,0.14)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  c.globalCompositeOperation = "screen";
-  c.fillStyle = g;
-  c.fillRect(dx - 6, dy - 6, w + 12, h + 12);
-  c.restore();
-}
-
-/* ---- Größe ---- */
-
-HR.displayW = (scale) => Math.ceil(CHR.W * (scale ?? HR.DISPLAY_SCALE));
-HR.displayH = (scale) => Math.ceil(CHR.H * (scale ?? HR.DISPLAY_SCALE));
+HR.displayW = () => HR.W;
+HR.displayH = () => HR.H;
 HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
-HR.getDrawY = () => HR.getGroundY() - HR.displayH();
-HR.getMenuScale = (canvasH, canvasW) =>
-  Math.min((canvasH * HR.MENU_FILL) / CHR.H, (canvasW * 0.84) / CHR.W);
-
-/* ---- Animation ---- */
+HR.getDrawY = () => HR.getGroundY() - HR.H;
 
 HR.getAnimState = (h, moving) => {
   if (typeof game !== "undefined" && (game.isDead || h.deathAnim)) return "death";
@@ -146,178 +26,294 @@ HR.getAnimState = (h, moving) => {
 };
 
 HR.updateAnim = (h, dt, moving) => {
-  const st = HR.getAnimState(h, moving);
-  if (h.animState !== st) { h.animState = st; h.animFrame = 0; h.animTime = 0; }
-  const cfg = HR.ANIM[st] || HR.ANIM.idle;
+  const state = HR.getAnimState(h, moving);
+  if (h.animState !== state) {
+    h.animState = state;
+    h.animFrame = 0;
+    h.animTime = 0;
+  }
+  const cfg = HR.ANIM[state] || HR.ANIM.idle;
   h.animTime = (h.animTime || 0) + dt;
   if (h.animTime >= cfg.t) {
     h.animTime = 0;
     h.animFrame = (h.animFrame + 1) % cfg.n;
-    if (st === "death") {
-      h.animFrame = Math.min(h.animFrame, cfg.n - 1);
-      if (h.animFrame >= cfg.n - 1) h.deathDone = true;
-    }
   }
 };
 
-/* ---- Kern-Renderer ---- */
-
-function hrRenderCharacter(c, opts) {
-  const {
-    x, h, classKey, aimX, aimY, groundY,
-    displayScale, menuMode, animFrame, animState
-  } = opts;
-
-  const clsDef = CHR.getClassDef(classKey);
-  const flip = h.facing < 0;
-  const ds = displayScale ?? HR.DISPLAY_SCALE;
-  const dispW = HR.displayW(ds);
-  const dispH = HR.displayH(ds);
-  const attacking = (h.attackAnim || 0) > 0.04;
-  const st = animState || h.animState || "idle";
-  const fi = animFrame != null ? animFrame : (h.animFrame || 0);
-  const frame = CHR.getFrame(classKey, st, fi, attacking);
-
-  const leanOff = st === "hurt" ? (fi || 0) * 1.5 : 0;
-  const dx = x + (opts.atkOff || 0) + (opts.hurtOff || 0) - leanOff * (flip ? -1 : 1);
-  const dy = groundY - dispH;
-  const cx = dx + dispW / 2;
-  const cy = dy + dispH * 0.38;
-
-  let aimAngle = Math.atan2(aimY - cy, aimX - cx);
-  if (!attacking && Math.abs(aimX - cx) < 14) aimAngle = flip ? 2.3 : -0.65;
-
-  if (!menuMode && typeof drawCharShadow === "function" && opts.world) {
-    drawCharShadow(c, cx, groundY, dispW, getCharStyle(opts.world), 0, false);
-  }
-  hrDrawGroundGlow(c, cx, groundY, dispW, menuMode);
-  hrDrawShadow(c, cx, groundY, dispW, menuMode);
-
-  c.save();
-  c.translate(cx, groundY);
-  c.scale(ds, ds);
-  c.translate(-cx, -groundY);
-
-  const rawX = cx - CHR.W / 2;
-  const rawY = groundY - CHR.H;
-  const grips = frame.grips;
-  const gHandR = hrCanvasGrip(rawX, rawY, grips.handR, flip);
-  const gHandL = hrCanvasGrip(rawX, rawY, grips.handL, flip);
-  const gBack = hrCanvasGrip(rawX, rawY, grips.back || { x: 8, y: 9 }, flip);
-
-  /* Layer 7: Rücken (Köcher) */
-  if (clsDef.back) {
-    hrDrawEquip(c, clsDef.back, gBack.x, gBack.y, flip, null, true);
-  }
-
-  /* Layer 2–6: Vollständiger Körper (Beine+Torso+Arme+Kopf in einem Sprite) */
-  hrDrawOutlined(c, frame.rows, rawX, rawY, flip);
-
-  /* Layer 8a: Schild am Unterarm (links, vor Körper aber nicht über Gesicht) */
-  if (clsDef.shield && !attacking) {
-    hrDrawEquip(c, clsDef.shield, gHandL.x, gHandL.y, flip, null, true);
-  }
-
-  /* Layer 8b: Waffe folgt der Hand */
-  const weaponId = attacking ? (clsDef.weaponAttack || clsDef.weapon) : clsDef.weapon;
-  const weaponDef = CHR.EQUIP[weaponId];
-  if (weaponId && weaponDef) {
-    const baseAngle = attacking
-      ? aimAngle
-      : (flip && weaponDef.idleAngle != null
-        ? Math.PI - weaponDef.idleAngle
-        : (weaponDef.idleAngle ?? (flip ? 2.3 : -0.65)));
-    hrDrawEquip(c, weaponId, gHandR.x, gHandR.y, flip, baseAngle, true);
-
-    /* Magier: leuchtende Kugel oben am Stab */
-    if (clsDef.orb && !attacking) {
-      const staffGrip = weaponDef.grip?.y ?? 7;
-      const staffTopY = gHandR.y - staffGrip;
-      hrDrawEquip(c, clsDef.orb, gHandR.x + (flip ? -1 : 1), staffTopY, flip, null, true);
-    }
-  }
-
-  /* Zauberbuch linke Hand */
-  if (clsDef.offhand && !attacking) {
-    hrDrawEquip(c, clsDef.offhand, gHandL.x, gHandL.y, flip, null, true);
-  }
-
-  /* Layer 9: Runen (Magier) */
-  if (classKey === "mage") {
-    c.save();
-    c.globalAlpha = attacking ? 0.7 : 0.3;
-    c.fillStyle = attacking ? "#d8b8ff" : "#9878c8";
-    const t = fi * 0.9;
-    [[-5, -10], [5, -8], [0, -14]].forEach(([ox, oy], i) => {
-      c.fillRect(gHandR.x + ox + Math.sin(t + i) * 1.5, rawY + 8 + oy, 2, 2);
-    });
-    c.restore();
-  }
-
-  c.restore();
-
-  hrDrawRim(c, dx, dy, dispW, dispH, classKey);
+function px(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
-HR.draw = (c, opts) => {
-  hrRenderCharacter(c, {
-    ...opts,
-    groundY: opts.groundY != null ? opts.groundY : HR.getGroundY(),
-    displayScale: HR.DISPLAY_SCALE,
-    menuMode: false,
-    animState: opts.h.animState,
-    animFrame: opts.h.animFrame
-  });
-};
+function outlineRect(ctx, x, y, w, h, color) {
+  px(ctx, x - 1, y, 1, h, "#120d12");
+  px(ctx, x + w, y, 1, h, "#120d12");
+  px(ctx, x, y - 1, w, 1, "#120d12");
+  px(ctx, x, y + h, w, 1, "#120d12");
+  px(ctx, x, y, w, h, color);
+}
 
-HR.drawHeroCard = (c, classKey, w, h, frame) => {
-  c.clearRect(0, 0, w, h);
-  c.imageSmoothingEnabled = false;
+function drawShadow(ctx, cx, groundY, scale) {
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
+  ctx.beginPath();
+  ctx.ellipse(cx, groundY + 2 * scale, 15 * scale, 4 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
-  const grad = c.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "#384858");
-  grad.addColorStop(0.5, "#405068");
-  grad.addColorStop(1, "#283038");
-  c.fillStyle = grad;
-  c.fillRect(0, 0, w, h);
+function drawHumanBase(ctx, colors, frame, attacking) {
+  const bob = frame === 1 ? -1 : frame === 3 ? 1 : 0;
+  const legShift = frame % 2 === 0 ? 0 : 1;
 
-  c.save();
-  c.globalAlpha = 0.8;
-  const spot = c.createRadialGradient(w * 0.5, h * 0.5, 4, w * 0.5, h * 0.46, Math.max(w, h) * 0.52);
-  spot.addColorStop(0, "rgba(255,252,238,0.8)");
-  spot.addColorStop(0.45, "rgba(255,240,210,0.22)");
-  spot.addColorStop(1, "rgba(0,0,0,0)");
-  c.fillStyle = spot;
-  c.fillRect(0, 0, w, h);
-  c.restore();
+  // Beine: kurz, kräftig, mit Füßen
+  outlineRect(ctx, -8, -22 + bob, 6, 15, colors.leg);
+  outlineRect(ctx, 2, -22 - bob, 6, 15, colors.leg);
+  px(ctx, -9, -7 + bob, 8, 3, colors.boot);
+  px(ctx, 1, -7 - bob, 8, 3, colors.boot);
 
-  c.strokeStyle = "rgba(255,255,255,0.12)";
-  c.strokeRect(0.5, 0.5, w - 1, h - 1);
+  // Hüfte
+  outlineRect(ctx, -9, -27, 18, 6, colors.belt);
 
-  const cardScale = HR.getMenuScale(h, w);
-  const dispW = Math.ceil(CHR.W * cardScale);
-  const dispH = Math.ceil(CHR.H * cardScale);
-  const fakeHero = {
-    w: dispW, h: dispH,
-    facing: 1, animState: "idle", animFrame: frame || 0,
-    attackAnim: 0, hurtAnim: 0, deathAnim: false
+  // Torso
+  outlineRect(ctx, -11, -41, 22, 16, colors.body);
+  px(ctx, -8, -38, 16, 3, colors.highlight);
+  px(ctx, -10, -29, 20, 3, colors.shadow);
+
+  // Hals
+  outlineRect(ctx, -3, -45, 6, 5, colors.skin);
+
+  // Kopf
+  outlineRect(ctx, -7, -55, 14, 12, colors.skin);
+  px(ctx, -5, -57, 10, 4, colors.hair);
+  px(ctx, -4, -51, 2, 2, "#19120e");
+  px(ctx, 3, -51, 2, 2, "#19120e");
+
+  // Arme sichtbar neben Körper
+  const armY = attacking ? -39 : -37;
+  outlineRect(ctx, -16, armY, 5, 14, colors.arm);
+  outlineRect(ctx, 11, armY, 5, 14, colors.arm);
+
+  // Hände
+  px(ctx, -16, armY + 13, 5, 4, colors.skin);
+  px(ctx, 11, armY + 13, 5, 4, colors.skin);
+
+  return {
+    rightHand: { x: 14, y: armY + 15 },
+    leftHand: { x: -14, y: armY + 15 }
   };
-  const ox = Math.floor((w - dispW) / 2);
-  const groundY = h - Math.max(16, Math.floor(h * 0.04));
+}
 
-  hrRenderCharacter(c, {
-    x: ox, h: fakeHero, classKey,
-    aimX: ox + dispW * 0.78, aimY: groundY - dispH * 0.42,
-    groundY, displayScale: cardScale, menuMode: true,
-    animState: "idle", animFrame: frame || 0
+function drawWarrior(ctx, frame, attacking) {
+  const colors = {
+    skin: "#d6a77b",
+    hair: "#4b2f22",
+    body: "#6f7783",
+    highlight: "#c4cbd4",
+    shadow: "#343940",
+    arm: "#7f8792",
+    leg: "#555d66",
+    boot: "#2b2522",
+    belt: "#6b4a2e"
+  };
+
+  const hands = drawHumanBase(ctx, colors, frame, attacking);
+
+  // Schild am linken Unterarm, nicht vor Gesicht
+  outlineRect(ctx, -22, -39, 9, 15, "#8a6540");
+  px(ctx, -20, -37, 5, 10, "#c79b55");
+  px(ctx, -18, -34, 2, 4, "#f3d88c");
+
+  // Schwert seitlich rechts
+  ctx.save();
+  ctx.translate(hands.rightHand.x, hands.rightHand.y);
+  ctx.rotate(attacking ? -0.9 : -0.45);
+  px(ctx, 0, -20, 3, 20, "#d7e1e8");
+  px(ctx, 1, -18, 1, 15, "#ffffff");
+  px(ctx, -3, -2, 9, 3, "#c89a47");
+  px(ctx, 1, 0, 2, 7, "#5b3422");
+  ctx.restore();
+}
+
+function drawRanger(ctx, frame, attacking) {
+  const colors = {
+    skin: "#c99a70",
+    hair: "#2f241d",
+    body: "#3d6b45",
+    highlight: "#79a96f",
+    shadow: "#263b2a",
+    arm: "#5f7b50",
+    leg: "#4d5a39",
+    boot: "#2b241b",
+    belt: "#6a4a2d"
+  };
+
+  const hands = drawHumanBase(ctx, colors, frame, attacking);
+
+  // Kapuze
+  outlineRect(ctx, -8, -58, 16, 8, "#2f5c39");
+  px(ctx, -6, -55, 12, 3, "#5f9b5d");
+
+  // Köcher hinten
+  outlineRect(ctx, -13, -43, 5, 20, "#5c3d25");
+  px(ctx, -12, -45, 1, 5, "#d4c08a");
+  px(ctx, -10, -46, 1, 6, "#d4c08a");
+
+  // Bogen seitlich, nicht vor Körper
+  ctx.save();
+  ctx.translate(18, -35);
+  ctx.strokeStyle = "#b98645";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -13);
+  ctx.quadraticCurveTo(7, 0, 0, 13);
+  ctx.stroke();
+  ctx.strokeStyle = "#e5d9b5";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -13);
+  ctx.lineTo(0, 13);
+  ctx.stroke();
+  if (attacking) {
+    px(ctx, -11, -1, 16, 2, "#d8c282");
+    px(ctx, 5, -2, 4, 4, "#f0e0a0");
+  }
+  ctx.restore();
+}
+
+function drawMage(ctx, frame, attacking) {
+  const colors = {
+    skin: "#d1a780",
+    hair: "#4a3758",
+    body: "#5c3e8a",
+    highlight: "#a77ee0",
+    shadow: "#2d2145",
+    arm: "#7052a0",
+    leg: "#4a3672",
+    boot: "#2b203a",
+    belt: "#b08a4b"
+  };
+
+  const hands = drawHumanBase(ctx, colors, frame, attacking);
+
+  // Robe breiter machen, Beine bleiben unten sichtbar
+  outlineRect(ctx, -13, -34, 26, 22, "#5c3e8a");
+  px(ctx, -9, -32, 18, 3, "#9d72d0");
+  px(ctx, -3, -34, 6, 22, "#3c2a5f");
+
+  // Hut / Kapuze
+  outlineRect(ctx, -9, -62, 18, 8, "#3d2b68");
+  px(ctx, -5, -66, 10, 5, "#5d3c98");
+
+  // Stab rechts, außerhalb vom Körper
+  ctx.save();
+  ctx.translate(18, -32);
+  ctx.rotate(attacking ? -0.35 : 0.08);
+  px(ctx, 0, -25, 3, 30, "#7a5230");
+  outlineRect(ctx, -4, -31, 11, 8, "#8bd8ff");
+  px(ctx, -1, -29, 5, 4, "#d8f6ff");
+  ctx.restore();
+
+  // Magiepartikel
+  ctx.save();
+  ctx.globalAlpha = attacking ? 0.9 : 0.45;
+  px(ctx, 24, -54, 3, 3, "#caa6ff");
+  px(ctx, 17, -61, 2, 2, "#8bd8ff");
+  px(ctx, 28, -42, 2, 2, "#ffffff");
+  ctx.restore();
+}
+
+function drawHeroFigure(ctx, classKey, frame, attacking) {
+  if (classKey === "ranger") {
+    drawRanger(ctx, frame, attacking);
+  } else if (classKey === "mage") {
+    drawMage(ctx, frame, attacking);
+  } else {
+    drawWarrior(ctx, frame, attacking);
+  }
+}
+
+function renderHero(ctx, opts) {
+  const h = opts.h;
+  const classKey = opts.classKey || "warrior";
+  const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
+  const scale = opts.menuMode ? opts.scale : HR.DISPLAY_SCALE;
+  const cx = opts.menuMode
+    ? opts.x
+    : opts.x + (h.w ? h.w / 2 : HR.W / 2);
+  const facing = h.facing < 0 ? -1 : 1;
+  const frame = h.animFrame || 0;
+  const attacking = (h.attackAnim || 0) > 0.04;
+
+  drawShadow(ctx, cx, groundY, scale);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(cx, groundY);
+  ctx.scale(facing * scale, scale);
+  if (h.hurtAnim > 0.05) {
+    ctx.translate(facing * -2, 0);
+  }
+  drawHeroFigure(ctx, classKey, frame, attacking);
+  ctx.restore();
+
+  // dezenter Lichtschein, damit Held vor dunklem Hintergrund sichtbar bleibt
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const glow = ctx.createRadialGradient(cx, groundY - 30 * scale, 2, cx, groundY - 30 * scale, 38 * scale);
+  glow.addColorStop(0, "rgba(255,240,190,0.20)");
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - 45 * scale, groundY - 70 * scale, 90 * scale, 80 * scale);
+  ctx.restore();
+}
+
+HR.draw = (ctx, opts) => {
+  renderHero(ctx, {
+    ...opts,
+    menuMode: false
   });
 };
 
-HR.drawPreview = (c, classKey, w, h) => HR.drawHeroCard(c, classKey, w, h, 0);
+HR.drawHeroCard = (ctx, classKey, w, h, frame = 0) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = false;
 
-/* Kompatibilität – altes Modul-System nicht mehr verwendet */
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, "#17212c");
+  bg.addColorStop(1, "#0b1018");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+  const scale = Math.min(w / 90, h / 90);
+  const fakeHero = {
+    facing: 1,
+    animFrame: frame,
+    attackAnim: 0,
+    hurtAnim: 0,
+    w: HR.W,
+    h: HR.H
+  };
+
+  renderHero(ctx, {
+    x: w / 2,
+    h: fakeHero,
+    classKey,
+    groundY: h - 18,
+    menuMode: true,
+    scale
+  });
+};
+
+HR.drawPreview = (ctx, classKey, w, h) => {
+  HR.drawHeroCard(ctx, classKey, w, h, 0);
+};
+
 HR.registerPart = () => {};
 HR.registerItem = () => {};
 HR.registerLoadout = () => {};
-HR.getLoadout = (classKey) => CHR.getClassDef(classKey);
+HR.getLoadout = () => null;
 HR.invalidateCache = () => {};
