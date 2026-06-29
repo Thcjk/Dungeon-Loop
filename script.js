@@ -11,6 +11,7 @@ let supabase = null;
 // --- Canvas ---
 const PIXEL = 3;
 const CHAR_PIXEL = 3;
+const ENEMY_PIXEL = CHAR_PIXEL * 1.2;
 const WEAPON_PIXEL = 2;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
@@ -743,8 +744,8 @@ function drawWeaponSprite(c, rows, x, y, flip, glowColor, sc) {
   }
   drawSpriteScaled(c, rows, x, y, flip, scale);
 }
-function spriteCharW(rows) { return rows[0].length * CHAR_PIXEL; }
-function spriteCharH(rows) { return rows.length * CHAR_PIXEL; }
+function spriteCharW(rows) { return rows[0].length * ENEMY_PIXEL; }
+function spriteCharH(rows) { return rows.length * ENEMY_PIXEL; }
 
 function getCharStyle(world) {
   return WORLD_CHAR_STYLE[world?.theme] || WORLD_CHAR_STYLE.forest;
@@ -808,7 +809,7 @@ function drawLivingChar(c, sprite, x, y, w, h, flip, world, bob, big) {
   const groundY = y + h - (bob || 0);
   const cx = x + w / 2;
   drawCharShadow(c, cx, groundY, w, getCharStyle(world), bob, big);
-  drawCharSprite(c, sprite, x, y, flip);
+  drawCharSprite(c, sprite, x, y, flip, ENEMY_PIXEL);
   applyWorldCharTint(c, x, y, w, h, world);
   drawCharFeetFog(c, x, y, w, h, world);
 }
