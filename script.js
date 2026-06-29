@@ -388,7 +388,9 @@ const SPRITES = {
   slash: ["...K...","..KRK..",".KRRRK.","..KRK..","...K..."],
   enemy_slash: ["...o...","..fof..",".foooof.","..fof..","...o..."],
   projectile_sword: ["..K..",".KRK.",".KRK.","..K.."],
-  projectile_arrow: ["...K..","..KyK.",".KyyyK","KyyyyK",".KyyyK","..KyK.","...K.."],
+  projectile_arrow: [
+    "........K",".......WK","......WxK",".KYEYEYWK","......WxK",".......WK","..K...K.."
+  ],
   projectile_fire:  ["..f..",".fef.",".fff.","..f.."],
   coin: ["..K..",".KyK.","KyKyK",".KyK.","..K.."]
 };
@@ -2954,7 +2956,10 @@ function render() {
 
   game.projectiles.forEach((p) => {
     const sc = p.big ? 1.5 : 1;
-    drawSprite(ctx, SPRITES[p.sprite], p.x - 6 * sc, p.y - 6 * sc, p.vx < 0);
+    const rows = SPRITES[p.sprite];
+    const pw = rows[0].length * PIXEL * sc;
+    const ph = rows.length * PIXEL * sc;
+    drawSprite(ctx, rows, p.x - pw / 2, p.y - ph / 2, p.vx < 0);
   });
 
   game.particles.forEach((p) => {
