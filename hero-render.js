@@ -151,43 +151,100 @@ function drawWarrior(ctx, frame, attacking, attackFrame) {
   ctx.restore();
 }
 
-function drawBow(ctx, attacking, attackFrame) {
-  const pull = attacking ? [0, 0.42, 0.88][attackFrame] ?? 0.88 : 0;
-  const bowLift = attacking ? attackFrame * -1.5 : 0;
-
-  ctx.save();
-  ctx.translate(20, -33 + bowLift);
-
-  ctx.strokeStyle = "#b47a3b";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, -13);
-  ctx.quadraticCurveTo(7 - pull * 4, 0, 0, 13);
-  ctx.stroke();
-
-  ctx.strokeStyle = "#e6d6aa";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, -13);
-  if (pull > 0.05) {
-    ctx.quadraticCurveTo(-pull * 12, 0, 0, 13);
-  } else {
-    ctx.lineTo(0, 13);
-  }
-  ctx.stroke();
-
-  if (pull > 0.15) {
-    px(ctx, -12 - pull * 7, -1, 14 + pull * 5, 2, "#e7cf82");
-    px(ctx, 4 - pull * 2, -2, 4, 4, "#fff1a0");
-  }
-  if (attacking && attackFrame === 2) {
-    px(ctx, 9, -2, 9, 2, "#fff8c8");
-    px(ctx, 16, -1, 4, 2, "rgba(255,255,200,0.7)");
-  }
-  ctx.restore();
+function getBowPull(attacking, attackFrame, attackAnim) {
+  if (!attacking) return { pull: 0, releasing: false, releaseAmt: 0 };
+  const phasePull = [0.08, 0.58, 0.96][attackFrame] ?? 0.96;
+  const releasing = attackFrame === 2;
+  const releaseAmt = releasing ? Math.max(0, 1 - (attackAnim || 0) / 0.12) : 0;
+  const pull = releasing ? phasePull * (1 - releaseAmt * 0.9) : phasePull;
+  return { pull, releasing, releaseAmt };
 }
 
-function drawRanger(ctx, frame, attacking, attackFrame) {
+function drawBow(ctx, attacking, attackFrame, attackAnim) {
+  const { pull, releasing, releaseAmt } = getBowPull(attacking, attackFrame, attackAnim);
+  const bowLift = attacking ? [-0.5, -2, 0.5][attackFrame] ?? 0 : 0;
+  const limbFlex = pull * 6;
+  const gripX = 18;
+  const gripY = -34 + bowLift;
+
+  ctx.save();
+  ctx.translate(gripX, gripY);
+
+  // Bogenholz – obere/untere Limbs biegen sich beim Spannen
+  ctx.strokeStyle = "#9a6530";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0, -14);
+  ctx.quadraticCurveTo(8 + limbFlex * 0.35, -4, 1, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(1, 0);
+  ctx.quadraticCurveTo(8 - pull * 2.5, 4, 0, 14);
+  ctx.stroke();
+
+  // Griff
+  px(ctx, -2, -3, 4, 6, "#5c3a1e");
+  px(ctx, -1, -2, 2, 4, "#7a4e28");
+
+  // Sehne – zieht beim Spannen deutlich nach hinten
+  const stringX = -pull * 15;
+  ctx.strokeStyle = "#f0e6cc";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, -14);
+  ctx.quadraticCurveTo(stringX, 0, 0, 14);
+  ctx.stroke();
+
+  // Eingehakter Pfeil (dünner Holzstiel + Eisenspitze)
+  const showArrow = pull > 0.18 && (!releasing || releaseAmt < 0.55);
+  if (showArrow) {
+    const fade = releasing ? Math.max(0, 1 - releaseAmt * 1.8) : 1;
+    ctx.globalAlpha = fade;
+    const ax = stringX - 11;
+    px(ctx, ax, 0, 10, 1, "#b8894a");
+    px(ctx, ax + 1, -1, 9, 3, "#c49452");
+    px(ctx, ax + 9, -1, 3, 3, "#8a949c");
+    px(ctx, ax + 11, 0, 2, 1, "#c8d0d8");
+    px(ctx, ax - 2, -1, 2, 3, "#6a9a58");
+    ctx.globalAlpha = 1;
+  }
+
+  // Loslassen-Blitz
+  if (releasing && releaseAmt < 0.65) {
+    const flash = 1 - releaseAmt / 0.65;
+    px(ctx, 2, -2, 8 + flash * 10, 2, `rgba(255,245,180,${flash * 0.85})`);
+    px(ctx, 10 + flash * 6, -1, 4, 2, `rgba(255,255,220,${flash * 0.55})`);
+  }
+
+  ctx.restore();
+  return { gripX, gripY, pull, stringX: gripX + stringX, stringY: gripY };
+}
+
+function drawRangerBowArms(ctx, c, bowPose, frame) {
+  if (!bowPose || bowPose.pull < 0.04) return;
+  const step = frame % 2 === 0 ? 0 : 1;
+  const { gripX, gripY, pull, stringX, stringY } = bowPose;
+
+  // Linker Arm am Bogengriff
+  px(ctx, gripX - 8, gripY - 5, 8, 8, c.body);
+  out(ctx, gripX - 6, gripY - 4, 5, 11, c.arm);
+  px(ctx, gripX - 5, gripY + 7, 4, 3, c.skin);
+
+  // Rechter Arm zieht die Sehne zurück
+  const handX = stringX - 3;
+  const handY = stringY + 1 + step * 0.5;
+  px(ctx, handX - 2, handY - 8, 7, 10, c.body);
+  out(ctx, handX - 1, handY - 6, 5, 12, c.arm);
+  px(ctx, handX, handY + 5, 4, 3, c.skin);
+
+  // Spann-Muskelspannung / Sehnenhand
+  if (pull > 0.35) {
+    px(ctx, handX - 1, handY + 2, 3, 2, c.skin);
+  }
+}
+
+function drawRanger(ctx, frame, attacking, attackFrame, attackAnim) {
   const c = {
     skin: "#c9976d",
     hair: "#241c16",
@@ -213,7 +270,8 @@ function drawRanger(ctx, frame, attacking, attackFrame) {
   px(ctx, -13, -43, 1, 5, "#d7bd7a");
   px(ctx, -11, -44, 1, 6, "#d7bd7a");
 
-  drawBow(ctx, attacking, attackFrame);
+  const bowPose = drawBow(ctx, attacking, attackFrame, attackAnim);
+  if (attacking) drawRangerBowArms(ctx, c, bowPose, frame);
 }
 
 function drawStaff(ctx, attacking, attackFrame) {
@@ -283,9 +341,9 @@ function drawMage(ctx, frame, attacking, attackFrame) {
   ctx.restore();
 }
 
-function drawHeroFigure(ctx, classKey, frame, attacking, attackFrame) {
+function drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnim) {
   const atkFrame = attacking ? attackFrame : 0;
-  if (classKey === "ranger") drawRanger(ctx, frame, attacking, atkFrame);
+  if (classKey === "ranger") drawRanger(ctx, frame, attacking, atkFrame, attackAnim);
   else if (classKey === "mage") drawMage(ctx, frame, attacking, atkFrame);
   else drawWarrior(ctx, frame, attacking, atkFrame);
 }
@@ -299,7 +357,8 @@ function renderHero(ctx, opts) {
   const facing = h.facing < 0 ? -1 : 1;
   const animState = h.animState || "idle";
   const frame = h.animFrame || 0;
-  const attacking = (h.attackAnim || 0) > 0.04 || animState === "attack";
+  const attackAnimVal = h.attackAnim || 0;
+  const attacking = attackAnimVal > 0.04 || animState === "attack";
   const attackFrame = attacking ? frame : 0;
 
   drawShadow(ctx, cx, groundY, scale);
@@ -312,7 +371,7 @@ function renderHero(ctx, opts) {
   if ((h.hurtAnim || 0) > 0.05) {
     ctx.translate(facing * -2, 0);
   }
-  drawHeroFigure(ctx, classKey, frame, attacking, attackFrame);
+  drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnimVal);
   ctx.restore();
 
   ctx.save();
