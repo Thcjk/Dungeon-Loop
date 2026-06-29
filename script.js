@@ -899,6 +899,7 @@ document.addEventListener("DOMContentLoaded", () => {
   startHeroCardLoop();
   bindEvents();
   renderUpgradeButtons();
+  renderSetupAbilityHint();
   renderAbilityPanel();
   initSupabase();
   loadGameData();
@@ -1064,11 +1065,66 @@ function setEquippedAbility(slotIdx, abilityId) {
   const ck = game.classKey;
   if (!game.meta.abilities[ck]) return;
   if (abilityId && !isAbilityOwned(ck, abilityId)) return;
+  const otherSlot = slotIdx === 0 ? 1 : 0;
+  if (abilityId && game.meta.abilities[ck].equipped[otherSlot] === abilityId) {
+    game.meta.abilities[ck].equipped[otherSlot] = null;
+  }
   game.meta.abilities[ck].equipped[slotIdx] = abilityId;
   saveMeta();
   renderAbilityPanel();
   updateClassHint();
   updateStatus();
+}
+
+function renderSetupAbilityHint() {
+  const el = $("ability-setup-hint");
+  if (!el) return;
+  const ck = game.classKey;
+  const metaLv = getMetaLevel();
+  const owned = game.meta?.abilities[ck]?.unlocked || [];
+  const equipped = (game.meta?.abilities[ck]?.equipped || [])
+    .map((id, i) => (id ? { slot: i + 1, ab: getAbilityById(ck, id) } : null))
+    .filter((x) => x && x.ab);
+
+  let html = '<p class="ability-setup-lead">Spezialfähigkeiten kaufst und rüstest du <strong>im Spiel</strong> über <kbd>U</kbd> mit deinem Gesamt-Gold.</p>';
+  html += '<p class="ability-setup-meta">Account-Lv. <strong>' + metaLv + '</strong> schaltet Slots frei · ' + owned.length + ' Fähigkeit(en) freigeschaltet</p>';
+  if (equipped.length) {
+    html += '<div class="ability-setup-badges">';
+    equipped.forEach(({ slot, ab }) => {
+      html += '<span class="ability-badge">' + slot + ': ' + ab.name + '</span>';
+    });
+    html += '</div>';
+  } else {
+    html += '<p class="ability-setup-note">Jede Klasse startet mit einer Basis-Fähigkeit (Taste 1).</p>';
+  }
+  el.innerHTML = html;
+}
+
+function renderAbilityLoadout() {
+  const el = $("ability-loadout");
+  if (!el) return;
+  const h = game.hero;
+  const show = game.isRunning && h;
+  el.classList.toggle("hidden", !show);
+  if (!show) return;
+
+  let html = "";
+  [0, 1].forEach((slotIdx) => {
+    const ab = getEquippedAbilityAtSlot(slotIdx);
+    const key = slotIdx + 1;
+    if (!ab) {
+      html += '<div class="ability-slot ability-slot--empty"><span class="ability-slot-key">' + key + '</span><span class="ability-slot-name">–</span></div>';
+      return;
+    }
+    const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+    const ready = left <= 0;
+    html += '<div class="ability-slot' + (ready ? " ready" : "") + '">' +
+      '<span class="ability-slot-key">' + key + '</span>' +
+      '<span class="ability-slot-name">' + ab.name + '</span>' +
+      '<span class="ability-slot-cd">' + (ready ? "bereit" : Math.ceil(left) + "s") + '</span></div>';
+  });
+  html += '<p class="ability-loadout-hint"><kbd>U</kbd> Fähigkeiten anpassen</p>';
+  el.innerHTML = html;
 }
 
 function getEquippedAbilityAtSlot(slotIdx) {
@@ -1103,7 +1159,7 @@ function renderAbilityPanel() {
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Max. 2 Fähigkeiten ausrüsten</p>';
+  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Max. 2 Fähigkeiten ausrüsten (Taste 1 / 2)</p>';
   html += '<div class="ability-equip-row">';
   [0, 1].forEach((slotIdx) => {
     html += '<label class="label">Taste ' + (slotIdx + 1) + '</label>';
@@ -1127,15 +1183,16 @@ function renderAbilityPanel() {
     if (ownedFlag) {
       status = '<span class="ability-owned">✓ Freigeschaltet</span>';
     } else if (!levelOk) {
-      status = '<span class="ability-locked">Lv. ' + getAbilityUnlockLevel(ab.slot) + ' benötigt</span>';
+      status = '<span class="ability-locked">Account-Lv. ' + getAbilityUnlockLevel(ab.slot) + ' benötigt</span>';
     } else {
       status = '<span class="ability-buy">Kauf: ' + cost + ' 🪙</span>';
       btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '"' +
         (game.totalGold < cost ? ' disabled' : '') + '>Kaufen</button>';
     }
     const eqMark = equipped.includes(ab.id) ? ' ★' : '';
+    const slotLabel = ab.slot === 0 ? 'Basis' : 'Slot ' + (ab.slot + 1);
     html += '<div class="ability-card' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
-      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + ab.cd + 's CD</span></div>' +
+      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · ' + ab.cd + 's</span></div>' +
       '<p class="ability-desc">' + ab.desc + '</p>' +
       '<div class="ability-card-foot">' + status + btnHtml + '</div></div>';
   });
@@ -1148,6 +1205,8 @@ function renderAbilityPanel() {
   panel.querySelectorAll(".ability-buy-btn").forEach((btn) => {
     btn.addEventListener("click", () => buyAbility(ck, btn.dataset.ability));
   });
+  renderSetupAbilityHint();
+  renderAbilityLoadout();
 }
 
 function playSound(key) {
@@ -1365,6 +1424,7 @@ function bindEvents() {
       game.classKey = btn.dataset.class;
       updateClassHint();
       updateHeroCardUI();
+      renderSetupAbilityHint();
       renderAbilityPanel();
     });
   });
@@ -1420,11 +1480,11 @@ function updateClassHint() {
   const eq = slots.map((a) => a.name).join(", ") || "–";
   const keyHint = "<kbd>1</kbd>/<kbd>2</kbd> Spezial";
   if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
   } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
   } else {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades";
+    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
   }
 }
 
@@ -1511,6 +1571,7 @@ function enterGame(msg) {
   $("setup-section").classList.add("collapsed");
   if (!game.meta) game.meta = loadMeta();
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
+  renderSetupAbilityHint();
   $("load-hint").textContent = msg;
   $("game-section").scrollIntoView({ behavior: "smooth" });
   requestAnimationFrame(() => startRun());
@@ -1827,7 +1888,7 @@ function showUpgrades() {
   if (!sec || !$("game-section") || $("game-section").classList.contains("hidden")) return;
   sec.classList.remove("hidden");
   sec.classList.add("highlight-pulse");
-  updateTotalGold(); renderUpgradeButtons();
+  updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   if (game.isRunning && !game.isDead && !game.isPaused) {
     upgradePause = true;
     game.isPaused = true;
@@ -2804,6 +2865,7 @@ function showGameOver() {
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
+  renderSetupAbilityHint();
   tryMenuMusic();
 }
 
@@ -3088,7 +3150,7 @@ function updateStatus() {
       if (!ab) return null;
       const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
       const cd = left <= 0 ? "✓" : Math.ceil(left) + "s";
-      return (slotIdx + 1) + ":" + ab.name.charAt(0) + cd;
+      return (slotIdx + 1) + ": " + ab.name + " " + cd;
     }).filter(Boolean);
     if (parts.length) {
       $("special-status").textContent = parts.join(" | ");
@@ -3098,6 +3160,7 @@ function updateStatus() {
       $("special-status").style.color = "";
     }
   }
+  renderAbilityLoadout();
 }
 
 // ============================================

@@ -38,9 +38,9 @@
             </button>
           </div>
 
-          <div class="ability-section" id="ability-section">
+          <div class="ability-section ability-section--setup" id="ability-section">
             <h3 class="ability-heading">Spezialfähigkeiten</h3>
-            <div id="ability-panel" class="ability-panel"></div>
+            <div id="ability-setup-hint" class="ability-setup-hint"></div>
           </div>
 
           <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
@@ -126,7 +126,7 @@
             <kbd>A</kbd>/<kbd>D</kbd> Vor/Zurück &nbsp;|&nbsp;
             <kbd>Maus</kbd> auf Gegner = angreifen &nbsp;|&nbsp;
             <kbd>1</kbd>/<kbd>2</kbd> Spezial &nbsp;|&nbsp;
-            <kbd>U</kbd> Upgrades &nbsp;|&nbsp;
+            <kbd>U</kbd> Upgrades &amp; Fähigkeiten &nbsp;|&nbsp;
             <kbd>P</kbd> Pause &nbsp;|&nbsp;
             <kbd>F</kbd> Vollbild
           </div>
@@ -149,11 +149,17 @@
           <div class="upgrade-overlay hidden" id="upgrade-section">
             <div class="upgrade-panel card">
               <div class="upgrade-header">
-                <h2>Permanente Upgrades</h2>
+                <h2>Upgrades &amp; Fähigkeiten</h2>
                 <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
               </div>
               <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
               <p class="total-gold">Gesamt-Gold: <strong id="total-gold">0</strong></p>
+              <div class="ability-section ability-section--game" id="ability-section-game">
+                <h3 class="ability-heading">Spezialfähigkeiten</h3>
+                <p class="ability-game-lead">Account-Level schaltet Slots frei · Gold kauft Fähigkeiten · Taste <kbd>1</kbd> / <kbd>2</kbd> im Kampf</p>
+                <div id="ability-panel" class="ability-panel"></div>
+              </div>
+              <h3 class="upgrade-subheading">Stat-Upgrades</h3>
               <div class="upgrade-grid" id="upgrade-grid"></div>
             </div>
           </div>
@@ -165,6 +171,7 @@
             <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
             <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
             <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
+            <div class="ability-loadout hidden" id="ability-loadout"></div>
             <div class="status-item"><span class="status-label">Account</span><span class="status-value" id="account-level">1</span></div>
           </div>
 
@@ -180,7 +187,7 @@
             </div>
             <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
             <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
-            <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades (U)</button>
+            <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades &amp; Fähigkeiten (U)</button>
             <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
           </div>
 
@@ -205,6 +212,6 @@
   <script src="hero-sprites.js?v=62"></script>
   <script src="hero-render.js?v=63"></script>
   <script src="abilities.js?v=60"></script>
-  <script src="script.js?v=61"></script>
+  <script src="script.js?v=62"></script>
 </body>
 </html>
