@@ -534,6 +534,88 @@ kbd {
 .ability-locked { color: var(--hp); font-size: 0.65rem; }
 .ability-buy { color: var(--gold); font-size: 0.65rem; }
 
+/* Setup: nur Hinweis, kein Kauf/Ausrüstung */
+.ability-section--setup {
+  border-color: rgba(240, 192, 64, 0.18);
+}
+.ability-setup-hint { font-size: 0.72rem; color: var(--muted); line-height: 1.45; }
+.ability-setup-lead { margin-bottom: 0.55rem; }
+.ability-setup-lead strong { color: var(--text); }
+.ability-setup-meta { margin-bottom: 0.45rem; font-size: 0.68rem; }
+.ability-setup-meta strong { color: var(--xp); }
+.ability-setup-note { font-size: 0.68rem; color: var(--muted); margin: 0; }
+.ability-setup-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+.ability-badge {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #8fdfaa;
+}
+
+/* Upgrade-Menü: volle Fähigkeiten-Verwaltung */
+.ability-section--game {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem;
+  background: rgba(6, 8, 14, 0.55);
+  border-color: rgba(240, 192, 64, 0.3);
+}
+.ability-game-lead {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin: -0.25rem 0 0.55rem;
+  line-height: 1.35;
+}
+.ability-section--game .ability-list { max-height: 220px; }
+
+/* Sidebar: ausgerüstete Fähigkeiten im Kampf */
+.ability-loadout {
+  margin: 0.5rem 0 0.65rem;
+  padding: 0.5rem 0.55rem;
+  background: rgba(8, 10, 18, 0.55);
+  border: 1px solid rgba(240, 192, 64, 0.22);
+  border-radius: 6px;
+}
+.ability-loadout.hidden { display: none; }
+.ability-slot {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0;
+  font-size: 0.68rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.ability-slot:last-of-type { border-bottom: none; }
+.ability-slot-key {
+  font-weight: bold;
+  color: var(--gold);
+  text-align: center;
+  background: rgba(240, 192, 64, 0.12);
+  border-radius: 3px;
+  padding: 0.1rem 0;
+}
+.ability-slot-name { color: var(--text); }
+.ability-slot-cd { color: var(--muted); font-size: 0.62rem; white-space: nowrap; }
+.ability-slot.ready .ability-slot-cd { color: #2ecc71; font-weight: bold; }
+.ability-slot--empty .ability-slot-name { color: var(--muted); }
+.ability-loadout-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.upgrade-subheading {
+  font-size: 0.72rem;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin: 0.25rem 0 0.65rem;
+}
+
 /* === Audio-Toggles === */
 .audio-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.2rem; }
 .btn-audio {
@@ -560,7 +642,7 @@ kbd {
 .upgrade-overlay.hidden { display: none; }
 
 .upgrade-panel {
-  width: min(100%, 520px);
+  width: min(100%, 560px);
   margin: 0.5rem auto 1.5rem;
   border-color: var(--gold);
   box-shadow: 0 0 40px rgba(240, 192, 64, 0.15);
