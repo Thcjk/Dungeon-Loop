@@ -411,7 +411,7 @@ const CLASS_WEAPONS = {
 const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
-    hp: 115, attack: 19, defense: 5, crit: 0.05, mana: 0, magicDamage: 0,
+    hp: 128, attack: 19, defense: 6, crit: 0.05, mana: 0, magicDamage: 0,
     range: 82, attackRate: 480, moveSpeed: 122,
     aoeFalloff: 0.72,
     special: "Schildschlag", specialCd: 8, specialRange: 90, specialMult: 2.2,
@@ -419,7 +419,7 @@ const CLASSES = {
   },
   ranger: {
     name: "Waldläufer", attackType: "ranged",
-    hp: 95, attack: 17, defense: 3, crit: 0.18, mana: 0, magicDamage: 0,
+    hp: 108, attack: 17, defense: 4, crit: 0.18, mana: 0, magicDamage: 0,
     range: 245, attackRate: 200, moveSpeed: 158,
     closeRange: 50, meleePenalty: 0.3,
     proj: "projectile_arrow", projSpeed: 14,
@@ -428,7 +428,7 @@ const CLASSES = {
   },
   mage: {
     name: "Magier", attackType: "magic",
-    hp: 72, attack: 7, defense: 2, crit: 0.12, mana: 120, magicDamage: 28,
+    hp: 82, attack: 7, defense: 3, crit: 0.12, mana: 120, magicDamage: 28,
     range: 210, attackRate: 300, moveSpeed: 108, manaPerShot: 5,
     proj: "projectile_fire", projSpeed: 8,
     special: "Feuerball", specialCd: 6, manaCost: 30,
@@ -618,16 +618,22 @@ const UPGRADES = [
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 155, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Öfter Spezial = mehr Überleben.",           forClass: "all" }
 ];
 
-// Balance – knifflig, aber über Loot & Upgrades machbar
+// Balance – Early Game fairer; Werte hier zum Feintuning
 const BALANCE = {
   upgradeCostPow: 1.64,
   upgradeMax: 25,
   lootChance: 0.18,
-  xpPerLevel: 175,
-  levelScalePow: 1.082,
+  xpPerLevel: 155,          // niedriger = schnelleres Held-Level
+  levelScalePow: 1.068,       // niedriger = langsamere Gegner-Skalierung
   levelUpHealPct: 0.10,
   waveCooldown: 2.15,
-  minWaveCooldown: 0.95
+  minWaveCooldown: 0.95,
+  defenseFactor: 1.18,          // höher = Verteidigung wirkt stärker
+  earlyEaseUntil: 15,           // erste N Dungeon-Level leichter
+  earlyHpEase: 0.12,            // max. HP-Reduktion Early Game
+  earlyAtkEase: 0.22,           // max. Schaden-Reduktion Early Game
+  coinLife: 2.8,                // Sekunden bis Auto-Einsammeln
+  coinHitRadius: 20             // Maus/Touch-Trefferzone
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -1344,15 +1350,44 @@ function spawnExplosion(x, y, radius, playSound) {
 }
 
 function calcPlayerDamage(rawAttack, defense) {
-  const pierce = Math.floor(rawAttack * 0.22);
-  return Math.max(1, Math.max(pierce, rawAttack - defense));
+  const def = defense * (BALANCE.defenseFactor || 1);
+  const pierce = Math.floor(rawAttack * 0.17);
+  return Math.max(1, Math.max(pierce, rawAttack - def));
+}
+
+/** Schildschlag-Schadensreduktion auf eingehenden Schaden anwenden */
+function applyShieldToDamage(h, dmg) {
+  if ((h.shieldTimer || 0) > 0) return Math.max(1, Math.floor(dmg * (1 - (h.shieldReduction || 0))));
+  return dmg;
+}
+
+/** Early-Game-Erleichterung – skaliert bis earlyEaseUntil */
+function getEarlyEase() {
+  const lv = game.dungeonLevel;
+  if (lv > BALANCE.earlyEaseUntil) return 0;
+  return (BALANCE.earlyEaseUntil - lv) / (BALANCE.earlyEaseUntil - 1);
+}
+
+/** Debuff auf Gegner anwenden (Schwächung / Verlangsamung) */
+function applyEnemyDebuff(e, ab) {
+  if (!e || e.dead) return;
+  const bossResist = e.isBoss ? 0.55 : 1;
+  if (ab.debuffWeak) {
+    e.weakTimer = (ab.debuffDuration || 2.5) * bossResist;
+    e.damageTakenMult = 1 + ab.debuffWeak;
+  }
+  if (ab.slowDuration) {
+    e.slowTimer = ab.slowDuration * bossResist;
+    e.slowMult = ab.slowMult || 0.5;
+  }
 }
 
 function enemyAttackPlayer(e, h, st) {
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  const dmg = calcPlayerDamage(e.attack, st.defense);
+  let dmg = calcPlayerDamage(e.attack, st.defense);
+  dmg = applyShieldToDamage(h, dmg);
 
   e.attackAnim = e.isBoss ? 0.45 : 0.32;
   spawnMeleeSlash(ex, ey, angle, {
@@ -1398,7 +1433,7 @@ function bossSpecialAttack(e, h, st) {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  const dmg = Math.floor(calcPlayerDamage(e.attack * 1.6, st.defense));
+  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.6, st.defense)));
 
   e.attackAnim = 0.55;
   e.attackWindup = 1;
@@ -1446,6 +1481,8 @@ function bindEvents() {
   document.addEventListener("fullscreenchange", onFullscreenChange);
 
   canvas.addEventListener("mousemove", onMouseMove);
+  canvas.addEventListener("pointermove", handlePointerMove);
+  canvas.addEventListener("pointerdown", handlePointerDown);
   canvas.addEventListener("mouseenter", () => { mouse.onCanvas = true; });
   canvas.addEventListener("mouseleave", () => { mouse.onCanvas = false; });
 
@@ -1489,12 +1526,120 @@ function updateClassHint() {
 }
 
 function onMouseMove(e) {
+  updatePointerCanvasPos(e);
+}
+
+/** Canvas-Koordinaten aus Pointer/Maus (skaliertes Canvas) */
+function updatePointerCanvasPos(e) {
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0) return;
   const scaleX = CW / rect.width, scaleY = CH / rect.height;
   mouse.x = (e.clientX - rect.left) * scaleX;
   mouse.y = (e.clientY - rect.top) * scaleY;
   mouse.onCanvas = mouse.x >= 0 && mouse.x <= CW && mouse.y >= 0 && mouse.y <= CH;
+}
+
+function handlePointerMove(e) {
+  updatePointerCanvasPos(e);
+  tryCollectCoinBonus(getAim());
+}
+
+function handlePointerDown(e) {
+  updatePointerCanvasPos(e);
+  tryCollectCoinBonus(getAim());
+}
+
+/** Münze nach Gegner-Tod spawnen – Gold wird erst beim Einsammeln gutgeschrieben */
+function spawnCoinDrop(amount, x, y) {
+  game.coins.push({
+    x, y,
+    yBase: y,
+    val: Math.max(1, Math.floor(amount)),
+    life: BALANCE.coinLife,
+    maxLife: BALANCE.coinLife,
+    collected: false,
+    bonus: false,
+    bob: Math.random() * Math.PI * 2,
+    pop: 0
+  });
+}
+
+function hitTestCoin(wx, wy) {
+  const r = BALANCE.coinHitRadius;
+  for (const coin of game.coins) {
+    if (coin.collected) continue;
+    if (Math.hypot(wx - coin.x, wy - coin.y) < r) return coin;
+  }
+  return null;
+}
+
+function spawnCoinBonusText(x, y, text) {
+  game.particles.push({
+    x, y: y - 12, vx: 0, vy: -1.4, life: 52, text, crit: true
+  });
+}
+
+/** Gold einsammeln – isBonus verdoppelt den Wert (nur einmal pro Münze) */
+function collectCoinDrop(coin, isBonus) {
+  if (!coin || coin.collected) return;
+  coin.collected = true;
+  coin.bonus = !!isBonus;
+  const amount = isBonus ? coin.val * 2 : coin.val;
+  game.runGold += amount;
+  coin.pop = 0.35;
+  playSound("coin");
+  spawnBurst(coin.x, coin.y, "#f1c40f", isBonus ? 10 : 5, isBonus ? 4 : 2);
+  if (isBonus) {
+    addLog("Perfekt! Münzbonus: " + amount + " Gold!", "crit");
+    spawnCoinBonusText(coin.x, coin.y, "+" + amount + " x2!");
+  } else {
+    addLog("Du sammelst " + amount + " Gold.", "damage");
+  }
+}
+
+function tryCollectCoinBonus(aim) {
+  if (!game.isRunning || game.isPaused || game.isDead || !aim?.onCanvas) return;
+  const coin = hitTestCoin(aim.x, aim.y);
+  if (coin) collectCoinDrop(coin, true);
+}
+
+function updateCoinDrops(dt) {
+  game.coins = game.coins.filter((coin) => {
+    if (coin.collected) {
+      coin.pop -= dt;
+      return coin.pop > 0;
+    }
+    coin.bob += dt * 5;
+    coin.y = coin.yBase + Math.sin(coin.bob) * 3;
+    coin.life -= dt;
+    if (coin.life <= 0) {
+      collectCoinDrop(coin, false);
+      return coin.pop > 0;
+    }
+    return true;
+  });
+}
+
+function drawCoinDrops(ctx) {
+  game.coins.forEach((coin) => {
+    if (coin.collected && coin.pop <= 0) return;
+    const pulse = 0.85 + Math.sin(coin.bob * 1.4) * 0.15;
+    ctx.save();
+    ctx.globalAlpha = coin.collected ? Math.max(0, coin.pop / 0.35) : Math.min(1, coin.life / 0.5);
+    ctx.shadowColor = "#f1c40f";
+    ctx.shadowBlur = coin.bonus ? 14 : 8;
+    drawSprite(ctx, SPRITES.coin, coin.x - 9, coin.y - 9, false);
+    ctx.shadowBlur = 0;
+    ctx.font = "bold 9px Courier New";
+    ctx.fillStyle = coin.bonus ? "#fff8c0" : "#f1c40f";
+    ctx.globalAlpha *= pulse;
+    ctx.fillText(String(coin.val), coin.x - 6, coin.y - 12);
+    if (coin.bonus) {
+      ctx.fillStyle = "#2ecc71";
+      ctx.fillText("x2", coin.x + 8, coin.y - 12);
+    }
+    ctx.restore();
+  });
 }
 
 function toggleFullscreen() {
@@ -1761,6 +1906,7 @@ function updateEnemyMovement(e, h, dt) {
 
   if (e.attackWindup > 0.4) speed *= 0.5;
   else if (e.attackAnim > 0) speed *= 0.68;
+  if ((e.slowTimer || 0) > 0) speed *= e.slowMult || 0.5;
 
   /** Wolf & schnelle Gegner: Sprung-Angriff */
   if (e.aiStyle === "jump" && e.isChasing && !e.walkingIn) {
@@ -1963,6 +2109,8 @@ function createHero() {
     abilityCds: {},
     warriorBuff: 0,
     warriorBuffMult: 1,
+    shieldTimer: 0,
+    shieldReduction: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
     /** Modulare Ausrüstung – überschreibt Loadout-Teile (Helm, Waffe, Schild …) */
     equipment: null,
@@ -2026,9 +2174,8 @@ function getAttackScale() {
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  /** Bosskämpfe deutlich schwieriger – skaliert mit Fortschritt */
   const ease = lv <= 10 ? 0.82 : lv <= 25 ? 0.92 : lv <= 50 ? 1.0 : 1.08;
-  return { hp: 5.2 * ease, atk: 2.55 * ease, rew: 3.8 };
+  return { hp: 5.2 * ease, atk: 2.25 * ease, rew: 3.8 };
 }
 
 function getEnemyStats(isBoss) {
@@ -2037,14 +2184,17 @@ function getEnemyStats(isBoss) {
   const hpScale = getDifficultyScale();
   const atkScale = getAttackScale();
   const boss = getBossMult(isBoss);
-  const worldEase = world.danger === 1 ? 0.76 : world.danger === 2 ? 0.88 : world.danger === 3 ? 0.95 : world.danger === 4 ? 0.98 : 1;
-  const lvEase = lv <= 14 ? 0.78 : lv <= 26 ? 0.86 : lv <= 40 ? 0.93 : 1;
+  const worldEase = world.danger === 1 ? 0.74 : world.danger === 2 ? 0.86 : world.danger === 3 ? 0.93 : world.danger === 4 ? 0.97 : 1;
+  const lvEase = lv <= 14 ? 0.76 : lv <= 26 ? 0.84 : lv <= 40 ? 0.91 : 1;
+  const early = getEarlyEase();
+  const earlyHp = 1 - BALANCE.earlyHpEase * early;
+  const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
 
   return {
-    hp: Math.floor((24 + lv * 3.8) * hpScale * boss.hp),
-    attack: Math.max(1, Math.floor((3 + lv * 0.95) * atkScale * boss.atk * worldEase * lvEase)),
-    gold: Math.floor((4 + lv * 1.4) * boss.rew * (1 + lv * 0.038)),
-    xp: Math.floor((9 + lv * 2.2) * boss.rew),
+    hp: Math.floor((24 + lv * 3.6) * hpScale * boss.hp * earlyHp),
+    attack: Math.max(1, Math.floor((3 + lv * 0.9) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
+    gold: Math.floor((5 + lv * 1.55) * boss.rew * (1 + lv * 0.034)),
+    xp: Math.floor((11 + lv * 2.45) * boss.rew),
     speed: (isBoss ? 0.52 : 0.72) * world.speedMult + lv * 0.009,
     attackInterval: Math.max(0.64, 1.12 - lv * 0.0035 - world.danger * 0.026)
   };
@@ -2346,6 +2496,7 @@ function getPrimaryTarget(range) {
 function dealAbilityDamage(e, rawDmg, opts) {
   const o = opts || {};
   let dmg = Math.floor(rawDmg);
+  if ((e.weakTimer || 0) > 0 && e.damageTakenMult) dmg = Math.floor(dmg * e.damageTakenMult);
   if (o.critRoll && Math.random() < o.critRoll) { dmg *= 2; o.crit = true; }
   e.hp -= dmg;
   e.hitFlash = o.big ? 10 : 7;
@@ -2392,6 +2543,10 @@ function castAbility(ab, h, st) {
     case "melee_aoe": {
       const angle = target ? Math.atan2(target.y + target.h / 2 - hy, target.x + target.w / 2 - hx) : 0;
       h.facing = Math.cos(angle) >= 0 ? 1 : -1;
+      if (ab.shieldReduction) {
+        h.shieldTimer = ab.shieldDuration || 3;
+        h.shieldReduction = ab.shieldReduction;
+      }
       spawnMeleeSlash(hx, hy, angle, { life: 20, range, owner: "player", big: true });
       spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 16, range: range * 0.9, owner: "player", big: true });
       forEachEnemyInRange(range, (e, ex) => {
@@ -2399,17 +2554,21 @@ function castAbility(ab, h, st) {
           critRoll: st.crit + (ab.critBonus || 0), magic: game.classKey === "mage",
           color: ab.color, big: true
         });
+        applyEnemyDebuff(e, ab);
       });
       break;
     }
     case "melee_spin": {
       const hits = ab.hits || 3;
+      let enemyCount = 0;
+      forEachEnemyInRange(range, () => { enemyCount++; });
+      const crowdMult = 1 + Math.min(0.45, Math.max(0, enemyCount - 1) * 0.12);
       for (let i = 0; i < hits; i++) {
         const ang = (Math.PI * 2 / hits) * i;
         spawnMeleeSlash(hx, hy, ang, { life: 12, range: range * 0.85, owner: "player" });
       }
       forEachEnemyInRange(range, (e) => {
-        dealAbilityDamage(e, atkBase * ab.dmgMult * buffMult * 0.85, {
+        dealAbilityDamage(e, atkBase * ab.dmgMult * buffMult * crowdMult, {
           critRoll: st.crit, color: ab.color
         });
       });
@@ -2444,6 +2603,7 @@ function castAbility(ab, h, st) {
       h.warriorBuffMult = 1.35;
       forEachEnemyInRange(range, (e) => {
         dealAbilityDamage(e, atkBase * ab.dmgMult, { color: ab.color });
+        applyEnemyDebuff(e, ab);
       });
       spawnBurst(hx, hy, "#f1c40f", 14, 5);
       addLog("Kriegsschrei – Angriff verstärkt!", "heal");
@@ -2464,7 +2624,7 @@ function castAbility(ab, h, st) {
           vx: Math.cos(ang) * (cls.projSpeed || 14),
           vy: Math.sin(ang) * (cls.projSpeed || 14),
           dmg: Math.floor(atkBase * ab.dmgMult),
-          crit: Math.random() < st.crit + 0.1,
+          crit: Math.random() < st.crit + (ab.critBonus || 0.1),
           sprite: cls.proj || "projectile_arrow",
           life: 80, owner: "player", pierce: ab.type === "projectile_rain",
           trail: ab.particle, magic: game.classKey === "mage"
@@ -2480,7 +2640,7 @@ function castAbility(ab, h, st) {
         x: hx, y: hy, vx: (dx / len) * 15, vy: (dy / len) * 15,
         dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
         sprite: "projectile_arrow", life: 70, owner: "player",
-        trail: ab.particle, poison: ab.dotTicks || 4
+        trail: ab.particle, poison: ab.dotTicks || 4, poisonMult: ab.dotMult || 0.35
       });
       break;
     }
@@ -2602,6 +2762,7 @@ function updateFrame(dt) {
   if (h.hitFlash > 0) h.hitFlash -= dt * 30;
   if (h.attackAnim > 0) h.attackAnim -= dt * 4;
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
+  if (h.shieldTimer > 0) h.shieldTimer -= dt;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
   if (game.critFlash > 0) game.critFlash = Math.max(0, game.critFlash - dt * 2.5);
   if (game.zoomPulse > 0) game.zoomPulse = Math.max(0, game.zoomPulse - dt * 0.06);
@@ -2645,6 +2806,8 @@ function updateFrame(dt) {
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
     if (e.attackAnim > 0) e.attackAnim -= dt * 4;
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
+    if (e.slowTimer > 0) e.slowTimer -= dt;
+    if (e.weakTimer > 0) e.weakTimer -= dt;
 
     if (e.walkingIn && e.x > CW - 28) {
       e.attackWindup = 0;
@@ -2711,7 +2874,7 @@ function updateFrame(dt) {
       const h = game.hero;
       if (h && p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h) {
         const st = heroStats();
-        const dmg = calcPlayerDamage(p.dmg, st.defense);
+        let dmg = applyShieldToDamage(h, calcPlayerDamage(p.dmg, st.defense));
         h.hp -= dmg;
         h.hitFlash = 8;
         h.hurtAnim = 0.2;
@@ -2733,7 +2896,7 @@ function updateFrame(dt) {
           emitCombatEvent("enemy_hit");
           /** Giftpfeil: Schaden über Zeit */
           if (p.poison && e.hp > 0) {
-            const dot = Math.floor(p.dmg * 0.25);
+            const dot = Math.floor(p.dmg * (p.poisonMult || 0.25));
             for (let t = 1; t <= p.poison; t++) {
               setTimeout(() => {
                 if (e.dead || e.hp <= 0) return;
@@ -2764,17 +2927,8 @@ function updateFrame(dt) {
   // Partikel
   game.particles = game.particles.filter((p) => { p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; });
 
-  // Münzen einsammeln
-  game.coins = game.coins.filter((c) => {
-    c.y += dt * 30; c.life -= dt;
-    if (Math.hypot(c.x - h.x, c.y - h.y) < 30) {
-      game.runGold += c.val;
-      spawnBurst(c.x, c.y, "#f1c40f", 4, 2);
-      playSound("coin");
-      return false;
-    }
-    return c.life > 0;
-  });
+  // Münzen – Auto-Einsammeln oder Maus/Touch-Bonus
+  updateCoinDrops(dt);
 
   // Neue Welle wenn alle besiegt oder entkommen
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead);
@@ -2803,7 +2957,7 @@ function onEnemyKill(e) {
   const gold = Math.floor(e.goldReward * st.goldBonus);
   const xp = Math.floor(e.xpReward * game.hero.xpBonus);
   const oldWorld = getWorld();
-  game.runGold += gold; game.runXp += xp;
+  game.runXp += xp;
   game.monstersDefeated++; game.dungeonLevel++;
   const newWorld = getWorld();
   if (newWorld.name !== oldWorld.name) {
@@ -2813,9 +2967,9 @@ function onEnemyKill(e) {
     playWorldMusic(newWorld);
     emitCombatEvent("world_change");
   }
-  addLog(e.name + " besiegt! +" + gold + " Gold", e.isBoss ? "boss" : "damage");
+  addLog(e.name + " besiegt!", e.isBoss ? "boss" : "damage");
   addMetaXp(2);
-  game.coins.push({ x: e.x+e.w/2, y: e.y, val: gold, life: 3 });
+  spawnCoinDrop(gold, e.x + e.w / 2, e.y + e.h / 2);
   for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
 
   while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
@@ -2910,7 +3064,7 @@ function render() {
     return;
   }
 
-  game.coins.forEach((c) => drawSprite(ctx, SPRITES.coin, c.x - 6, c.y, false));
+  drawCoinDrops(ctx);
 
   // Treffer-Ringe & Explosionen (hinten)
   game.attackEffects.forEach((fx) => {
