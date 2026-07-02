@@ -1,3 +1,4 @@
+/* Art Remake v2 – Premium Hero Canvas Renderer (gameplay hooks unchanged) */
 const HR = {
   W: 32,
   H: 42,
@@ -9,6 +10,7 @@ const HR = {
     idle: { n: 4, t: 0.28 },
     walk: { n: 4, t: 0.1 },
     attack: { n: 3, t: 0.08 },
+    cast: { n: 3, t: 0.09 },
     hurt: { n: 1, t: 0.14 },
     death: { n: 2, t: 0.22 }
   }
@@ -22,6 +24,7 @@ HR.getDrawY = () => HR.getGroundY() - HR.H;
 HR.getAnimState = (h, moving) => {
   if (typeof game !== "undefined" && (game.isDead || h.deathAnim)) return "death";
   if ((h.hurtAnim || 0) > 0.05) return "hurt";
+  if (typeof game !== "undefined" && game.abilityCastLock > 0) return "cast";
   if ((h.attackAnim || 0) > 0.04) return "attack";
   if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) return "walk";
   return "idle";
@@ -57,9 +60,13 @@ function out(ctx, x, y, w, h, color) {
 
 function drawShadow(ctx, cx, groundY, scale) {
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillStyle = "rgba(0,0,0,0.52)";
   ctx.beginPath();
-  ctx.ellipse(cx, groundY + 2 * scale, 14 * scale, 4 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, groundY + 2 * scale, 15 * scale, 4.5 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(cx, groundY + 1 * scale, 10 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -67,45 +74,43 @@ function drawShadow(ctx, cx, groundY, scale) {
 function drawBase(ctx, c, frame, attacking) {
   const bob = frame === 1 ? -1 : frame === 3 ? 1 : 0;
   const step = frame % 2 === 0 ? 0 : 1;
+  const runLean = frame === 2 ? -1 : 0;
 
-  // Beine kurz und kräftig
-  out(ctx, -7, -20 + bob, 6, 13, c.leg);
-  out(ctx, 2, -20 - bob, 6, 13, c.leg);
-  px(ctx, -9, -7 + bob, 8, 3, c.boot);
-  px(ctx, 1, -7 - bob, 8, 3, c.boot);
+  out(ctx, -7, -20 + bob, 6, 14, c.leg);
+  out(ctx, 2, -20 - bob, 6, 14, c.leg);
+  px(ctx, -9, -7 + bob, 9, 3, c.boot);
+  px(ctx, 1, -7 - bob, 9, 3, c.boot);
+  px(ctx, -8, -5 + bob, 2, 2, c.bootHi || c.boot);
+  px(ctx, 2, -5 - bob, 2, 2, c.bootHi || c.boot);
 
-  // Hüfte
   out(ctx, -9, -25, 18, 5, c.belt);
   px(ctx, -2, -25, 4, 5, c.gold);
+  px(ctx, -1, -24, 2, 2, c.goldHi || "#fff8d0");
 
-  // Oberkörper
-  out(ctx, -11, -39, 22, 15, c.body);
-  px(ctx, -8, -36, 16, 3, c.light);
-  px(ctx, -10, -28, 20, 3, c.dark);
+  out(ctx, -11, -39 + runLean, 22, 16, c.body);
+  px(ctx, -8, -36 + runLean, 16, 3, c.light);
+  px(ctx, -10, -28 + runLean, 20, 3, c.dark);
+  px(ctx, -9, -33 + runLean, 3, 8, c.dark);
 
-  // Schultern
-  out(ctx, -15, -38, 5, 7, c.shoulder);
-  out(ctx, 10, -38, 5, 7, c.shoulder);
+  out(ctx, -15, -38 + runLean, 6, 8, c.shoulder);
+  out(ctx, 10, -38 + runLean, 6, 8, c.shoulder);
+  px(ctx, -14, -37 + runLean, 4, 2, c.light);
+  px(ctx, 11, -37 + runLean, 4, 2, c.light);
 
-  // Hals + Kopf
-  out(ctx, -3, -43, 6, 4, c.skin);
-  out(ctx, -7, -53, 14, 11, c.skin);
+  out(ctx, -3, -43 + runLean, 6, 4, c.skin);
+  out(ctx, -7, -53 + runLean, 14, 12, c.skin);
+  px(ctx, -6, -51 + runLean, 4, 2, c.skinHi || c.skin);
+  px(ctx, -7, -55 + runLean, 14, 4, c.hair);
+  px(ctx, -8, -51 + runLean, 3, 5, c.hair);
+  px(ctx, 5, -51 + runLean, 3, 5, c.hair);
+  px(ctx, -4, -49 + runLean, 2, 2, "#17100d");
+  px(ctx, 3, -49 + runLean, 2, 2, "#17100d");
 
-  // Haare / Helm
-  px(ctx, -7, -55, 14, 4, c.hair);
-  px(ctx, -8, -51, 3, 5, c.hair);
-  px(ctx, 5, -51, 3, 5, c.hair);
-
-  // Gesicht
-  px(ctx, -4, -49, 2, 2, "#17100d");
-  px(ctx, 3, -49, 2, 2, "#17100d");
-
-  // Arme sichtbar
   const armY = attacking ? -38 : -35;
-  out(ctx, -18, armY + step, 5, 12, c.arm);
-  out(ctx, 13, armY - step, 5, 12, c.arm);
-  px(ctx, -18, armY + 12 + step, 5, 3, c.skin);
-  px(ctx, 13, armY + 12 - step, 5, 3, c.skin);
+  out(ctx, -18, armY + step, 5, 13, c.arm);
+  out(ctx, 13, armY - step, 5, 13, c.arm);
+  px(ctx, -18, armY + 13 + step, 5, 3, c.skin);
+  px(ctx, 13, armY + 13 - step, 5, 3, c.skin);
 
   return {
     leftHand: { x: -16, y: armY + 13 + step },
@@ -115,39 +120,35 @@ function drawBase(ctx, c, frame, attacking) {
 
 function drawWarrior(ctx, frame, attacking, attackFrame) {
   const c = {
-    skin: "#d0a070",
-    hair: "#2b211c",
-    body: "#646d78",
-    light: "#c9d1da",
-    dark: "#30343a",
-    shoulder: "#7b8490",
-    arm: "#747d88",
-    leg: "#505762",
-    boot: "#241f1d",
-    belt: "#5c3d25",
-    gold: "#d3a84d"
+    skin: "#d0a070", skinHi: "#e8c090", hair: "#2b211c",
+    body: "#5a6270", light: "#b8c4d0", dark: "#2a2e34",
+    shoulder: "#707a88", arm: "#646e7c",
+    leg: "#484f58", boot: "#1e1816", bootHi: "#3a3028",
+    belt: "#5c3d25", gold: "#d3a84d", goldHi: "#f5d878"
   };
 
-  // Umhang hinten
-  out(ctx, -12, -39, 24, 22, "#5a1f26");
-  px(ctx, -8, -36, 16, 17, "#8a2931");
+  out(ctx, -13, -40, 26, 24, "#4a1820");
+  px(ctx, -10, -38, 20, 20, "#7a2530");
+  px(ctx, -8, -36, 4, 14, "#5a1820");
 
   const hands = drawBase(ctx, c, frame, attacking);
 
-  // Schild links, klein und seitlich
-  out(ctx, -24, -38, 9, 15, "#6b4b32");
-  px(ctx, -22, -36, 5, 11, "#c79a50");
-  px(ctx, -20, -33, 2, 5, "#f1d88a");
+  out(ctx, -26, -40, 11, 17, "#4a3020");
+  px(ctx, -24, -38, 7, 13, "#a07840");
+  px(ctx, -22, -35, 4, 7, "#e8c860");
+  px(ctx, -23, -32, 2, 3, "#fff0a0");
+  px(ctx, -25, -28, 1, 8, "#6a5030");
 
-  // Schwert rechts, proportional (3 Angriffs-Frames)
   const swordAngles = [-0.45, -0.78, -1.05];
   ctx.save();
   ctx.translate(hands.rightHand.x, hands.rightHand.y);
   ctx.rotate(attacking ? (swordAngles[attackFrame] ?? -1.05) : -0.45);
-  px(ctx, 0, -19, 3, 19, "#dfe8ef");
-  px(ctx, 1, -17, 1, 13, "#ffffff");
-  px(ctx, -4, -3, 10, 3, "#d1a24a");
-  px(ctx, 1, 0, 2, 6, "#4d3120");
+  px(ctx, 0, -21, 3, 21, "#c8d4e0");
+  px(ctx, 1, -19, 1, 15, "#ffffff");
+  px(ctx, -1, -14, 1, 10, "#e8f0ff");
+  px(ctx, -5, -3, 11, 3, "#c89848");
+  px(ctx, -4, -2, 9, 1, "#f0d878");
+  px(ctx, 1, 0, 2, 7, "#3a2418");
   ctx.restore();
 }
 
@@ -246,29 +247,24 @@ function drawRangerBowArms(ctx, c, bowPose, frame) {
 
 function drawRanger(ctx, frame, attacking, attackFrame, attackAnim) {
   const c = {
-    skin: "#c9976d",
-    hair: "#241c16",
-    body: "#315f3d",
-    light: "#7aae6a",
-    dark: "#203825",
-    shoulder: "#487247",
-    arm: "#5e774c",
-    leg: "#46573a",
-    boot: "#241d18",
-    belt: "#6d4828",
-    gold: "#c99b4d"
+    skin: "#c9976d", skinHi: "#ddb088", hair: "#241c16",
+    body: "#2a5038", light: "#6a9a62", dark: "#182820",
+    shoulder: "#3d6848", arm: "#4a7050",
+    leg: "#3a5032", boot: "#1a1410", bootHi: "#3a3028",
+    belt: "#6d4828", gold: "#c99b4d"
   };
+
+  out(ctx, -15, -41, 6, 20, "#3a2818");
+  px(ctx, -14, -44, 4, 16, "#5a4028");
+  px(ctx, -13, -42, 1, 4, "#d8c080");
+  px(ctx, -12, -40, 1, 5, "#d8c080");
+  px(ctx, -11, -38, 1, 4, "#d8c080");
 
   drawBase(ctx, c, frame, attacking);
 
-  // Kapuze
-  out(ctx, -9, -57, 18, 8, "#244b35");
-  px(ctx, -6, -54, 12, 3, "#6fa765");
-
-  // Köcher hinten
-  out(ctx, -14, -40, 5, 18, "#563720");
-  px(ctx, -13, -43, 1, 5, "#d7bd7a");
-  px(ctx, -11, -44, 1, 6, "#d7bd7a");
+  out(ctx, -10, -58, 20, 10, "#1a3828");
+  px(ctx, -7, -56, 14, 6, "#4a8058");
+  px(ctx, -5, -54, 10, 2, "#2a5038");
 
   const bowPose = drawBow(ctx, attacking, attackFrame, attackAnim);
   if (attacking) drawRangerBowArms(ctx, c, bowPose, frame);
@@ -298,54 +294,81 @@ function drawStaff(ctx, attacking, attackFrame) {
 
 function drawMage(ctx, frame, attacking, attackFrame) {
   const c = {
-    skin: "#d0a17a",
-    hair: "#33254a",
-    body: "#56327f",
-    light: "#a884e8",
-    dark: "#2b1c46",
-    shoulder: "#6d4a9d",
-    arm: "#7050a7",
-    leg: "#3d2a62",
-    boot: "#22172f",
-    belt: "#a77d3b",
-    gold: "#d8b25d"
+    skin: "#d0a17a", skinHi: "#e8b890", hair: "#33254a",
+    body: "#4a2878", light: "#9870d8", dark: "#241838",
+    shoulder: "#603898", arm: "#6840a0",
+    leg: "#342058", boot: "#1a1028", bootHi: "#2a2040",
+    belt: "#a77d3b", gold: "#d8b25d"
   };
+
+  out(ctx, -14, -35, 28, 26, "#3a2060");
+  px(ctx, -10, -32, 20, 4, "#8868c8");
+  px(ctx, -4, -34, 8, 24, "#1a1030");
+  px(ctx, -2, -30, 4, 3, "#b898f0");
 
   drawBase(ctx, c, frame, attacking);
 
-  // Robe
-  out(ctx, -13, -34, 26, 24, "#56327f");
-  px(ctx, -9, -31, 18, 3, "#a884e8");
-  px(ctx, -3, -34, 6, 22, "#2f1f52");
-
-  // Kapuze
-  out(ctx, -10, -58, 20, 8, "#382260");
-  px(ctx, -5, -62, 10, 5, "#5d39a0");
+  out(ctx, -11, -59, 22, 10, "#281848");
+  px(ctx, -6, -63, 12, 6, "#5030a0");
+  px(ctx, -3, -61, 6, 2, "#8060d0");
 
   drawStaff(ctx, attacking, attackFrame);
 
-  // Magiepartikel
   ctx.save();
-  ctx.globalAlpha = attacking ? [0.65, 0.8, 0.98][attackFrame] ?? 0.98 : 0.55;
-  px(ctx, 25, -55, 3, 3, "#d4a8ff");
-  px(ctx, 16, -60, 2, 2, "#8bd8ff");
-  px(ctx, 28, -42, 2, 2, "#ffffff");
+  ctx.globalAlpha = attacking ? [0.65, 0.85, 1][attackFrame] ?? 1 : 0.5;
+  ctx.shadowColor = "#a080ff";
+  ctx.shadowBlur = attacking ? 8 : 4;
+  px(ctx, 24, -56, 3, 3, "#d4a8ff");
+  px(ctx, 15, -61, 2, 2, "#8bd8ff");
+  px(ctx, 27, -43, 2, 2, "#ffffff");
   if (attacking && attackFrame >= 1) {
-    px(ctx, 22, -48, 2, 2, "#ffffff");
-    px(ctx, 30, -58, 2, 2, "#b8e8ff");
+    px(ctx, 21, -49, 2, 2, "#ffffff");
+    px(ctx, 29, -59, 2, 2, "#b8e8ff");
+    px(ctx, 18, -44, 3, 3, "#e8d0ff");
   }
-  if (attacking && attackFrame === 2) {
-    px(ctx, 18, -44, 4, 4, "#e8d0ff");
-    px(ctx, 32, -50, 3, 3, "#ffffff");
-  }
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
-function drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnim) {
+function drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnim, casting) {
   const atkFrame = attacking ? attackFrame : 0;
+  if (casting) {
+    if (classKey === "ranger") drawRanger(ctx, frame, false, 0, 0);
+    else if (classKey === "mage") drawMage(ctx, frame, false, 0);
+    else drawWarrior(ctx, frame, false, 0);
+    drawCastGlow(ctx, classKey, frame);
+    return;
+  }
   if (classKey === "ranger") drawRanger(ctx, frame, attacking, atkFrame, attackAnim);
   else if (classKey === "mage") drawMage(ctx, frame, attacking, atkFrame);
   else drawWarrior(ctx, frame, attacking, atkFrame);
+}
+
+function drawCastGlow(ctx, classKey, frame) {
+  const pulse = frame === 1 ? 1 : frame === 2 ? 0.85 : 0.65;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.55 * pulse;
+  if (classKey === "mage") {
+    px(ctx, 22, -58, 4, 4, "#e8d0ff");
+    px(ctx, 18, -52, 6, 6, "#b388ff");
+    px(ctx, 14, -46, 8, 8, "#7c4dff");
+    px(ctx, 10, -40, 4, 4, "#ffffff");
+    px(ctx, -8, -44, 3, 3, "#8bd8ff");
+    px(ctx, 12, -36, 2, 2, "#ffffff");
+  } else if (classKey === "ranger") {
+    px(ctx, 20, -48, 3, 3, "#a8ffb0");
+    px(ctx, 24, -52, 4, 4, "#6ecf78");
+    px(ctx, 28, -46, 2, 2, "#ffffff");
+    px(ctx, 16, -42, 2, 2, "#d4ffb8");
+  } else {
+    px(ctx, -20, -46, 4, 4, "#ffd080");
+    px(ctx, -16, -50, 5, 5, "#f0a030");
+    px(ctx, 12, -52, 3, 8, "#e8f0ff");
+    px(ctx, 13, -54, 1, 4, "#ffffff");
+  }
+  ctx.restore();
 }
 
 function renderHero(ctx, opts) {
@@ -358,7 +381,8 @@ function renderHero(ctx, opts) {
   const animState = h.animState || "idle";
   const frame = h.animFrame || 0;
   const attackAnimVal = h.attackAnim || 0;
-  const attacking = attackAnimVal > 0.04 || animState === "attack";
+  const casting = animState === "cast";
+  const attacking = !casting && (attackAnimVal > 0.04 || animState === "attack");
   const attackFrame = attacking ? frame : 0;
 
   drawShadow(ctx, cx, groundY, scale);
@@ -371,7 +395,7 @@ function renderHero(ctx, opts) {
   if ((h.hurtAnim || 0) > 0.05) {
     ctx.translate(facing * -2, 0);
   }
-  drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnimVal);
+  drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnimVal, casting);
   ctx.restore();
 
   ctx.save();

@@ -1,7 +1,4 @@
-/* ============================================
-   Dungeon Loop – World-Specific Pixel Art Engine
-   Jede Welt: eigene Grafik, eigene Ebenen, kein Recolor
-   ============================================ */
+/* Art Remake v2 – World-Specific Pixel Art Engine (pairs with visual-fx.js) */
 
 const WR = {
   CW: 640, CH: 360, GROUND: 308, STRIP_W: 2560,

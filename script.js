@@ -813,7 +813,10 @@ function drawCharFeetFog(c, x, y, w, h, world) {
   c.restore();
 }
 
-function drawLivingChar(c, sprite, x, y, w, h, flip, world, bob, big) {
+function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
+  if (typeof VisualEnemies !== "undefined" && VisualEnemies.draw(c, spriteKey, x, y, w, h, flip, world, bob, big)) return;
+  const sprite = SPRITES[spriteKey];
+  if (!sprite) return;
   const groundY = y + h - (bob || 0);
   const cx = x + w / 2;
   drawCharShadow(c, cx, groundY, w, getCharStyle(world), bob, big);
@@ -907,6 +910,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderUpgradeButtons();
   renderSetupAbilityHint();
   renderAbilityPanel();
+  if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
   initSupabase();
   loadGameData();
 });
@@ -1624,19 +1628,22 @@ function drawCoinDrops(ctx) {
   game.coins.forEach((coin) => {
     if (coin.collected && coin.pop <= 0) return;
     const pulse = 0.85 + Math.sin(coin.bob * 1.4) * 0.15;
+    const spin = Math.sin(coin.bob * 0.9) * 2;
     ctx.save();
     ctx.globalAlpha = coin.collected ? Math.max(0, coin.pop / 0.35) : Math.min(1, coin.life / 0.5);
-    ctx.shadowColor = "#f1c40f";
-    ctx.shadowBlur = coin.bonus ? 14 : 8;
-    drawSprite(ctx, SPRITES.coin, coin.x - 9, coin.y - 9, false);
+    ctx.shadowColor = coin.bonus ? "#fff8a0" : "#f1c40f";
+    ctx.shadowBlur = coin.bonus ? 16 : 10;
+    ctx.translate(coin.x, coin.y - 2);
+    ctx.scale(1 + spin * 0.02, 1);
+    drawSprite(ctx, SPRITES.coin, -9, -9, false);
     ctx.shadowBlur = 0;
     ctx.font = "bold 9px Courier New";
     ctx.fillStyle = coin.bonus ? "#fff8c0" : "#f1c40f";
     ctx.globalAlpha *= pulse;
-    ctx.fillText(String(coin.val), coin.x - 6, coin.y - 12);
+    ctx.fillText(String(coin.val), -6, -10);
     if (coin.bonus) {
       ctx.fillStyle = "#2ecc71";
-      ctx.fillText("x2", coin.x + 8, coin.y - 12);
+      ctx.fillText("x2", 8, -10);
     }
     ctx.restore();
   });
@@ -2299,6 +2306,7 @@ function spawnEnemy(isBoss, index) {
 function initWorldBackground() {
   invalidateParallaxCache();
   initParallaxBackground(getWorld());
+  if (typeof VisualFX !== "undefined") VisualFX.init(getWorld());
 }
 
 function renderUnifiedBackground(world) {
@@ -2793,6 +2801,7 @@ function updateFrame(dt) {
   // Ambient-Partikel (Parallax-Welt)
   updateWorldAmbient(dt, getWorld());
   updateWorldTransition(dt);
+  if (typeof VisualFX !== "undefined") VisualFX.update(dt, getWorld());
 
   // Schwert-Slashes & Effekte altern
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
@@ -3057,6 +3066,10 @@ function render() {
 
   renderUnifiedBackground(world);
   renderWorldAtmosphere(world);
+  if (typeof VisualFX !== "undefined") {
+    VisualFX.renderAtmosphere(ctx, world);
+    VisualFX.renderWeather(ctx, world);
+  }
 
   if (!game.hero) {
     ctx.restore();
@@ -3123,7 +3136,7 @@ function render() {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
-    drawLivingChar(ctx, SPRITES[e.sprite], drawX, e.y + bob, e.w, e.h, true, world, bob, e.isBoss);
+    drawLivingChar(ctx, e.sprite, drawX, e.y + bob, e.w, e.h, true, world, bob, e.isBoss);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -3218,6 +3231,8 @@ function render() {
       ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
     });
   }
+
+  if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);
 
   ctx.restore();
 
