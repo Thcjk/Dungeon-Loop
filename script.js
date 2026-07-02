@@ -3280,6 +3280,14 @@ function render() {
     });
   }
 
+  if (typeof renderWorldForeground === "function") {
+    renderWorldForeground(ctx, world, {
+      scrollX: game.scrollX,
+      focusX: visualCamera.x,
+      zoom: visualCamera.zoom
+    }, typeof WR !== "undefined" ? WR.animTime : 0);
+  }
+
   if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);
 
   ctx.restore();

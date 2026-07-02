@@ -1110,6 +1110,90 @@ function renderMassiveForeground(ctx, worldConfig, camera, time) {
   ctx.restore();
 }
 
+function wrForegroundViewport(camera) {
+  const zoom = camera?.zoom || 1.82;
+  const viewW = WR.CW / zoom;
+  const cx = camera?.focusX || WR.CW / 2;
+  return { left: cx - viewW / 2, width: viewW, right: cx + viewW / 2 };
+}
+
+function wrFgGrass(ctx, x, g, color, seed) {
+  const h = 12 + (wrR(seed) * 24 | 0);
+  wrBlock(ctx, x, g - h, 2, h, color);
+  if (h > 18) wrBlock(ctx, x + 2, g - h + 3, 8, 2, color);
+}
+
+function wrFgChain(ctx, x, y, links, color) {
+  for (let i = 0; i < links; i++) {
+    wrBlock(ctx, x, y + i * 8, 3, 5, color);
+    wrBlock(ctx, x - 1, y + i * 8 + 2, 5, 2, color);
+  }
+}
+
+function renderWorldForeground(ctx, worldId, camera, time) {
+  const cfg = getWorldVisualConfig(worldId);
+  const theme = cfg.theme;
+  const vp = wrForegroundViewport(camera);
+  const left = vp.left;
+  const w = vp.width;
+  const g = WR.GROUND;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 0.62;
+
+  if (theme === "forest") {
+    for (let i = 0; i < 5; i++) {
+      const x = left + (i / 4) * w + Math.sin(time + i) * 8;
+      wrBlock(ctx, x - 18, 6 + i * 3, 36, 10, "#081c15");
+      wrBlock(ctx, x - 10, 16 + i * 3, 22, 7, "#1b4332");
+      wrBlock(ctx, x - 3, 22 + i * 2, 4, 35, "#2d1f14");
+    }
+    for (let i = 0; i < 34; i++) wrFgGrass(ctx, left + (i / 33) * w, g + 3, i % 2 ? "#1b4332" : "#2d6a4f", i * 7);
+  } else if (theme === "swamp") {
+    for (let i = 0; i < 7; i++) {
+      const x = left + 12 + (i / 6) * (w - 24);
+      wrBlock(ctx, x, 0, 3, 68 + (wrR(i) * 52 | 0), "#1d2612");
+      wrBlock(ctx, x - 2, 40 + i * 4, 7, 2, "#6f8f38");
+    }
+    for (let i = 0; i < 20; i++) wrFgGrass(ctx, left + (i / 19) * w, g + 4, "#405838", i * 11);
+  } else if (theme === "frost") {
+    for (let i = 0; i < 24; i++) {
+      const x = left + (i / 23) * w;
+      wrBlock(ctx, x, g - 4 - (wrR(i) * 8 | 0), 12 + (wrR(i + 2) * 14 | 0), 4, "#e8f4fc");
+    }
+    ctx.globalAlpha = 0.42;
+    for (let i = 0; i < 9; i++) {
+      const x = left + (i / 8) * w + Math.sin(time * 2 + i) * 14;
+      wrBlock(ctx, x, 16 + i * 9, 22, 2, "#d8e8f8");
+    }
+  } else if (theme === "fire") {
+    for (let i = 0; i < 18; i++) {
+      const x = left + (i / 17) * w;
+      const h = 16 + (wrR(i) * 34 | 0);
+      wrBlock(ctx, x, g - h, 4, h, "#100505");
+      wrBlock(ctx, x + 1, g - h + 4, 2, h - 8, i % 2 ? "#e74c3c" : "#f39c12");
+    }
+    for (let i = 0; i < 12; i++) {
+      wrBlock(ctx, left + wrR(i * 13) * w, 30 + wrR(i * 17) * 180, 3, 3, "#f39c12");
+    }
+  } else {
+    for (let i = 0; i < 5; i++) {
+      const x = left + 20 + (i / 4) * (w - 40);
+      wrFgChain(ctx, x, 4 + i * 5, 8, "#32384d");
+      wrBlock(ctx, x - 8, 74 + i * 5, 18, 4, "#69d2ff");
+    }
+    for (let i = 0; i < 10; i++) {
+      const x = left + wrR(i * 31) * w;
+      const y = 72 + wrR(i * 37) * 140 + Math.sin(time + i) * 4;
+      wrBlock(ctx, x - 5, y, 10, 3, "#2f3650");
+      wrBlock(ctx, x - 1, y - 5, 2, 12, "#8ee8ff");
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function renderWorld(ctx, worldId, camera, time) {
   const cfg = getWorldVisualConfig(worldId);
   const cam = camera || { scrollX: 0 };
@@ -1161,6 +1245,7 @@ if (typeof window !== "undefined") {
   window.renderParallaxLayers = renderParallaxLayers;
   window.renderGround = renderGround;
   window.renderEnvironmentDecorations = renderEnvironmentDecorations;
+  window.renderWorldForeground = renderWorldForeground;
   window.renderWeather = renderWeather;
   window.renderLighting = renderLighting;
   window.renderWaterOrLava = renderWaterOrLava;
