@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "ability-ws-keys-v1";
+const BUILD_ID = "hero-move-bounds-v1";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -40,7 +40,10 @@ function pinCharToGround(entity) {
 const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
-  /** Helden darf max. zur Hälfte aus dem Bildschirm (Anteil der Körperbreite) */
+  /** Bewegungskorridor – enger als voller Bildschirm */
+  heroMoveMinX: 0,
+  heroMoveMaxX: 300,
+  /** Am Rand darf max. 50 % der Körperbreite aus dem Bildschirm ragen */
   heroEdgeOverflow: 0.5,
   enemyRightMargin: 205,
   enemySpacing: 50,
@@ -2138,12 +2141,16 @@ function getCombatAim() {
 
 function getHeroMinX(h) {
   const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
-  return -h.w * overflow;
+  const edgeMin = -h.w * overflow;
+  const moveMin = COMBAT_LAYOUT.heroMoveMinX ?? 0;
+  return Math.min(moveMin, edgeMin);
 }
 
 function getHeroMaxX(h) {
   const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
-  return CW - h.w * (1 - overflow);
+  const edgeMax = CW - h.w * (1 - overflow);
+  const moveMax = COMBAT_LAYOUT.heroMoveMaxX ?? 300;
+  return Math.min(moveMax, edgeMax);
 }
 
 function enemyInCombatRange(e, h) {
