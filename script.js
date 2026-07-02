@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "ability-special-cd-v1";
+const BUILD_ID = "ability-progression-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -651,7 +651,7 @@ const UPGRADES = [
   { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 120, bonus: 0.008, bonusText: "+0.8% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
   { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 130, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
   { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 110, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
-  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 155, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Jede Stufe: -0.35s CD + nächste Spezialfähigkeit", forClass: "all" }
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 165, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
 // Balance – Early Game fairer; Werte hier zum Feintuning
@@ -1179,7 +1179,9 @@ function getSpecialCdLevel() {
 }
 
 function getNextCdAbilityUnlock(classKey, cdLv) {
-  return getClassAbilities(classKey).find((ab) => !isAbilityUnlockedBySpecialCd(cdLv, ab.slot)) || null;
+  const nextCd = getNextAbilityUnlockCdLevel(cdLv);
+  if (nextCd == null) return null;
+  return getClassAbilities(classKey).find((ab) => getAbilityUnlockSpecialCd(ab.slot) === nextCd) || null;
 }
 
 function syncUnlockedAbilities(classKey) {
@@ -1268,7 +1270,7 @@ function renderSetupAbilityHint() {
     .map((id, i) => (id ? { slot: i + 1, ab: getAbilityById(ck, id) } : null))
     .filter((x) => x && x.ab);
 
-  let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung über <strong>Spezial-CD</strong> im Upgrade-Menü (<kbd>U</kbd>)</p>';
+  let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung bei <strong>Spezial-CD Meilensteinen</strong> (Stufe 3, 6, 10 …)</p>';
   html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
   html += '<div class="ability-overview">';
   list.forEach((ab) => {
@@ -1369,7 +1371,7 @@ function renderAbilityPanel() {
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
   let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
-  html += '<p class="ability-meta ability-meta--hint">Upgrade <strong>Spezial-CD</strong> im Shop – jede Stufe schaltet die nächste Fähigkeit frei.</p>';
+  html += '<p class="ability-meta ability-meta--hint">Meilensteine: CD Stufe <strong>3 · 6 · 10 · 14 · 20</strong> – spätere Fähigkeiten sind deutlich stärker.</p>';
   html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
     html += '<div class="ability-equip-slot">';
@@ -2818,7 +2820,7 @@ function castAbility(ab, h, st) {
       const hits = ab.hits || 3;
       let enemyCount = 0;
       forEachEnemyInRange(range, () => { enemyCount++; });
-      const crowdMult = 1 + Math.min(0.45, Math.max(0, enemyCount - 1) * 0.12);
+      const crowdMult = 1 + Math.min(0.65, Math.max(0, enemyCount - 1) * 0.16);
       for (let i = 0; i < hits; i++) {
         const ang = (Math.PI * 2 / hits) * i;
         spawnMeleeSlash(hx, hy, ang, { life: 12, range: range * 0.85, owner: "player" });
@@ -2856,7 +2858,7 @@ function castAbility(ab, h, st) {
     }
     case "buff_shout": {
       h.warriorBuff = ab.buffDuration || 5;
-      h.warriorBuffMult = 1.35;
+      h.warriorBuffMult = ab.buffMult || 1.35;
       forEachEnemyInRange(range, (e) => {
         dealAbilityDamage(e, atkBase * ab.dmgMult, { color: ab.color });
         applyEnemyDebuff(e, ab);
@@ -2910,6 +2912,7 @@ function castAbility(ab, h, st) {
         dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
         sprite: game.classKey === "mage" ? "projectile_fire" : "projectile_arrow",
         life: 60, owner: "player", explosive: true, big: true,
+        explosiveRadius: ab.radius || 90,
         trail: ab.particle, magic: game.classKey === "mage", fromAbility: true
       });
       break;
@@ -2922,7 +2925,8 @@ function castAbility(ab, h, st) {
         x: hx, y: hy, vx: (dx / len) * 12, vy: (dy / len) * 12,
         dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
         sprite: "projectile_fire", life: 75, owner: "player",
-        pierce: true, trail: ab.particle, magic: true
+        pierce: true, pierceLeft: ab.pierceCount || 4,
+        trail: ab.particle, magic: true
       });
       break;
     }
@@ -2949,6 +2953,25 @@ function castAbility(ab, h, st) {
         });
       }
       dealAbilityDamage(target, atkBase * ab.dmgMult, { magic: true, color: ab.color, big: true });
+      const chains = ab.chainHits || 0;
+      if (chains > 0) {
+        const hit = new Set([target]);
+        let current = target;
+        for (let c = 0; c < chains; c++) {
+          const cx = current.x + current.w / 2, cy = current.y + current.h / 2;
+          let next = null, bestD = Infinity;
+          for (const e of game.enemies) {
+            if (e.dead || e.hp <= 0 || hit.has(e) || !isEnemyOnScreen(e)) continue;
+            const d = Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy);
+            if (d < 130 && d < bestD) { bestD = d; next = e; }
+          }
+          if (!next) break;
+          hit.add(next);
+          dealAbilityDamage(next, atkBase * ab.dmgMult * 0.75, { magic: true, color: ab.color });
+          spawnBurst(next.x + next.w / 2, next.y, ab.particle, 8, 4);
+          current = next;
+        }
+      }
       spawnBurst(tx, ty, ab.particle, 12, 5);
       break;
     }
@@ -3168,17 +3191,20 @@ function updateFrame(dt) {
             }
           }
           if (p.explosive) {
-            spawnExplosion(p.x, p.y, 90, !p.fromAbility);
+            const rad = p.explosiveRadius || 90;
+            spawnExplosion(p.x, p.y, rad, !p.fromAbility);
             game.enemies.forEach((o) => {
               if (!isEnemyOnScreen(o) || o.walkingIn || o.dead || o.hp <= 0) return;
-              if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < 90) {
-                o.hp -= Math.floor(p.dmg * 0.45); o.hitFlash = 5;
+              if (Math.hypot(o.x + o.w/2 - p.x, o.y + o.h/2 - p.y) < rad) {
+                o.hp -= Math.floor(p.dmg * 0.48); o.hitFlash = 5;
                 if (o.hp <= 0 && !o.dead) { o.dead = true; onEnemyKill(o); }
               }
             });
           }
           if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
           if (!p.pierce) return false;
+          p.pierceLeft = (p.pierceLeft ?? 99) - 1;
+          if (p.pierceLeft <= 0) return false;
         }
       }
     }
@@ -3684,7 +3710,8 @@ function renderUpgradeButtons() {
     let tipText = up.tip;
     if (up.key === "upgrade_cooldown" && !maxed) {
       const next = getNextCdAbilityUnlock(game.classKey, lv);
-      if (next) tipText += " · Nächste Stufe: " + next.name;
+      const nextCd = getNextAbilityUnlockCdLevel(lv);
+      if (next && nextCd != null) tipText += " · Nächste: " + next.name + " (CD " + nextCd + ")";
     }
     const btn = document.createElement("button");
     btn.className = "upgrade-btn" + (relevant ? " relevant" : "") + (maxed ? " maxed" : "");
