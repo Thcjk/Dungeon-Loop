@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "enemy-feet-anchor-v1-pages";
+const BUILD_ID = "damage-display-fix-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -2701,7 +2701,7 @@ function dealAbilityDamage(e, rawDmg, opts) {
   const o = opts || {};
   let dmg = Math.floor(rawDmg);
   if ((e.weakTimer || 0) > 0 && e.damageTakenMult) dmg = Math.floor(dmg * e.damageTakenMult);
-  if (o.critRoll && Math.random() < o.critRoll) { dmg *= 2; o.crit = true; }
+  if (o.critRoll && Math.random() < o.critRoll) { dmg = Math.floor(dmg * 2); o.crit = true; }
   e.hp -= dmg;
   e.hitFlash = o.big ? 10 : 7;
   spawnDamage(e.x + e.w / 2, e.y, dmg, {
@@ -3232,6 +3232,19 @@ function showGameOver() {
   tryMenuMusic();
 }
 
+function formatDamageNumber(val) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.round(n));
+}
+
+function damagePopupLife(amount, opts) {
+  if (opts.crit || opts.boss) return 32;
+  if (amount >= 100) return 36;
+  if (amount >= 10) return 26;
+  return 20;
+}
+
 function spawnDamage(x, y, val, arg4, arg5) {
   /** Unterstützt altes (crit, taken) und neues Options-Objekt */
   let opts = {};
@@ -3239,9 +3252,14 @@ function spawnDamage(x, y, val, arg4, arg5) {
   else if (typeof arg4 === "boolean" && arg5) opts = { crit: arg4, taken: true };
   else if (typeof arg4 === "boolean") opts = { crit: arg4 };
 
+  const amount = formatDamageNumber(val);
+  const life = damagePopupLife(amount, opts);
+  const prefix = opts.heal ? "+" : opts.taken ? "-" : "";
+
   game.particles.push({
     x, y: y - 10, vx: (Math.random() - 0.5) * 0.8, vy: -1.8,
-    life: 48, text: (opts.taken ? "-" : "") + val,
+    life, maxLife: life,
+    text: prefix + amount,
     crit: opts.crit, taken: opts.taken, heal: opts.heal,
     magic: opts.magic, boss: opts.boss
   });
@@ -3386,7 +3404,8 @@ function render() {
 
   game.particles.forEach((p) => {
     if (p.text) {
-      const t = 1 - p.life / 48;
+      const maxLife = p.maxLife || 48;
+      const t = 1 - p.life / maxLife;
       let fontSize = 11;
       if (p.crit) fontSize = 16;
       if (p.boss) fontSize = 14;
