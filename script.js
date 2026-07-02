@@ -23,7 +23,7 @@ function pinCharToGround(entity) {
   if (!entity || entity.h == null) return;
   entity.y = GROUND - entity.h;
 }
-const CAM_ZOOM = 1.38;
+const CAM_ZOOM = 1.66; // 1.38 × 1.2 – Kamera 20 % näher
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
   heroMinX: 16,
