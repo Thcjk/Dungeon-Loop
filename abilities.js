@@ -1,16 +1,24 @@
 /* ============================================
    Dungeon Loop – Fähigkeitensystem
    6 Spezialfähigkeiten pro Klasse
-   Freischaltung: Spezial-CD-Upgrade-Stufe (kein Gold-Kauf)
+   Freischaltung: Spezial-CD-Meilensteine (kein Gold-Kauf)
    ============================================ */
 
-/** Slot N freischaltbar ab Spezial-CD-Stufe N (Slot 0 = Stufe 0 = Start) */
+/** Spezial-CD-Stufe pro Slot – spätere Fähigkeiten brauchen deutlich mehr Investment */
+const ABILITY_UNLOCK_CD_LEVELS = [0, 3, 6, 10, 14, 20];
+
 function getAbilityUnlockSpecialCd(slotIndex) {
-  return slotIndex;
+  return ABILITY_UNLOCK_CD_LEVELS[slotIndex] ?? 99;
 }
 
 function isAbilityUnlockedBySpecialCd(specialCdLevel, slotIndex) {
   return specialCdLevel >= getAbilityUnlockSpecialCd(slotIndex);
+}
+
+function getNextAbilityUnlockCdLevel(specialCdLevel) {
+  const cdLv = Math.max(0, Math.floor(specialCdLevel || 0));
+  const next = ABILITY_UNLOCK_CD_LEVELS.find((need) => need > cdLv);
+  return next ?? null;
 }
 
 /** @deprecated – früher Account-Level, jetzt Spezial-CD */
@@ -40,9 +48,7 @@ function getClassSpecialSound(classKey) {
 
 /**
  * Fähigkeits-Definitionen je Klasse.
- * Sound immer klassenweit (getClassSpecialSound) – kein eigenes sound-Feld nötig.
- * type: melee_aoe | melee_single | projectile | projectile_burst | projectile_explosive |
- *       aoe_ground | buff | heal_aoe | magic_beam
+ * Höhere Slots = spürbar stärker (Schaden, Reichweite, Effekte).
  */
 const CLASS_ABILITIES = {
   warrior: [
@@ -56,34 +62,34 @@ const CLASS_ABILITIES = {
     },
     {
       id: "wirbelangriff", name: "Wirbelangriff", slot: 1,
-      cd: 10, range: 88, dmgMult: 2.0, type: "melee_spin", hits: 3,
+      cd: 10, range: 92, dmgMult: 2.5, type: "melee_spin", hits: 4,
       color: "#c0392b", particle: "#e67e22",
-      desc: "Dreifach-Wirbel – stärker bei mehreren Gegnern"
+      desc: "Vierfach-Wirbel – je mehr Gegner, desto härter der Treffer"
     },
     {
       id: "berserker", name: "Berserker", slot: 2,
-      cd: 14, range: 80, dmgMult: 3.8, type: "melee_single", critBonus: 0.35,
+      cd: 13, range: 85, dmgMult: 4.6, type: "melee_single", critBonus: 0.42,
       color: "#922b21", particle: "#e74c3c",
-      desc: "Ein verheerender Nahkampf-Schlag mit hoher Krit-Chance"
+      desc: "Verheerender Einzelschlag – sehr hoher Schaden + Krit"
     },
     {
       id: "erdbeben", name: "Erdbeben", slot: 3,
-      cd: 16, range: 120, dmgMult: 1.8, type: "aoe_ground", radius: 110,
+      cd: 15, range: 130, dmgMult: 2.5, type: "aoe_ground", radius: 125,
       color: "#795548", particle: "#d35400",
-      desc: "Erschüttert den Boden – Flächenschaden vor dem Helden"
+      desc: "Massives Beben – großer Flächenschaden vor dem Helden"
     },
     {
       id: "kriegsschrei", name: "Kriegsschrei", slot: 4,
-      cd: 18, range: 100, dmgMult: 0.85, type: "buff_shout", buffDuration: 6,
-      debuffWeak: 0.22, debuffDuration: 3,
+      cd: 17, range: 110, dmgMult: 1.2, type: "buff_shout", buffDuration: 8, buffMult: 1.48,
+      debuffWeak: 0.30, debuffDuration: 4,
       color: "#f39c12", particle: "#f1c40f",
-      desc: "Schreit Gegner an – Buff + Gegner nehmen mehr Schaden"
+      desc: "Starker Angriffs-Buff + Gegner nehmen deutlich mehr Schaden"
     },
     {
       id: "klingensturm", name: "Klingensturm", slot: 5,
-      cd: 12, range: 100, dmgMult: 1.75, type: "melee_aoe", pierceAll: true,
+      cd: 11, range: 110, dmgMult: 3.1, type: "melee_aoe", pierceAll: true,
       color: "#ecf0f1", particle: "#bdc3c7",
-      desc: "Klingenwirbel – durchdringender Flächenschaden"
+      desc: "Ultimativer Klingenwirbel – durchdringender Massenschaden"
     }
   ],
   ranger: [
@@ -96,33 +102,33 @@ const CLASS_ABILITIES = {
     },
     {
       id: "giftpfeil", name: "Giftpfeil", slot: 1,
-      cd: 7, range: 250, dmgMult: 1.85, type: "projectile_poison", dotTicks: 5, dotMult: 0.38,
+      cd: 7, range: 255, dmgMult: 2.2, type: "projectile_poison", dotTicks: 6, dotMult: 0.48,
       color: "#2ecc71", particle: "#27ae60",
-      desc: "Vergifteter Pfeil – starker Schaden über Zeit"
+      desc: "Starker Giftpfeil – hoher Sofort- und DoT-Schaden"
     },
     {
       id: "mehrfachschuss", name: "Mehrfachschuss", slot: 2,
-      cd: 6, range: 240, dmgMult: 1.3, type: "projectile_burst", count: 5, spread: 0.08,
+      cd: 6, range: 250, dmgMult: 1.75, type: "projectile_burst", count: 8, spread: 0.07,
       color: "#1e8449", particle: "#58d68d",
-      desc: "5 schnelle Pfeile auf ein Ziel"
+      desc: "8 schnelle Pfeile – solider Burst auf ein Ziel"
     },
     {
       id: "explosionspfeil", name: "Explosionspfeil", slot: 3,
-      cd: 9, range: 255, dmgMult: 2.8, type: "projectile_explosive", radius: 85,
+      cd: 9, range: 265, dmgMult: 3.5, type: "projectile_explosive", radius: 105,
       color: "#e67e22", particle: "#f39c12",
-      desc: "Explosiver Pfeil – Flächenschaden bei Einschlag"
+      desc: "Schwerer Explosionspfeil – großer Flächenschaden"
     },
     {
       id: "falkenblick", name: "Falkenblick", slot: 4,
-      cd: 15, range: 280, dmgMult: 4.5, type: "projectile_snipe", critBonus: 0.5,
+      cd: 14, range: 290, dmgMult: 5.8, type: "projectile_snipe", critBonus: 0.62,
       color: "#85c1e9", particle: "#5dade2",
-      desc: "Langstrecken-Scharfschuss – extrem hoher Schaden"
+      desc: "Tödlicher Langstrecken-Schuss – extrem hoher Burst"
     },
     {
       id: "pfeilhagel", name: "Pfeilhagel", slot: 5,
-      cd: 11, range: 270, dmgMult: 1.35, type: "projectile_rain", count: 14,
+      cd: 10, range: 280, dmgMult: 1.75, type: "projectile_rain", count: 20,
       color: "#145a32", particle: "#27ae60",
-      desc: "Pfeilregen – viele Treffer auf alle Gegner"
+      desc: "Ultimativer Pfeilregen – trifft alle Gegner im Feld"
     }
   ],
   mage: [
@@ -134,34 +140,34 @@ const CLASS_ABILITIES = {
     },
     {
       id: "eislanze", name: "Eislanze", slot: 1,
-      cd: 5, range: 230, dmgMult: 2.4, manaCost: 18, type: "projectile_pierce",
+      cd: 5, range: 240, dmgMult: 3.1, manaCost: 20, type: "projectile_pierce", pierceCount: 4,
       color: "#85c1e9", particle: "#aed6f1",
-      desc: "Durchdringende Eislanze – trifft mehrere Gegner"
+      desc: "Eislanze durchbohrt bis zu 4 Gegner"
     },
     {
       id: "blitzschlag", name: "Blitzschlag", slot: 2,
-      cd: 7, range: 200, dmgMult: 3.5, manaCost: 22, type: "magic_strike",
+      cd: 7, range: 210, dmgMult: 4.4, manaCost: 24, type: "magic_strike", chainHits: 2,
       color: "#f1c40f", particle: "#f9e79f",
-      desc: "Blitz trifft sofort – hoher Burst-Schaden"
+      desc: "Blitz trifft sofort und springt auf 2 weitere Gegner"
     },
     {
       id: "meteor", name: "Meteor", slot: 3,
-      cd: 14, range: 210, dmgMult: 4.0, manaCost: 45, type: "aoe_ground", radius: 120,
+      cd: 13, range: 220, dmgMult: 5.2, manaCost: 42, type: "aoe_ground", radius: 135,
       color: "#e74c3c", particle: "#922b21",
-      desc: "Meteoriteneinschlag – massiver Flächenschaden"
+      desc: "Massiver Meteoriteneinschlag – riesiger Flächenschaden"
     },
     {
       id: "frostnova", name: "Frostnova", slot: 4,
-      cd: 12, range: 95, dmgMult: 2.1, manaCost: 32, type: "melee_aoe",
-      slowDuration: 2.8, slowMult: 0.48,
+      cd: 11, range: 105, dmgMult: 2.9, manaCost: 30, type: "melee_aoe",
+      slowDuration: 3.5, slowMult: 0.38,
       color: "#5dade2", particle: "#aed6f1",
-      desc: "Frostnova – Eisschaden und Verlangsamung"
+      desc: "Starke Frostnova – hoher Schaden + lange Verlangsamung"
     },
     {
       id: "arkane_explosion", name: "Arkane Explosion", slot: 5,
-      cd: 10, range: 180, dmgMult: 3.2, manaCost: 40, type: "aoe_ground", radius: 100,
+      cd: 9, range: 195, dmgMult: 4.5, manaCost: 38, type: "aoe_ground", radius: 120,
       color: "#9b59b6", particle: "#bb86fc",
-      desc: "Arkane Energie explodiert vor dem Magier"
+      desc: "Ultimative arkane Detonation – massiver Flächenschaden"
     }
   ]
 };
