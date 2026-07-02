@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "hero-move-bounds-v1";
+const BUILD_ID = "hero-left-bound-v1";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -40,11 +40,11 @@ function pinCharToGround(entity) {
 const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
-  /** Bewegungskorridor – enger als voller Bildschirm */
-  heroMoveMinX: 0,
+  /** Bewegungskorridor – links bleibt der Held vollständig sichtbar */
+  heroMoveMinX: 24,
   heroMoveMaxX: 300,
-  /** Am Rand darf max. 50 % der Körperbreite aus dem Bildschirm ragen */
-  heroEdgeOverflow: 0.5,
+  /** Rechts darf max. 50 % der Körperbreite aus dem Bildschirm ragen */
+  heroEdgeOverflowRight: 0.5,
   enemyRightMargin: 205,
   enemySpacing: 50,
   enemyMeleeReach: 52,
@@ -2139,15 +2139,12 @@ function getCombatAim() {
   return { x: hx, y: hy, onCanvas: false, down: mouse.down };
 }
 
-function getHeroMinX(h) {
-  const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
-  const edgeMin = -h.w * overflow;
-  const moveMin = COMBAT_LAYOUT.heroMoveMinX ?? 0;
-  return Math.min(moveMin, edgeMin);
+function getHeroMinX(_h) {
+  return COMBAT_LAYOUT.heroMoveMinX ?? 24;
 }
 
 function getHeroMaxX(h) {
-  const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
+  const overflow = COMBAT_LAYOUT.heroEdgeOverflowRight ?? 0.5;
   const edgeMax = CW - h.w * (1 - overflow);
   const moveMax = COMBAT_LAYOUT.heroMoveMaxX ?? 300;
   return Math.min(moveMax, edgeMax);
