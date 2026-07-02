@@ -2,10 +2,91 @@
 
 const WR = {
   CW: 640, CH: 360, GROUND: 308, STRIP_W: 2560,
-  SPEEDS: [0.015, 0.04, 0.07, 0.11, 0.17, 0.24, 0.34, 0.44],
+  SPEEDS: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
   cache: { theme: null, layers: null },
   ambient: [], transition: null, animTime: 0
 };
+
+const WORLD_VISUALS = {
+  forest: {
+    id: "forest", theme: "forest", name: "Dark Forest",
+    skyColors: ["#010504", "#031008", "#092416", "#123824"],
+    backgroundLayers: ["giant-oaks", "wooden-ruins", "watchtowers"],
+    parallaxSpeed: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
+    fogColor: "rgba(52,120,88,0.28)",
+    particleTypes: ["rain", "leaves", "fireflies", "soft-fog"],
+    groundStyle: "moss, roots, mushrooms, wet soil",
+    decorationTypes: ["oak-trunk", "bush", "fence", "campfire", "river-reflection"],
+    lightingColor: "rgba(255,180,80,0.16)",
+    weatherType: "light-rain-leaves",
+    enemyVisualTheme: "bandits, wolves, forest spirits, corrupted soldiers",
+    bossVisualTheme: "Ancient Ent",
+    density: 1.25
+  },
+  swamp: {
+    id: "swamp", theme: "swamp", name: "Cursed Swamp",
+    skyColors: ["#030604", "#071008", "#121a0c", "#243018"],
+    backgroundLayers: ["dead-trees", "rotting-bridges", "broken-boats"],
+    parallaxSpeed: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
+    fogColor: "rgba(110,140,70,0.35)",
+    particleTypes: ["fog", "poison-mist", "rain", "insects"],
+    groundStyle: "black water, poison pools, rotten boards",
+    decorationTypes: ["dead-trunk", "hanging-vines", "glow-mushroom", "bridge-piles"],
+    lightingColor: "rgba(130,210,80,0.14)",
+    weatherType: "heavy-toxic-fog",
+    enemyVisualTheme: "zombies, spiders, giant frogs, bog witches",
+    bossVisualTheme: "Swamp Hydra",
+    density: 1.35
+  },
+  frozen: {
+    id: "frozen", theme: "frost", name: "Frozen Mountains",
+    skyColors: ["#06101f", "#0d1f38", "#24385c", "#6f74a6"],
+    backgroundLayers: ["mountain-silhouettes", "ice-caves", "nordic-ruins"],
+    parallaxSpeed: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
+    fogColor: "rgba(190,220,255,0.24)",
+    particleTypes: ["snow", "blizzard", "icy-wind", "aurora"],
+    groundStyle: "snow crust, frozen lakes, blue ice",
+    decorationTypes: ["giant-pines", "glacier", "runestone", "frozen-waterfall"],
+    lightingColor: "rgba(170,210,255,0.16)",
+    weatherType: "snow-blizzard",
+    enemyVisualTheme: "ice wolves, frozen knights, ice golems, snow spirits",
+    bossVisualTheme: "Ice Dragon",
+    density: 1.2
+  },
+  firelands: {
+    id: "firelands", theme: "fire", name: "Firelands",
+    skyColors: ["#080101", "#210505", "#4a1008", "#8f2c08"],
+    backgroundLayers: ["volcanoes", "broken-castles", "smoke-columns"],
+    parallaxSpeed: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
+    fogColor: "rgba(120,42,15,0.34)",
+    particleTypes: ["ash", "smoke", "embers", "heat-shimmer"],
+    groundStyle: "obsidian, lava cracks, molten rivers",
+    decorationTypes: ["charred-tree", "obsidian-spire", "magma-vent", "castle-ruin"],
+    lightingColor: "rgba(255,90,20,0.22)",
+    weatherType: "ash-ember-smoke",
+    enemyVisualTheme: "demons, fire beasts, lava golems, hell knights",
+    bossVisualTheme: "Infernal Titan",
+    density: 1.28
+  },
+  ruins: {
+    id: "ruins", theme: "ruins", name: "Forgotten Ruins",
+    skyColors: ["#050712", "#10142a", "#1d2040", "#32245a"],
+    backgroundLayers: ["temples", "collapsed-towers", "dark-libraries"],
+    parallaxSpeed: [0.01, 0.025, 0.055, 0.095, 0.16, 0.25, 0.39, 0.58],
+    fogColor: "rgba(85,65,130,0.34)",
+    particleTypes: ["magic-dust", "floating-stones", "storm-clouds", "runes"],
+    groundStyle: "ancient marble, cracked bridges, glowing runes",
+    decorationTypes: ["pillar", "statue", "magic-crystal", "floating-debris"],
+    lightingColor: "rgba(90,190,255,0.18)",
+    weatherType: "magic-dust-storm",
+    enemyVisualTheme: "ancient guardians, dark mages, stone titans, forgotten kings",
+    bossVisualTheme: "The Fallen Emperor",
+    density: 1.32
+  }
+};
+
+WORLD_VISUALS.frost = WORLD_VISUALS.frozen;
+WORLD_VISUALS.fire = WORLD_VISUALS.firelands;
 
 function wrR(n) { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
 function wrR2(x, y, s) { return wrR(x * 0.013 + y * 0.029 + s * 17.3); }
@@ -882,10 +963,168 @@ function wrRenderAmbient(ctx, world) {
   ctx.globalAlpha = 1;
 }
 
+function getWorldVisualConfig(worldId) {
+  const key = typeof worldId === "string" ? worldId : (worldId?.theme || "forest");
+  return WORLD_VISUALS[key] || WORLD_VISUALS.forest;
+}
+
+function wrLayerScroll(config, camera, idx) {
+  const speeds = config.parallaxSpeed || WR.SPEEDS;
+  return (camera?.scrollX || 0) * (speeds[idx] != null ? speeds[idx] : WR.SPEEDS[idx]);
+}
+
+function renderSky(ctx, worldConfig, time) {
+  wrEnsureCache(worldConfig.theme);
+  wrTileLayer(ctx, WR.cache.layers[0], wrLayerScroll(worldConfig, { scrollX: 0 }, 0));
+}
+
+function renderParallaxLayers(ctx, worldConfig, camera, time) {
+  wrEnsureCache(worldConfig.theme);
+  for (let i = 1; i <= 3; i++) {
+    wrTileLayer(ctx, WR.cache.layers[i], wrLayerScroll(worldConfig, camera, i));
+  }
+}
+
+function renderWaterOrLava(ctx, worldConfig, camera, time) {
+  wrEnsureCache(worldConfig.theme);
+  wrTileLayer(ctx, WR.cache.layers[4], wrLayerScroll(worldConfig, camera, 4));
+}
+
+function renderGround(ctx, worldConfig, camera, time) {
+  wrEnsureCache(worldConfig.theme);
+  wrTileLayer(ctx, WR.cache.layers[5], wrLayerScroll(worldConfig, camera, 5));
+}
+
+function renderEnvironmentDecorations(ctx, worldConfig, camera, time) {
+  wrEnsureCache(worldConfig.theme);
+  wrTileLayer(ctx, WR.cache.layers[6], wrLayerScroll(worldConfig, camera, 6));
+  wrTileLayer(ctx, WR.cache.layers[7], wrLayerScroll(worldConfig, camera, 7));
+  renderMassiveForeground(ctx, worldConfig, camera, time);
+}
+
+function renderWeather(ctx, worldConfig, time) {
+  wrRenderAmbient(ctx, { theme: worldConfig.theme });
+}
+
+function renderLighting(ctx, worldConfig, time) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.45;
+  const light = ctx.createLinearGradient(0, 0, 0, WR.GROUND);
+  light.addColorStop(0, worldConfig.lightingColor);
+  light.addColorStop(0.58, "rgba(0,0,0,0)");
+  light.addColorStop(1, worldConfig.theme === "fire" ? "rgba(255,70,10,0.1)" : "rgba(0,0,0,0)");
+  ctx.fillStyle = light;
+  ctx.fillRect(0, 0, WR.CW, WR.GROUND + 20);
+  ctx.restore();
+}
+
+function wrWrappedX(index, spacing, scroll, offset) {
+  const span = spacing * 9;
+  const x = index * spacing + (offset || 0) - scroll;
+  return ((x % span) + span) % span - spacing;
+}
+
+function wrMegaOak(ctx, x, g, seed) {
+  const trunkW = 28 + (wrR(seed) * 16 | 0);
+  const trunkH = 230 + (wrR(seed + 1) * 90 | 0);
+  wrBlock(ctx, x - trunkW / 2, g - trunkH, trunkW, trunkH, "#211409");
+  wrBlock(ctx, x - trunkW / 2 + 5, g - trunkH, 6, trunkH, "#4a2e18");
+  wrBlock(ctx, x + trunkW / 2 - 8, g - trunkH + 20, 5, trunkH - 35, "#120a05");
+  for (let i = 0; i < 7; i++) {
+    const bx = x + (i - 3) * 18;
+    const by = g - trunkH + 35 + (i % 3) * 22;
+    wrBlock(ctx, bx, by, (i % 2 ? 55 : -55), 8, "#2d1f14");
+    wrBlock(ctx, bx + (i % 2 ? 42 : -52), by - 7, 36, 18, "#0b2e1c");
+    wrBlock(ctx, bx + (i % 2 ? 48 : -46), by - 11, 22, 8, "#2d6a4f");
+  }
+  wrBlock(ctx, x - 34, g - 28, 68, 9, "#1b4332");
+  wrBlock(ctx, x - 24, g - 18, 48, 7, "#40916c");
+}
+
+function wrSwampGiantTree(ctx, x, g, seed) {
+  const h = 185 + (wrR(seed) * 80 | 0);
+  wrBlock(ctx, x - 12, g - h, 24, h, "#17120c");
+  wrBlock(ctx, x - 6, g - h + 12, 5, h - 10, "#3b2d18");
+  for (let i = 0; i < 5; i++) {
+    const side = i % 2 ? 1 : -1;
+    wrBlock(ctx, x + side * 8, g - h + 30 + i * 28, side * (52 + i * 8), 7, "#1d170f");
+  }
+  for (let i = 0; i < 8; i++) {
+    wrBlock(ctx, x - 30 + i * 9, g - h + 35 + i * 16, 2, 46, "#34451f");
+  }
+  wrBlock(ctx, x - 42, g - 14, 84, 8, "#151d10");
+  wrBlock(ctx, x - 34, g - 9, 68, 4, "#6f8f38");
+}
+
+function wrFrostGiantPine(ctx, x, g, seed) {
+  const h = 220 + (wrR(seed) * 95 | 0);
+  wrBlock(ctx, x - 5, g - h, 10, h, "#293747");
+  for (let i = 0; i < 9; i++) {
+    const y = g - h + 28 + i * 24;
+    const w = 28 + i * 12;
+    wrBlock(ctx, x - w / 2, y, w, 18, i % 2 ? "#173044" : "#1f4055");
+    wrBlock(ctx, x - w / 2 + 4, y - 4, w - 8, 5, "#dbe8f4");
+  }
+  wrBlock(ctx, x - 45, g - 12, 90, 8, "#d8e8f8");
+}
+
+function wrFireObelisk(ctx, x, g, seed) {
+  const h = 150 + (wrR(seed) * 110 | 0);
+  wrBlock(ctx, x - 16, g - h, 32, h, "#120807");
+  wrBlock(ctx, x - 10, g - h + 20, 6, h - 30, "#3a0c08");
+  wrBlock(ctx, x + 5, g - h + 10, 5, h - 18, "#060202");
+  for (let i = 0; i < 6; i++) {
+    wrBlock(ctx, x - 12 + i * 5, g - 28 - i * 14, 3, 20, i % 2 ? "#e74c3c" : "#f39c12");
+  }
+  wrBlock(ctx, x - 55, g - 8, 110, 5, "#e67e22");
+}
+
+function wrRuinsMonolith(ctx, x, g, seed) {
+  const h = 185 + (wrR(seed) * 95 | 0);
+  wrBlock(ctx, x - 22, g - h, 44, h, "#2a2f3a");
+  wrBlock(ctx, x - 18, g - h + 8, 9, h - 18, "#5f6670");
+  wrBlock(ctx, x + 10, g - h + 22, 6, h - 30, "#151928");
+  for (let i = 0; i < 5; i++) {
+    wrBlock(ctx, x - 8, g - h + 28 + i * 34, 16, 3, "#69d2ff");
+    wrBlock(ctx, x - 2, g - h + 22 + i * 34, 4, 15, "#8ee8ff");
+  }
+  wrBlock(ctx, x - 44, g - 12, 88, 7, "#1b2030");
+}
+
+function renderMassiveForeground(ctx, worldConfig, camera, time) {
+  const theme = worldConfig.theme;
+  const scroll = wrLayerScroll(worldConfig, camera, 7) * 1.28;
+  const density = worldConfig.density || 1;
+  const spacing = Math.max(120, 190 / density);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < 10; i++) {
+    const x = wrWrappedX(i, spacing, scroll, wrR(i * 17) * 90);
+    if (theme === "forest") wrMegaOak(ctx, x, WR.GROUND, i * 19);
+    else if (theme === "swamp") wrSwampGiantTree(ctx, x, WR.GROUND, i * 23);
+    else if (theme === "frost") wrFrostGiantPine(ctx, x, WR.GROUND, i * 29);
+    else if (theme === "fire") wrFireObelisk(ctx, x, WR.GROUND, i * 31);
+    else wrRuinsMonolith(ctx, x, WR.GROUND, i * 37);
+  }
+  ctx.restore();
+}
+
+function renderWorld(ctx, worldId, camera, time) {
+  const cfg = getWorldVisualConfig(worldId);
+  const cam = camera || { scrollX: 0 };
+  ctx.imageSmoothingEnabled = false;
+  renderSky(ctx, cfg, time);
+  renderParallaxLayers(ctx, cfg, cam, time);
+  renderWaterOrLava(ctx, cfg, cam, time);
+  renderGround(ctx, cfg, cam, time);
+  renderEnvironmentDecorations(ctx, cfg, cam, time);
+  renderWeather(ctx, cfg, time);
+  renderLighting(ctx, cfg, time);
+}
+
 function renderParallaxBackground(ctx, world, scrollX) {
-  wrEnsureCache(world.theme);
-  for (let i = 0; i < 8; i++) wrTileLayer(ctx, WR.cache.layers[i], scrollX * WR.SPEEDS[i]);
-  wrRenderAmbient(ctx, world);
+  renderWorld(ctx, world, { scrollX }, WR.animTime);
 }
 
 function startWorldTransition(world) {
@@ -914,3 +1153,15 @@ function updateWorldTransition(dt) {
 }
 
 const WR_PALETTES = { forest: WR_FOREST, swamp: WR_SWAMP, frost: WR_FROST, fire: WR_FIRE, ruins: WR_RUINS };
+
+if (typeof window !== "undefined") {
+  window.WORLD_VISUALS = WORLD_VISUALS;
+  window.renderWorld = renderWorld;
+  window.renderSky = renderSky;
+  window.renderParallaxLayers = renderParallaxLayers;
+  window.renderGround = renderGround;
+  window.renderEnvironmentDecorations = renderEnvironmentDecorations;
+  window.renderWeather = renderWeather;
+  window.renderLighting = renderLighting;
+  window.renderWaterOrLava = renderWaterOrLava;
+}

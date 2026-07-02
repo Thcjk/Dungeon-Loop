@@ -542,6 +542,35 @@
     boss_nekro: "#bb8fce"
   };
 
+  const NORMAL_VISUAL_BOOST = 1.78;
+  const BOSS_VISUAL_BOOST = 3.05;
+
+  function getVisualMetrics(spriteKey, w, h, big) {
+    const isBoss = !!big || (spriteKey || "").startsWith("boss_");
+    const artW = isBoss ? BOSS_W : ART_W;
+    const artH = isBoss ? BOSS_H : ART_H;
+    const boost = isBoss ? BOSS_VISUAL_BOOST : NORMAL_VISUAL_BOOST;
+    const scale = Math.min(w / artW, h / artH) * boost;
+    return {
+      isBoss,
+      artW,
+      artH,
+      scale,
+      drawW: artW * scale,
+      drawH: artH * scale
+    };
+  }
+
+  function getBounds(spriteKey, x, y, w, h, big) {
+    const m = getVisualMetrics(spriteKey, w, h, big);
+    return {
+      x: Math.round(x + w / 2 - m.drawW / 2),
+      y: Math.round(y + h - m.drawH),
+      w: Math.round(m.drawW),
+      h: Math.round(m.drawH)
+    };
+  }
+
   const DRAWERS = {
     goblin: drawGoblin,
     skelett: drawSkelett,
@@ -568,6 +597,8 @@
     px,
     out,
     drawShadow,
+    getBounds,
+    getVisualMetrics,
     themes: Object.keys(THEME_STYLE),
     spriteKeys: Object.keys(DRAWERS),
 
@@ -589,21 +620,22 @@
       const bVal = bob || 0;
       const footBase = Math.round(y + h);
       const cx = Math.round(x + w / 2);
+      const visualBounds = getBounds(spriteKey, bx, by, bw, bh, isBoss);
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      drawShadow(ctx, cx, footBase, bw, world, bVal, isBoss);
+      drawShadow(ctx, cx, footBase, visualBounds.w, world, bVal, isBoss);
 
       if (isBoss && BOSS_GLOW[spriteKey]) {
-        applyBossGlow(ctx, bx, by, bw, bh, BOSS_GLOW[spriteKey]);
+        applyBossGlow(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, BOSS_GLOW[spriteKey]);
       }
 
-      const artW = isBoss ? BOSS_W : ART_W;
-      const artH = isBoss ? BOSS_H : ART_H;
-      const bossBoost = isBoss ? 1.18 : 1;
-      const scale = Math.min(bw / artW, bh / artH) * bossBoost;
-      const drawW = artW * scale;
+      const metrics = getVisualMetrics(spriteKey, bw, bh, isBoss);
+      const artW = metrics.artW;
+      const artH = metrics.artH;
+      const scale = metrics.scale;
+      const drawW = metrics.drawW;
       const offsetX = (bw - drawW) / 2;
 
       ctx.translate(bx + (flip ? bw - offsetX : offsetX), footBase);
@@ -615,8 +647,8 @@
 
       ctx.restore();
 
-      applyThemeTint(ctx, bx, by, bw, bh, world);
-      drawFeetFog(ctx, bx, by, bw, bh, world);
+      applyThemeTint(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, world);
+      drawFeetFog(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, world);
 
       return true;
     }

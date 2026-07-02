@@ -9,6 +9,7 @@ const HR = {
   ANIM: {
     idle: { n: 4, t: 0.28 },
     walk: { n: 4, t: 0.1 },
+    run: { n: 4, t: 0.08 },
     attack: { n: 3, t: 0.08 },
     cast: { n: 3, t: 0.09 },
     hurt: { n: 1, t: 0.14 },
@@ -26,7 +27,7 @@ HR.getAnimState = (h, moving) => {
   if ((h.hurtAnim || 0) > 0.05) return "hurt";
   if (typeof game !== "undefined" && game.abilityCastLock > 0) return "cast";
   if ((h.attackAnim || 0) > 0.04) return "attack";
-  if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) return "walk";
+  if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) return "run";
   return "idle";
 };
 

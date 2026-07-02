@@ -23,7 +23,7 @@ function pinCharToGround(entity) {
   if (!entity || entity.h == null) return;
   entity.y = GROUND - entity.h;
 }
-const CAM_ZOOM = 1.66; // 1.38 × 1.2 – Kamera 20 % näher
+const CAM_ZOOM = 1.82; // Premium-Scale-Pass: naher, dichter Kingdom-Two-Crowns-Blick
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
   heroMinX: 16,
@@ -42,20 +42,48 @@ const COMBAT_LAYOUT = {
 };
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
+const CAMERA_FOLLOW_OFFSET_X = 145;
+const CAMERA_LERP = 8.5;
+const visualCamera = { x: CAM_AX, y: CAM_AY, zoom: CAM_ZOOM, ready: false };
 let canvas, ctx;
 let mouse = { x: CW / 2, y: CH / 2, down: false, onCanvas: false };
 let keys = {};
 
-function applyCamera(c) {
-  c.translate(CAM_AX, CAM_AY);
-  c.scale(CAM_ZOOM, CAM_ZOOM);
-  c.translate(-CAM_AX, -CAM_AY);
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function getCameraFocusX() {
+  if (typeof game === "undefined" || !game.hero) return CAM_AX;
+  const h = game.hero;
+  return clamp(h.x + CAMERA_FOLLOW_OFFSET_X, 215, 395);
+}
+
+function updateVisualCamera(dt) {
+  const targetX = getCameraFocusX();
+  if (!visualCamera.ready) {
+    visualCamera.x = targetX;
+    visualCamera.ready = true;
+  } else {
+    const t = 1 - Math.exp(-CAMERA_LERP * dt);
+    visualCamera.x += (targetX - visualCamera.x) * t;
+  }
+  visualCamera.y = CAM_AY;
+  visualCamera.zoom = CAM_ZOOM;
+}
+
+function applyCamera(c, zoomBoost = 1) {
+  const z = CAM_ZOOM * zoomBoost;
+  visualCamera.zoom = z;
+  c.translate(visualCamera.x, visualCamera.y);
+  c.scale(z, z);
+  c.translate(-visualCamera.x, -visualCamera.y);
 }
 
 function getAim() {
   return {
-    x: (mouse.x - CAM_AX) / CAM_ZOOM + CAM_AX,
-    y: (mouse.y - CAM_AY) / CAM_ZOOM + CAM_AY,
+    x: (mouse.x - visualCamera.x) / visualCamera.zoom + visualCamera.x,
+    y: (mouse.y - visualCamera.y) / visualCamera.zoom + visualCamera.y,
     onCanvas: mouse.onCanvas,
     down: mouse.down
   };
@@ -829,6 +857,13 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
   drawCharSprite(c, sprite, x, y, flip, ENEMY_PIXEL);
   applyWorldCharTint(c, x, y, w, h, world);
   drawCharFeetFog(c, x, y, w, h, world);
+}
+
+function getEnemyVisualBounds(e, drawX) {
+  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBounds === "function") {
+    return VisualEnemies.getBounds(e.sprite, drawX ?? e.x, e.y, e.w, e.h, e.isBoss);
+  }
+  return { x: drawX ?? e.x, y: e.y, w: e.w, h: e.h };
 }
 
 function drawHero(c, h, bob, atkOff, hurtOff, world) {
@@ -2794,6 +2829,7 @@ function updateFrame(dt) {
   }
   h.y = GROUND - h.h;
   pinCharToGround(h);
+  updateVisualCamera(dt);
   if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)
@@ -3070,9 +3106,7 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
   ctx.save();
-  ctx.translate(CAM_AX, CAM_AY);
-  ctx.scale(CAM_ZOOM * zoomBoost, CAM_ZOOM * zoomBoost);
-  ctx.translate(-CAM_AX, -CAM_AY);
+  applyCamera(ctx, zoomBoost);
 
   renderUnifiedBackground(world);
   renderWorldAtmosphere(world);
@@ -3135,11 +3169,12 @@ function render() {
     const bob = Math.sin(e.anim) * 2;
     const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
     const drawX = e.x - lunge;
+    const vb = getEnemyVisualBounds(e, drawX);
     ctx.save();
     if (e === hoveredTarget) {
       ctx.strokeStyle = "rgba(241,196,15,0.85)";
       ctx.lineWidth = 2;
-      ctx.strokeRect(e.x - 3, e.y + bob - 4, e.w + 6, e.h + 8);
+      ctx.strokeRect(vb.x - 3, vb.y - 4, vb.w + 6, vb.h + 8);
     }
     if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     if (e.attackWindup > 0) {
@@ -3150,13 +3185,16 @@ function render() {
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
-    ctx.fillStyle = "#111"; ctx.fillRect(e.x, e.y - 6, e.w, 4);
+    const barW = Math.max(e.w, Math.min(vb.w, e.isBoss ? 96 : 56));
+    const barX = vb.x + (vb.w - barW) / 2;
+    const barY = vb.y - 7;
+    ctx.fillStyle = "#111"; ctx.fillRect(barX, barY, barW, 4);
     ctx.fillStyle = e.isBoss ? "#f1c40f" : "#e74c3c";
-    ctx.fillRect(e.x, e.y - 6, e.w * (e.hp / e.maxHp), 4);
+    ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), 4);
     if (e.attackWindup > 0.4) {
       ctx.fillStyle = "rgba(231,76,60," + (e.attackWindup * 0.7) + ")";
       ctx.font = "bold 9px Courier New";
-      ctx.fillText("!", e.x + e.w / 2 - 3, e.y - 10);
+      ctx.fillText("!", vb.x + vb.w / 2 - 3, vb.y - 11);
     }
   });
 
