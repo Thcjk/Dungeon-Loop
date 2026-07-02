@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "hero-left-bound-v1";
+const BUILD_ID = "release-v97";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -1047,6 +1047,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderUpgradeButtons();
   renderSetupAbilityHint();
   renderAbilityPanel();
+  const buildEl = document.querySelector(".footer-build");
+  if (buildEl) buildEl.textContent = BUILD_ID;
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
   initSupabase();
   loadGameData();
@@ -3577,7 +3579,7 @@ function render() {
       if (!ab) return;
       const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
       ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.85)";
-      const label = (slotIdx + 1) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
+      const label = getAbilityKeyLabel(slotIdx) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
       ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
     });
   }
@@ -3677,7 +3679,7 @@ function updateStatus() {
       if (!ab) return null;
       const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
       const cd = left <= 0 ? "✓" : Math.ceil(left) + "s";
-      return (slotIdx + 1) + ": " + ab.name + " " + cd;
+      return getAbilityKeyLabel(slotIdx) + ": " + ab.name + " " + cd;
     }).filter(Boolean);
     if (parts.length) {
       $("special-status").textContent = parts.join(" | ");
