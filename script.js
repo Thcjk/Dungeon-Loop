@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "enemy-shadow-fix-v2";
+const BUILD_ID = "enemy-feet-anchor-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -851,8 +851,15 @@ function drawCharFeetFog(c, x, y, w, h, world) {
   c.restore();
 }
 
+function getEnemyAnchorX(e, drawX) {
+  const x = drawX ?? getEnemyDrawX(e);
+  return x + e.w / 2;
+}
+
 function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
-  if (typeof VisualEnemies !== "undefined" && VisualEnemies.draw(c, spriteKey, x, y, w, h, flip, world, bob, big)) return;
+  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.drawAtFeet === "function") {
+    if (VisualEnemies.drawAtFeet(c, spriteKey, x + w / 2, GROUND, flip, world, bob, big, w, h)) return;
+  } else if (typeof VisualEnemies !== "undefined" && VisualEnemies.draw(c, spriteKey, x, y, w, h, flip, world, bob, big)) return;
   const sprite = SPRITES[spriteKey];
   if (!sprite) return;
   const footY = y + h;
@@ -869,11 +876,11 @@ function getEnemyDrawX(e) {
 }
 
 function getEnemyVisualBounds(e, drawX) {
-  const x = drawX ?? getEnemyDrawX(e);
-  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBounds === "function") {
-    return VisualEnemies.getBounds(e.sprite, x, e.y, e.w, e.h, e.isBoss, true);
+  const anchorX = getEnemyAnchorX(e, drawX);
+  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBoundsAtFeet === "function") {
+    return VisualEnemies.getBoundsAtFeet(e.sprite, anchorX, GROUND, e.isBoss, true, e.w, e.h);
   }
-  return { x, y: e.y, w: e.w, h: e.h, cx: x + e.w / 2, footY: e.y + e.h };
+  return { x: anchorX - e.w / 2, y: GROUND - e.h, w: e.w, h: e.h, cx: anchorX, footY: GROUND };
 }
 
 function pointInEnemyBody(e, wx, wy, drawX) {
