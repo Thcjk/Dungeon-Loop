@@ -592,12 +592,14 @@ kbd {
 }
 .ability-card.locked { opacity: 0.55; }
 .ability-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
-.ability-cd { color: var(--muted); font-size: 0.62rem; }
-.ability-desc { color: var(--muted); line-height: 1.35; margin-bottom: 0.35rem; }
-.ability-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
-.ability-owned { color: #2ecc71; font-size: 0.65rem; }
-.ability-locked { color: var(--hp); font-size: 0.65rem; }
-.ability-buy { color: var(--gold); font-size: 0.65rem; }
+.ability-cd { color: var(--muted); font-size: 0.62rem; white-space: nowrap; }
+.ability-desc { color: #c8d0dc; line-height: 1.45; margin-bottom: 0.45rem; font-size: 0.74rem; }
+.ability-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-wrap: wrap; }
+.ability-owned { color: #2ecc71; font-size: 0.68rem; font-weight: bold; }
+.ability-locked { color: var(--hp); font-size: 0.68rem; }
+.ability-buy { color: var(--gold); font-size: 0.68rem; font-weight: bold; }
+.ability-buy--poor { color: #e74c3c; }
+.ability-card-head strong { font-size: 0.82rem; color: var(--text); }
 
 /* Setup: nur Hinweis, kein Kauf/Ausrüstung */
 .ability-section--setup {
@@ -609,7 +611,43 @@ kbd {
 .ability-setup-meta { margin-bottom: 0.45rem; font-size: 0.68rem; }
 .ability-setup-meta strong { color: var(--xp); }
 .ability-setup-note { font-size: 0.68rem; color: var(--muted); margin: 0; }
-.ability-setup-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+.ability-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 0.55rem;
+}
+.ability-overview-card {
+  padding: 0.55rem 0.65rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.ability-overview-card.owned { border-color: rgba(46, 204, 113, 0.35); }
+.ability-overview-card.locked { opacity: 0.62; }
+.ability-overview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.ability-overview-head strong { color: var(--text); font-size: 0.78rem; }
+.ability-overview-meta { color: var(--muted); font-size: 0.62rem; white-space: nowrap; }
+.ability-overview-desc { color: #c8d0dc; font-size: 0.72rem; line-height: 1.4; margin: 0 0 0.35rem; }
+.ability-overview-status {
+  display: inline-block;
+  font-size: 0.64rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  font-weight: bold;
+}
+.ability-overview-status--owned { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+.ability-overview-status--buy { background: rgba(240, 192, 64, 0.12); color: var(--gold); }
+.ability-overview-status--locked { background: rgba(231, 76, 60, 0.12); color: #e74c3c; }
+.ability-setup-badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
 .ability-badge {
   display: inline-block;
   padding: 0.2rem 0.45rem;
@@ -636,6 +674,7 @@ kbd {
 .ability-section--game .ability-list { max-height: 220px; }
 
 /* Sidebar: ausgerüstete Fähigkeiten im Kampf */
+.total-gold-hint { color: var(--muted); font-size: 0.72rem; font-weight: normal; }
 .ability-loadout {
   margin: 0.5rem 0 0.65rem;
   padding: 0.5rem 0.55rem;
@@ -647,12 +686,14 @@ kbd {
 .ability-slot {
   display: grid;
   grid-template-columns: 1.4rem 1fr auto;
-  align-items: center;
+  align-items: start;
   gap: 0.35rem;
   padding: 0.25rem 0;
   font-size: 0.68rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+.ability-slot-body { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.ability-slot-desc { color: var(--muted); font-size: 0.6rem; line-height: 1.3; }
 .ability-slot:last-of-type { border-bottom: none; }
 .ability-slot-key {
   font-weight: bold;

@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "cc81ab8-ground-fix";
+const BUILD_ID = "abilities-coin-ui";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -668,8 +668,10 @@ const BALANCE = {
   earlyEaseUntil: 15,           // erste N Dungeon-Level leichter
   earlyHpEase: 0.12,            // max. HP-Reduktion Early Game
   earlyAtkEase: 0.22,           // max. Schaden-Reduktion Early Game
-  coinLife: 2.8,                // Sekunden bis Auto-Einsammeln
-  coinHitRadius: 20             // Maus/Touch-Trefferzone
+  coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln
+  coinJumpDur: 0.55,            // Sprung in die Luft
+  coinJumpHeight: 44,           // Max. Sprunghöhe
+  coinHitRadius: 22             // Maus/Touch-Trefferzone
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -1153,13 +1155,25 @@ function isAbilityOwned(classKey, abilityId) {
   return game.meta?.abilities[classKey]?.unlocked?.includes(abilityId);
 }
 
+function getSpendableGold() {
+  return (game.totalGold || 0) + (game.runGold || 0);
+}
+
+function spendGold(amount) {
+  let left = Math.max(0, Math.floor(amount));
+  const fromRun = Math.min(game.runGold || 0, left);
+  game.runGold -= fromRun;
+  left -= fromRun;
+  game.totalGold = Math.max(0, (game.totalGold || 0) - left);
+}
+
 function buyAbility(classKey, abilityId) {
   const ab = getAbilityById(classKey, abilityId);
   if (!ab || isAbilityOwned(classKey, abilityId)) return;
   if (!isAbilityLevelUnlocked(getMetaLevel(), ab.slot)) return;
   const cost = getAbilityGoldCost(ab.slot);
-  if (game.totalGold < cost) return;
-  game.totalGold -= cost;
+  if (getSpendableGold() < cost) return;
+  spendGold(cost);
   game.meta.abilities[classKey].unlocked.push(abilityId);
   saveMeta();
   savePlayer();
@@ -1190,21 +1204,45 @@ function renderSetupAbilityHint() {
   if (!el) return;
   const ck = game.classKey;
   const metaLv = getMetaLevel();
+  const list = getClassAbilities(ck);
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = (game.meta?.abilities[ck]?.equipped || [])
     .map((id, i) => (id ? { slot: i + 1, ab: getAbilityById(ck, id) } : null))
     .filter((x) => x && x.ab);
 
-  let html = '<p class="ability-setup-lead">Spezialfähigkeiten kaufst und rüstest du <strong>im Spiel</strong> über <kbd>U</kbd> mit deinem Gesamt-Gold.</p>';
-  html += '<p class="ability-setup-meta">Account-Lv. <strong>' + metaLv + '</strong> schaltet Slots frei · ' + owned.length + ' Fähigkeit(en) freigeschaltet</p>';
+  let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung per <strong>Account-Level</strong> · Kauf mit Gold über <kbd>U</kbd> im Spiel</p>';
+  html += '<p class="ability-setup-meta">Account-Lv. <strong>' + metaLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  html += '<div class="ability-overview">';
+  list.forEach((ab) => {
+    const ownedFlag = owned.includes(ab.id);
+    const levelOk = isAbilityLevelUnlocked(metaLv, ab.slot);
+    const cost = getAbilityGoldCost(ab.slot);
+    const slotLabel = ab.slot === 0 ? "Basis" : "Slot " + (ab.slot + 1);
+    let statusClass = "ability-overview-status--locked";
+    let statusText = "Lv. " + getAbilityUnlockLevel(ab.slot) + " nötig";
+    if (ownedFlag) {
+      statusClass = "ability-overview-status--owned";
+      statusText = "Freigeschaltet";
+    } else if (levelOk) {
+      statusClass = "ability-overview-status--buy";
+      statusText = cost > 0 ? "Kauf: " + cost + " 🪙" : "Gratis";
+    }
+    html += '<div class="ability-overview-card' + (ownedFlag ? " owned" : "") + (levelOk ? "" : " locked") + '">' +
+      '<div class="ability-overview-head">' +
+        '<strong>' + ab.name + '</strong>' +
+        '<span class="ability-overview-meta">' + slotLabel + ' · ' + ab.cd + 's CD</span>' +
+      '</div>' +
+      '<p class="ability-overview-desc">' + ab.desc + '</p>' +
+      '<span class="ability-overview-status ' + statusClass + '">' + statusText + '</span>' +
+    '</div>';
+  });
+  html += '</div>';
   if (equipped.length) {
     html += '<div class="ability-setup-badges">';
     equipped.forEach(({ slot, ab }) => {
-      html += '<span class="ability-badge">' + slot + ': ' + ab.name + '</span>';
+      html += '<span class="ability-badge">Taste ' + slot + ': ' + ab.name + '</span>';
     });
     html += '</div>';
-  } else {
-    html += '<p class="ability-setup-note">Jede Klasse startet mit einer Basis-Fähigkeit (Taste 1).</p>';
   }
   el.innerHTML = html;
 }
@@ -1229,7 +1267,10 @@ function renderAbilityLoadout() {
     const ready = left <= 0;
     html += '<div class="ability-slot' + (ready ? " ready" : "") + '">' +
       '<span class="ability-slot-key">' + key + '</span>' +
-      '<span class="ability-slot-name">' + ab.name + '</span>' +
+      '<span class="ability-slot-body">' +
+        '<span class="ability-slot-name">' + ab.name + '</span>' +
+        '<span class="ability-slot-desc">' + ab.desc + '</span>' +
+      '</span>' +
       '<span class="ability-slot-cd">' + (ready ? "bereit" : Math.ceil(left) + "s") + '</span></div>';
   });
   html += '<p class="ability-loadout-hint"><kbd>U</kbd> Fähigkeiten anpassen</p>';
@@ -1268,7 +1309,9 @@ function renderAbilityPanel() {
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Max. 2 Fähigkeiten ausrüsten (Taste 1 / 2)</p>';
+  const spendable = getSpendableGold();
+
+  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Verfügbares Gold: <strong>' + spendable + '</strong> 🪙 · Max. 2 Fähigkeiten ausrüsten (<kbd>1</kbd>/<kbd>2</kbd>)</p>';
   html += '<div class="ability-equip-row">';
   [0, 1].forEach((slotIdx) => {
     html += '<label class="label">Taste ' + (slotIdx + 1) + '</label>';
@@ -1293,15 +1336,20 @@ function renderAbilityPanel() {
       status = '<span class="ability-owned">✓ Freigeschaltet</span>';
     } else if (!levelOk) {
       status = '<span class="ability-locked">Account-Lv. ' + getAbilityUnlockLevel(ab.slot) + ' benötigt</span>';
+    } else if (cost <= 0) {
+      status = '<span class="ability-buy">Gratis freischaltbar</span>';
+      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '">Freischalten</button>';
     } else {
-      status = '<span class="ability-buy">Kauf: ' + cost + ' 🪙</span>';
+      const canAfford = spendable >= cost;
+      status = '<span class="ability-buy' + (canAfford ? '' : ' ability-buy--poor') + '">' +
+        (canAfford ? 'Kaufbar' : 'Zu wenig Gold') + ': ' + cost + ' 🪙</span>';
       btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '"' +
-        (game.totalGold < cost ? ' disabled' : '') + '>Kaufen</button>';
+        (canAfford ? '' : ' disabled title="Du brauchst ' + cost + ' Gold (Run + Gesamt)"') + '>Kaufen</button>';
     }
     const eqMark = equipped.includes(ab.id) ? ' ★' : '';
     const slotLabel = ab.slot === 0 ? 'Basis' : 'Slot ' + (ab.slot + 1);
     html += '<div class="ability-card' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
-      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · ' + ab.cd + 's</span></div>' +
+      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · ' + ab.cd + 's CD</span></div>' +
       '<p class="ability-desc">' + ab.desc + '</p>' +
       '<div class="ability-card-foot">' + status + btnHtml + '</div></div>';
   });
@@ -1652,12 +1700,18 @@ function handlePointerDown(e) {
   tryCollectCoinBonus(getAim());
 }
 
-/** Münze nach Gegner-Tod spawnen – Gold wird erst beim Einsammeln gutgeschrieben */
+/** Münze nach Gegner-Tod spawnen – springt hoch; in der Luft = x2, am Boden = normal */
 function spawnCoinDrop(amount, x, y) {
+  const groundY = GROUND - 6;
   game.coins.push({
-    x, y,
-    yBase: y,
+    x,
+    groundY,
+    y: y,
     val: Math.max(1, Math.floor(amount)),
+    phase: "air",
+    jumpT: 0,
+    jumpDur: BALANCE.coinJumpDur,
+    jumpH: BALANCE.coinJumpHeight,
     life: BALANCE.coinLife,
     maxLife: BALANCE.coinLife,
     collected: false,
@@ -1703,7 +1757,12 @@ function collectCoinDrop(coin, isBonus) {
 function tryCollectCoinBonus(aim) {
   if (!game.isRunning || game.isPaused || game.isDead || !aim?.onCanvas) return;
   const coin = hitTestCoin(aim.x, aim.y);
-  if (coin) collectCoinDrop(coin, true);
+  if (!coin) return;
+  if (coin.phase === "air") {
+    collectCoinDrop(coin, true);
+  } else if (coin.phase === "ground") {
+    collectCoinDrop(coin, false);
+  }
 }
 
 function updateCoinDrops(dt) {
@@ -1712,8 +1771,21 @@ function updateCoinDrops(dt) {
       coin.pop -= dt;
       return coin.pop > 0;
     }
-    coin.bob += dt * 5;
-    coin.y = coin.yBase + Math.sin(coin.bob) * 3;
+
+    if (coin.phase === "air") {
+      coin.jumpT += dt;
+      const t = Math.min(1, coin.jumpT / coin.jumpDur);
+      coin.y = coin.groundY - coin.jumpH * 4 * t * (1 - t);
+      if (t >= 1) {
+        coin.phase = "ground";
+        coin.y = coin.groundY;
+        coin.life = coin.maxLife;
+      }
+      return true;
+    }
+
+    coin.bob += dt * 4;
+    coin.y = coin.groundY + Math.sin(coin.bob) * 1.5;
     coin.life -= dt;
     if (coin.life <= 0) {
       collectCoinDrop(coin, false);
@@ -1726,21 +1798,25 @@ function updateCoinDrops(dt) {
 function drawCoinDrops(ctx) {
   game.coins.forEach((coin) => {
     if (coin.collected && coin.pop <= 0) return;
+    const inAir = coin.phase === "air";
     const pulse = 0.85 + Math.sin(coin.bob * 1.4) * 0.15;
     const spin = Math.sin(coin.bob * 0.9) * 2;
     ctx.save();
-    ctx.globalAlpha = coin.collected ? Math.max(0, coin.pop / 0.35) : Math.min(1, coin.life / 0.5);
-    ctx.shadowColor = coin.bonus ? "#fff8a0" : "#f1c40f";
-    ctx.shadowBlur = coin.bonus ? 16 : 10;
+    ctx.globalAlpha = coin.collected ? Math.max(0, coin.pop / 0.35) : Math.min(1, inAir ? 1 : coin.life / 0.5);
+    ctx.shadowColor = inAir ? "#fff8a0" : (coin.bonus ? "#fff8a0" : "#f1c40f");
+    ctx.shadowBlur = inAir ? 18 : (coin.bonus ? 16 : 10);
     ctx.translate(coin.x, coin.y - 2);
     ctx.scale(1 + spin * 0.02, 1);
     drawSprite(ctx, SPRITES.coin, -9, -9, false);
     ctx.shadowBlur = 0;
     ctx.font = "bold 9px Courier New";
-    ctx.fillStyle = coin.bonus ? "#fff8c0" : "#f1c40f";
+    ctx.fillStyle = inAir ? "#fff8c0" : (coin.bonus ? "#fff8c0" : "#f1c40f");
     ctx.globalAlpha *= pulse;
     ctx.fillText(String(coin.val), -6, -10);
-    if (coin.bonus) {
+    if (inAir) {
+      ctx.fillStyle = "#2ecc71";
+      ctx.fillText("x2?", 6, -10);
+    } else if (coin.bonus) {
       ctx.fillStyle = "#2ecc71";
       ctx.fillText("x2", 8, -10);
     }
@@ -3522,7 +3598,7 @@ function renderUpgradeButtons() {
     const relevant = isUpgradeRelevant(up);
     const btn = document.createElement("button");
     btn.className = "upgrade-btn" + (relevant ? " relevant" : "") + (maxed ? " maxed" : "");
-    btn.disabled = maxed || game.totalGold < cost;
+    btn.disabled = maxed || getSpendableGold() < cost;
     btn.innerHTML =
       '<span class="upgrade-info">' +
         '<span class="upgrade-name">' + up.label + (relevant ? " ★" : "") + '</span>' +
@@ -3537,14 +3613,16 @@ function renderUpgradeButtons() {
 
 async function buyUpgrade(k) {
   const cost = getUpgradeCost(k);
-  if (game.totalGold < cost || (game.upgrades[k] || 0) >= BALANCE.upgradeMax) return;
-  game.totalGold -= cost;
+  if (getSpendableGold() < cost || (game.upgrades[k] || 0) >= BALANCE.upgradeMax) return;
+  spendGold(cost);
   game.upgrades[k] = (game.upgrades[k] || 0) + 1;
   addLog("Upgrade: " + UPGRADES.find(u => u.key === k).label + " Stufe " + game.upgrades[k]);
   await savePlayer(); updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
 }
 
-function updateTotalGold() { if ($("total-gold")) $("total-gold").textContent = game.totalGold; }
+function updateTotalGold() {
+  if ($("total-gold")) $("total-gold").textContent = getSpendableGold();
+}
 function calcScore() { return game.dungeonLevel*100 + game.monstersDefeated*50 + game.runGold + game.playerLevel*200; }
 
 async function saveScore() {
