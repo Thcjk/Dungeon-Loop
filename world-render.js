@@ -21,6 +21,8 @@ const WORLD_VISUALS = {
     weatherType: "light-rain-leaves",
     enemyVisualTheme: "bandits, wolves, forest spirits, corrupted soldiers",
     bossVisualTheme: "Ancient Ent",
+    composition: "clear hero lane, massive trees, warm camp lights, reflective river bands",
+    uiIconMood: "leaf, torch, moss, moon",
     density: 1.25
   },
   swamp: {
@@ -36,6 +38,8 @@ const WORLD_VISUALS = {
     weatherType: "heavy-toxic-fog",
     enemyVisualTheme: "zombies, spiders, giant frogs, bog witches",
     bossVisualTheme: "Swamp Hydra",
+    composition: "low fog, black water, rotting structures, toxic pools at ground level",
+    uiIconMood: "poison, reeds, bones, insects",
     density: 1.35
   },
   frozen: {
@@ -51,6 +55,8 @@ const WORLD_VISUALS = {
     weatherType: "snow-blizzard",
     enemyVisualTheme: "ice wolves, frozen knights, ice golems, snow spirits",
     bossVisualTheme: "Ice Dragon",
+    composition: "high mountains, frozen lake sheen, strong blue-white silhouettes",
+    uiIconMood: "snowflake, aurora, rune, ice",
     density: 1.2
   },
   firelands: {
@@ -66,6 +72,8 @@ const WORLD_VISUALS = {
     weatherType: "ash-ember-smoke",
     enemyVisualTheme: "demons, fire beasts, lava golems, hell knights",
     bossVisualTheme: "Infernal Titan",
+    composition: "dark volcanic frame, lava cracks, castles and smoke columns dominate horizon",
+    uiIconMood: "ember, lava, obsidian, ash",
     density: 1.28
   },
   ruins: {
@@ -81,6 +89,8 @@ const WORLD_VISUALS = {
     weatherType: "magic-dust-storm",
     enemyVisualTheme: "ancient guardians, dark mages, stone titans, forgotten kings",
     bossVisualTheme: "The Fallen Emperor",
+    composition: "ancient vertical temples, floating stones, cyan magic reflection",
+    uiIconMood: "rune, crystal, marble, storm",
     density: 1.32
   }
 };
@@ -1105,6 +1115,58 @@ function renderGround(ctx, worldConfig, camera, time) {
   wrTileLayer(ctx, WR.cache.layers[5], wrLayerScroll(worldConfig, camera, 5));
 }
 
+function wrGlint(ctx, x, y, w, color, seed, time) {
+  const pulse = 0.35 + Math.sin(time * 1.7 + seed) * 0.25;
+  ctx.globalAlpha = Math.max(0.12, pulse);
+  wrBlock(ctx, x, y, w, 1, color);
+  if (w > 18) wrBlock(ctx, x + (w * 0.25 | 0), y + 3, w * 0.45, 1, color);
+}
+
+function renderSurfaceHighlights(ctx, worldConfig, camera, time) {
+  const theme = worldConfig.theme;
+  const scroll = wrLayerScroll(worldConfig, camera, 5) * 0.85;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (theme === "forest") {
+    ctx.globalAlpha = 0.42;
+    for (let i = 0; i < 11; i++) {
+      const x = wrWrappedX(i, 82, scroll, 18);
+      wrGlint(ctx, x, WR.GROUND - 20 + (i % 3) * 4, 28 + (wrR(i) * 24 | 0), "#d8b46a", i, time);
+    }
+  } else if (theme === "swamp") {
+    ctx.globalAlpha = 0.55;
+    for (let i = 0; i < 14; i++) {
+      const x = wrWrappedX(i, 70, scroll, 8);
+      wrGlint(ctx, x, WR.GROUND - 18 + (i % 4) * 3, 18 + (wrR(i) * 22 | 0), i % 2 ? "#96b35a" : "#293614", i, time);
+    }
+  } else if (theme === "frost") {
+    ctx.globalAlpha = 0.48;
+    for (let i = 0; i < 12; i++) {
+      const x = wrWrappedX(i, 86, scroll, 25);
+      wrGlint(ctx, x, WR.GROUND - 17 + (i % 2) * 5, 30 + (wrR(i) * 26 | 0), "#e8f4fc", i, time);
+      wrBlock(ctx, x + 6, WR.GROUND - 8, 24, 2, "#9fc7df");
+    }
+  } else if (theme === "fire") {
+    ctx.globalCompositeOperation = "screen";
+    for (let i = 0; i < 18; i++) {
+      const x = wrWrappedX(i, 62, scroll, 0);
+      const w = 24 + (wrR(i) * 42 | 0);
+      wrBlock(ctx, x, WR.GROUND - 14 + (i % 3) * 4, w, 2, i % 2 ? "#e74c3c" : "#f39c12");
+      wrBlock(ctx, x + 4, WR.GROUND - 10 + (i % 2) * 5, w * 0.45, 1, "#ffdd66");
+    }
+  } else {
+    ctx.globalCompositeOperation = "screen";
+    for (let i = 0; i < 14; i++) {
+      const x = wrWrappedX(i, 72, scroll, 35);
+      wrGlint(ctx, x, WR.GROUND - 20 + (i % 3) * 5, 20 + (wrR(i) * 36 | 0), i % 2 ? "#69d2ff" : "#bb86fc", i, time);
+      wrBlock(ctx, x + 8, WR.GROUND - 34 - (i % 4) * 8, 3, 12, "#69d2ff");
+    }
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function renderEnvironmentDecorations(ctx, worldConfig, camera, time) {
   wrEnsureCache(worldConfig.theme);
   wrTileLayer(ctx, WR.cache.layers[6], wrLayerScroll(worldConfig, camera, 6));
@@ -1313,6 +1375,7 @@ function renderWorld(ctx, worldId, camera, time) {
   renderWorldArchitecture(ctx, cfg, cam, time);
   renderWaterOrLava(ctx, cfg, cam, time);
   renderGround(ctx, cfg, cam, time);
+  renderSurfaceHighlights(ctx, cfg, cam, time);
   renderEnvironmentDecorations(ctx, cfg, cam, time);
   renderWeather(ctx, cfg, time);
   renderLighting(ctx, cfg, time);
@@ -1356,6 +1419,7 @@ if (typeof window !== "undefined") {
   window.renderParallaxLayers = renderParallaxLayers;
   window.renderWorldArchitecture = renderWorldArchitecture;
   window.renderGround = renderGround;
+  window.renderSurfaceHighlights = renderSurfaceHighlights;
   window.renderEnvironmentDecorations = renderEnvironmentDecorations;
   window.renderWorldForeground = renderWorldForeground;
   window.renderWeather = renderWeather;

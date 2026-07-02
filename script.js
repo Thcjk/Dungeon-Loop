@@ -874,6 +874,62 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
   });
 }
 
+function drawPremiumSlashFx(c, s) {
+  const maxLife = s.maxLife || (s.big ? 20 : 14);
+  const t = s.life / maxLife;
+  const color = s.owner === "enemy" ? "#e74c3c" : game.classKey === "warrior" ? "#f1c40f" : game.classKey === "ranger" ? "#95e1a3" : "#bb86fc";
+  const edge = s.owner === "enemy" ? "#ff8a65" : "#ffffff";
+  c.save();
+  c.translate(s.x, s.y);
+  c.rotate(s.angle);
+  c.globalCompositeOperation = "screen";
+  c.globalAlpha = t * 0.65;
+  for (let i = 0; i < 4; i++) {
+    c.fillStyle = i === 0 ? edge : color;
+    c.fillRect(Math.round(s.range * (0.16 + i * 0.08)), Math.round(-12 - i * 2), Math.round(18 + i * 10), 2);
+    c.fillRect(Math.round(s.range * (0.2 + i * 0.08)), Math.round(9 + i), Math.round(14 + i * 8), 2);
+  }
+  c.globalAlpha = t * 0.28;
+  c.strokeStyle = color;
+  c.lineWidth = s.big ? 5 : 3;
+  c.beginPath();
+  c.arc(s.range * 0.18, 0, s.range * (s.big ? 0.34 : 0.26), -0.75, 0.7);
+  c.stroke();
+  c.restore();
+}
+
+function drawPremiumProjectileFx(c, p) {
+  const rows = SPRITES[p.sprite];
+  if (!rows) return;
+  const sc = p.big ? 1.5 : 1;
+  const pw = rows[0].length * PIXEL * sc;
+  const ph = rows.length * PIXEL * sc;
+  const speed = Math.hypot(p.vx || 0, p.vy || 0) || 1;
+  const ux = (p.vx || 0) / speed;
+  const uy = (p.vy || 0) / speed;
+  const isFire = p.sprite === "projectile_fire";
+  const trail = isFire ? "#f39c12" : p.trail || (game.classKey === "mage" ? "#8bd8ff" : "#d8c28a");
+  c.save();
+  c.globalCompositeOperation = "screen";
+  c.globalAlpha = isFire ? 0.55 : 0.36;
+  c.fillStyle = trail;
+  for (let i = 1; i <= 5; i++) {
+    c.fillRect(Math.round(p.x - ux * i * 6), Math.round(p.y - uy * i * 6), Math.max(1, 5 - i), Math.max(1, 3 - (i > 2 ? 1 : 0)));
+  }
+  if (isFire) {
+    const g = c.createRadialGradient(p.x, p.y, 2, p.x, p.y, p.big ? 28 : 18);
+    g.addColorStop(0, "rgba(255,220,100,0.75)");
+    g.addColorStop(0.45, "rgba(231,76,60,0.22)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g;
+    c.fillRect(p.x - 30, p.y - 30, 60, 60);
+  }
+  c.globalAlpha = 1;
+  c.globalCompositeOperation = "source-over";
+  drawSprite(c, rows, p.x - pw / 2, p.y - ph / 2, (p.vx || 0) < 0);
+  c.restore();
+}
+
 let heroCardRaf = null;
 let heroCardFrame = 0;
 let heroCardTime = 0;
@@ -3152,6 +3208,7 @@ function render() {
   // Nahkampf-Schläge (Spieler + Gegner)
   game.meleeSlashes.forEach((s) => {
     const maxLife = s.maxLife || (s.big ? 20 : 14);
+    drawPremiumSlashFx(ctx, s);
     ctx.save();
     ctx.translate(s.x, s.y);
     ctx.rotate(s.angle);
@@ -3232,11 +3289,7 @@ function render() {
   ctx.restore();
 
   game.projectiles.forEach((p) => {
-    const sc = p.big ? 1.5 : 1;
-    const rows = SPRITES[p.sprite];
-    const pw = rows[0].length * PIXEL * sc;
-    const ph = rows.length * PIXEL * sc;
-    drawSprite(ctx, rows, p.x - pw / 2, p.y - ph / 2, p.vx < 0);
+    drawPremiumProjectileFx(ctx, p);
   });
 
   game.particles.forEach((p) => {
