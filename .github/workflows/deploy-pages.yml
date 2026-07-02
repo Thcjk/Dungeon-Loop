@@ -1,0 +1,76 @@
+# Zuverlässiger Static-Deploy (ohne Jekyll) – ersetzt fehleranfällige GitHub-503-Deploys.
+# Einmalig in GitHub: Settings → Pages → Branch: gh-pages / (root)
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  publish-gh-pages-branch:
+    name: Publish gh-pages branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish static site
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
+          force_orphan: true
+          enable_jekyll: false
+
+  deploy-with-retry:
+    name: Deploy via Pages API (retry)
+    needs: publish-gh-pages-branch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy attempt 1
+        id: dep1
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry
+        if: steps.dep1.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy attempt 2
+        id: dep2
+        if: steps.dep1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before final retry
+        if: steps.dep1.outcome == 'failure' && steps.dep2.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy attempt 3
+        if: steps.dep1.outcome == 'failure' && steps.dep2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
