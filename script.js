@@ -1,10 +1,22 @@
 /* ============================================
    Dungeon Loop – Pixel Canvas Edition
-   Maus auf Gegner = Angriff | 1 = Spezial
+   Maus auf Gegner = Angriff | W/S = Spezial
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "coin-mouse-bonus-v1";
+const BUILD_ID = "ability-ws-keys-v1";
+
+/** Tasten für ausgerüstete Spezialfähigkeiten */
+const ABILITY_KEY_LABELS = ["W", "S"];
+
+function getAbilityKeyLabel(slotIdx) {
+  return ABILITY_KEY_LABELS[slotIdx] || String(slotIdx + 1);
+}
+
+function isTypingInForm() {
+  const tag = document.activeElement?.tagName;
+  return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+}
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -28,8 +40,8 @@ function pinCharToGround(entity) {
 const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
-  heroMinX: 16,
-  heroMaxX: 560,
+  /** Helden darf max. zur Hälfte aus dem Bildschirm (Anteil der Körperbreite) */
+  heroEdgeOverflow: 0.5,
   enemyRightMargin: 205,
   enemySpacing: 50,
   enemyMeleeReach: 52,
@@ -1273,7 +1285,7 @@ function renderSetupAbilityHint() {
     .filter((x) => x && x.ab);
 
   let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung bei <strong>Spezial-CD Meilensteinen</strong> (Stufe 3, 6, 10 …)</p>';
-  html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>W</kbd>/<kbd>S</kbd> im Kampf</p>';
   html += '<div class="ability-overview">';
   list.forEach((ab) => {
     const ownedFlag = owned.includes(ab.id);
@@ -1302,7 +1314,7 @@ function renderSetupAbilityHint() {
   if (equipped.length) {
     html += '<div class="ability-setup-badges">';
     equipped.forEach(({ slot, ab }) => {
-      html += '<span class="ability-badge">Taste ' + slot + ': ' + ab.name + '</span>';
+      html += '<span class="ability-badge"><kbd>' + getAbilityKeyLabel(slot - 1) + '</kbd>: ' + ab.name + '</span>';
     });
     html += '</div>';
   }
@@ -1320,7 +1332,7 @@ function renderAbilityLoadout() {
   let html = "";
   [0, 1].forEach((slotIdx) => {
     const ab = getEquippedAbilityAtSlot(slotIdx);
-    const key = slotIdx + 1;
+    const key = getAbilityKeyLabel(slotIdx);
     if (!ab) {
       html += '<div class="ability-slot ability-slot--empty"><span class="ability-slot-key">' + key + '</span><span class="ability-slot-name">–</span></div>';
       return;
@@ -1372,12 +1384,12 @@ function renderAbilityPanel() {
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>W</kbd>/<kbd>S</kbd> im Kampf</p>';
   html += '<p class="ability-meta ability-meta--hint">Meilensteine: CD Stufe <strong>3 · 6 · 10 · 14 · 20</strong> – spätere Fähigkeiten sind deutlich stärker.</p>';
   html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
     html += '<div class="ability-equip-slot">';
-    html += '<label class="label ability-equip-label">Taste ' + (slotIdx + 1) + '</label>';
+    html += '<label class="label ability-equip-label">Taste ' + getAbilityKeyLabel(slotIdx) + '</label>';
     html += '<select class="input ability-select" data-slot="' + slotIdx + '">';
     html += '<option value="">– Keine –</option>';
     owned.forEach((id) => {
@@ -1695,8 +1707,10 @@ function bindEvents() {
   window.addEventListener("keydown", (e) => {
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
-    if (e.key === "1" && game.isRunning) useEquippedAbility(0);
-    if (e.key === "2" && game.isRunning) useEquippedAbility(1);
+    if (!isTypingInForm()) {
+      if (e.key.toLowerCase() === "w" && game.isRunning) useEquippedAbility(0);
+      if (e.key.toLowerCase() === "s" && game.isRunning) useEquippedAbility(1);
+    }
     if (e.key.toLowerCase() === "f") toggleFullscreen();
     if (e.key.toLowerCase() === "u" && !$("game-section").classList.contains("hidden")) {
       if (document.activeElement?.tagName === "INPUT") return;
@@ -1721,7 +1735,7 @@ function updateClassHint() {
   if (!hint || !cls) return;
   const slots = [0, 1].map((i) => getEquippedAbilityAtSlot(i)).filter(Boolean);
   const eq = slots.map((a) => a.name).join(", ") || "–";
-  const keyHint = "<kbd>1</kbd>/<kbd>2</kbd> Spezial";
+  const keyHint = "<kbd>W</kbd>/<kbd>S</kbd> Spezial";
   if (cls.attackType === "melee") {
     hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
   } else if (cls.attackType === "ranged") {
@@ -2122,8 +2136,14 @@ function getCombatAim() {
   return { x: hx, y: hy, onCanvas: false, down: mouse.down };
 }
 
+function getHeroMinX(h) {
+  const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
+  return -h.w * overflow;
+}
+
 function getHeroMaxX(h) {
-  return Math.min(CW - h.w - COMBAT_LAYOUT.screenEdgePad, COMBAT_LAYOUT.heroMaxX);
+  const overflow = COMBAT_LAYOUT.heroEdgeOverflow ?? 0.5;
+  return CW - h.w * (1 - overflow);
 }
 
 function enemyInCombatRange(e, h) {
@@ -3089,8 +3109,7 @@ function updateFrame(dt) {
     const spd = CLASSES[game.classKey].moveSpeed;
     if (keys.a) { h.x -= spd * dt; h.facing = -1; }
     if (keys.d) { h.x += spd * dt; h.facing = 1; }
-    const maxX = getHeroMaxX(h);
-    h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
+    h.x = Math.max(getHeroMinX(h), Math.min(getHeroMaxX(h), h.x));
   }
   h.y = GROUND - h.h;
   pinCharToGround(h);
@@ -3105,7 +3124,7 @@ function updateFrame(dt) {
   // Angriff nur wenn Maus auf Gegner in Reichweite
   if (game.isRunning && !game.isPaused && !game.isDead && countAliveEnemies() > 0) attack();
 
-  /** Spezialfähigkeiten: Cooldowns (nur manuell über Taste 1/2) */
+  /** Spezialfähigkeiten: Cooldowns (nur manuell über Taste W/S) */
   if (game.isRunning && !game.isPaused && !game.isDead) updateAbilityState(dt, h);
 
   // Ambient-Partikel (Parallax-Welt)
@@ -3546,7 +3565,7 @@ function render() {
     }
   });
 
-  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste 1 / 2) */
+  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste W / S) */
   if (game.isRunning) {
     ctx.font = "bold 8px Courier New";
     [0, 1].forEach((slotIdx) => {
