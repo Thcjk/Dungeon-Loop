@@ -579,13 +579,16 @@
     const m = getVisualMetrics(spriteKey, w, h, big);
     const footLine = getFootLine(spriteKey);
     const footBase = y + h;
-    const topLocal = (big || (spriteKey || "").startsWith("boss_")) ? -48 : -40;
-    const visualH = m.scale * (footLine - topLocal);
+    const artH = m.isBoss ? BOSS_H : ART_H;
+    const bodyH = m.scale * (artH - footLine + 2);
+    const cx = Math.round(x + w / 2);
     return {
-      x: Math.round(x + w / 2 - m.drawW / 2),
-      y: Math.round(footBase + m.scale * (topLocal - footLine)),
+      x: Math.round(cx - m.drawW / 2),
+      y: Math.round(footBase - bodyH),
       w: Math.round(m.drawW),
-      h: Math.round(visualH)
+      h: Math.round(bodyH),
+      cx,
+      footY: Math.round(footBase)
     };
   }
 
@@ -643,7 +646,7 @@
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      drawShadow(ctx, cx, footBase, visualBounds.w, world, bVal, isBoss);
+      drawShadow(ctx, visualBounds.cx, visualBounds.footY, visualBounds.w, world, bVal, isBoss);
 
       if (isBoss && BOSS_GLOW[spriteKey]) {
         applyBossGlow(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, BOSS_GLOW[spriteKey]);
@@ -651,12 +654,9 @@
 
       const metrics = getVisualMetrics(spriteKey, bw, bh, isBoss);
       const artW = metrics.artW;
-      const artH = metrics.artH;
       const scale = metrics.scale;
-      const drawW = metrics.drawW;
-      const offsetX = (bw - drawW) / 2;
 
-      ctx.translate(bx + (flip ? bw - offsetX : offsetX), footBase);
+      ctx.translate(cx, footBase);
       ctx.scale(flip ? -scale : scale, scale);
       ctx.translate(-artW / 2, -getFootLine(spriteKey));
 

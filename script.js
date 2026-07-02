@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "abilities-coin-ui";
+const BUILD_ID = "enemy-body-hitbox";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -863,11 +863,22 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
   drawCharFeetFog(c, x, y, w, h, world);
 }
 
+function getEnemyDrawX(e) {
+  const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
+  return e.x - lunge;
+}
+
 function getEnemyVisualBounds(e, drawX) {
   if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBounds === "function") {
-    return VisualEnemies.getBounds(e.sprite, drawX ?? e.x, e.y, e.w, e.h, e.isBoss);
+    return VisualEnemies.getBounds(e.sprite, drawX ?? getEnemyDrawX(e), e.y, e.w, e.h, e.isBoss);
   }
-  return { x: drawX ?? e.x, y: e.y, w: e.w, h: e.h };
+  const x = drawX ?? getEnemyDrawX(e);
+  return { x, y: e.y, w: e.w, h: e.h, cx: x + e.w / 2, footY: e.y + e.h };
+}
+
+function pointInEnemyBody(e, wx, wy, drawX) {
+  const b = getEnemyVisualBounds(e, drawX);
+  return wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h;
 }
 
 function drawHero(c, h, bob, atkOff, hurtOff, world) {
@@ -1970,8 +1981,9 @@ function getHoveredEnemy(maxRange) {
   let found = null;
   game.enemies.forEach((e) => {
     if (!isEnemyTargetable(e, maxRange)) return;
-    if (aim.x < e.x || aim.x > e.x + e.w || aim.y < e.y || aim.y > e.y + e.h) return;
-    const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+    if (!pointInEnemyBody(e, aim.x, aim.y)) return;
+    const vb = getEnemyVisualBounds(e);
+    const ex = vb.cx, ey = vb.y + vb.h / 2;
     if (Math.hypot(ex - hx, ey - hy) > maxRange) return;
     found = e;
   });
@@ -3076,12 +3088,13 @@ function updateFrame(dt) {
     if (p.owner === "player") {
       for (const e of game.enemies) {
         if (!isEnemyOnScreen(e) || e.walkingIn || e.hp <= 0) continue;
-        if (p.x > e.x && p.x < e.x+e.w && p.y > e.y && p.y < e.y+e.h) {
+        const vb = getEnemyVisualBounds(e);
+        if (p.x > vb.x && p.x < vb.x + vb.w && p.y > vb.y && p.y < vb.y + vb.h) {
           e.hp -= p.dmg; e.hitFlash = 6;
-          spawnDamage(e.x + e.w / 2, e.y, p.dmg, {
+          spawnDamage(vb.cx, vb.y, p.dmg, {
             crit: p.crit, magic: p.magic, boss: e.isBoss
           });
-          spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : (p.magic ? "#5dade2" : "#ecf0f1"), 10);
+          spawnImpactRing(vb.cx, vb.y + vb.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : (p.magic ? "#5dade2" : "#ecf0f1"), 10);
           emitCombatEvent("enemy_hit");
           /** Giftpfeil: Schaden über Zeit */
           if (p.poison && e.hp > 0) {
@@ -3298,19 +3311,12 @@ function render() {
   });
 
   // Gegner
-  const hoveredTarget = getHoveredEnemy(CLASSES[game.classKey].range);
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = 0;
-    const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
-    const drawX = e.x - lunge;
+    const drawX = getEnemyDrawX(e);
     const vb = getEnemyVisualBounds(e, drawX);
     ctx.save();
-    if (e === hoveredTarget) {
-      ctx.strokeStyle = "rgba(241,196,15,0.85)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(vb.x - 3, vb.y - 4, vb.w + 6, vb.h + 8);
-    }
     if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     if (e.attackWindup > 0) {
       ctx.shadowColor = "#e74c3c";
@@ -3320,7 +3326,7 @@ function render() {
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
-    const barW = Math.max(e.w, Math.min(vb.w, e.isBoss ? 96 : 56));
+    const barW = Math.min(vb.w, e.isBoss ? 96 : 56);
     const barX = vb.x + (vb.w - barW) / 2;
     const barY = vb.y - 7;
     ctx.fillStyle = "#111"; ctx.fillRect(barX, barY, barW, 4);
@@ -3342,7 +3348,8 @@ function render() {
   const hovered = getHoveredEnemy(CLASSES[game.classKey].range);
   if (game.isRunning && !game.isPaused && hovered) {
     const cls = CLASSES[game.classKey];
-    const tx = hovered.x + hovered.w / 2, ty = hovered.y + hovered.h / 2;
+    const vb = getEnemyVisualBounds(hovered);
+    const tx = vb.cx, ty = vb.y + vb.h / 2;
     ctx.strokeStyle = cls.attackType === "melee" ? "rgba(241,196,15,0.55)" : "rgba(46,204,113,0.45)";
     ctx.lineWidth = 2;
     ctx.beginPath();
