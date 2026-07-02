@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "ability-progression-v1b";
+const BUILD_ID = "coin-mouse-bonus-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -668,10 +668,12 @@ const BALANCE = {
   earlyEaseUntil: 15,           // erste N Dungeon-Level leichter
   earlyHpEase: 0.12,            // max. HP-Reduktion Early Game
   earlyAtkEase: 0.22,           // max. Schaden-Reduktion Early Game
-  coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln
-  coinJumpDur: 0.55,            // Sprung in die Luft
-  coinJumpHeight: 44,           // Max. Sprunghöhe
-  coinHitRadius: 22             // Maus/Touch-Trefferzone
+  coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln (nur Krieger)
+  coinJumpDur: 0.62,            // Sprung in die Luft
+  coinJumpHeight: 72,           // Max. Sprunghöhe
+  coinHitRadius: 24,            // Maus/Touch-Trefferzone
+  coinCatchDelay: 0.16,         // Kurz nicht einsammelbar – Münze entweicht der Maus
+  coinCatchMoveMin: 34          // Mausbewegung nötig für x2-Bonus
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -1745,17 +1747,26 @@ function updatePointerCanvasPos(e) {
 
 function handlePointerMove(e) {
   updatePointerCanvasPos(e);
-  tryCollectCoinBonus(getAim());
+  const aim = getAim();
+  updateCoinCatchMovement(aim);
+  tryCollectCoinBonus(aim);
 }
 
 function handlePointerDown(e) {
   updatePointerCanvasPos(e);
-  tryCollectCoinBonus(getAim());
+  const aim = getAim();
+  updateCoinCatchMovement(aim);
+  tryCollectCoinBonus(aim);
+}
+
+function usesPassiveCoinPickup() {
+  return game.classKey === "warrior";
 }
 
 /** Münze nach Gegner-Tod spawnen – springt hoch; in der Luft = x2, am Boden = normal */
 function spawnCoinDrop(amount, x, y) {
   const groundY = GROUND - 6;
+  const aim = getAim();
   game.coins.push({
     x,
     groundY,
@@ -1770,7 +1781,12 @@ function spawnCoinDrop(amount, x, y) {
     collected: false,
     bonus: false,
     bob: Math.random() * Math.PI * 2,
-    pop: 0
+    pop: 0,
+    catchDelay: BALANCE.coinCatchDelay,
+    catchMoveMin: BALANCE.coinCatchMoveMin,
+    catchMoved: 0,
+    lastAimX: aim.x,
+    lastAimY: aim.y
   });
 }
 
@@ -1807,11 +1823,30 @@ function collectCoinDrop(coin, isBonus) {
   }
 }
 
+function updateCoinCatchMovement(aim) {
+  if (!aim?.onCanvas) return;
+  game.coins.forEach((coin) => {
+    if (coin.collected || coin.phase !== "air") return;
+    const dx = aim.x - coin.lastAimX;
+    const dy = aim.y - coin.lastAimY;
+    coin.catchMoved += Math.hypot(dx, dy);
+    coin.lastAimX = aim.x;
+    coin.lastAimY = aim.y;
+  });
+}
+
+function canCatchCoinBonus(coin) {
+  if (coin.phase !== "air") return true;
+  if ((coin.jumpT || 0) < (coin.catchDelay ?? BALANCE.coinCatchDelay)) return false;
+  return (coin.catchMoved || 0) >= (coin.catchMoveMin ?? BALANCE.coinCatchMoveMin);
+}
+
 function tryCollectCoinBonus(aim) {
   if (!game.isRunning || game.isPaused || game.isDead || !aim?.onCanvas) return;
   const coin = hitTestCoin(aim.x, aim.y);
   if (!coin) return;
   if (coin.phase === "air") {
+    if (!canCatchCoinBonus(coin)) return;
     collectCoinDrop(coin, true);
   } else if (coin.phase === "ground") {
     collectCoinDrop(coin, false);
@@ -1839,10 +1874,12 @@ function updateCoinDrops(dt) {
 
     coin.bob += dt * 4;
     coin.y = coin.groundY + Math.sin(coin.bob) * 1.5;
-    coin.life -= dt;
-    if (coin.life <= 0) {
-      collectCoinDrop(coin, false);
-      return coin.pop > 0;
+    if (usesPassiveCoinPickup()) {
+      coin.life -= dt;
+      if (coin.life <= 0) {
+        collectCoinDrop(coin, false);
+        return coin.pop > 0;
+      }
     }
     return true;
   });
