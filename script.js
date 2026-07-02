@@ -3223,7 +3223,7 @@ function render() {
   const hoveredTarget = getHoveredEnemy(CLASSES[game.classKey].range);
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
-    const bob = Math.sin(e.anim) * 1;
+    const bob = 0;
     const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
     const drawX = e.x - lunge;
     const vb = getEnemyVisualBounds(e, drawX);

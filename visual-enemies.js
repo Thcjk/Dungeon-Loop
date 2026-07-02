@@ -114,7 +114,7 @@
 
   function drawShadow(ctx, cx, footY, w, world, bob, big) {
     const style = themeStyle(world);
-    const sy = Math.round(footY + 1 - (bob || 0) * 0.25);
+    const sy = Math.round(footY + 1);
     const sw = Math.max(16, w * (big ? 0.52 : 0.44));
     ctx.save();
     ctx.fillStyle = style.shadow;
@@ -180,80 +180,94 @@
   function drawThemeAccents(ctx, theme, bob, big) {
     const b = bob || 0;
     if (theme === "frost") {
-      px(ctx, -6, -34 + b, 2, 5, "#d4eef8");
-      px(ctx, 5, -30 + b, 2, 4, "#a8cce8");
-      if (big) px(ctx, -2, -42 + b, 4, 2, "#e8f4fc");
+      px(ctx, -6, yPos(-34, b), 2, 5, "#d4eef8");
+      px(ctx, 5, yPos(-30, b), 2, 4, "#a8cce8");
+      if (big) px(ctx, -2, yPos(-42, b), 4, 2, "#e8f4fc");
     } else if (theme === "fire") {
-      px(ctx, -8, -28 + b, 3, 4, "#e67e22");
-      px(ctx, 6, -32 + b, 2, 5, "#f39c12");
-      px(ctx, -3, -36 + b, 2, 3, "#f1c40f");
+      px(ctx, -8, yPos(-28, b), 3, 4, "#e67e22");
+      px(ctx, 6, yPos(-32, b), 2, 5, "#f39c12");
+      px(ctx, -3, yPos(-36, b), 2, 3, "#f1c40f");
     } else if (theme === "swamp") {
-      px(ctx, -5, -2 + b, 3, 2, "#3d5a28");
-      px(ctx, 3, -1 + b, 4, 2, "#4a6b32");
-      tri(ctx, -7, -4 + b, -4, -4 + b, -6, -1 + b, "#2d4a1e");
+      px(ctx, -5, yPos(-2, b), 3, 2, "#3d5a28");
+      px(ctx, 3, yPos(-1, b), 4, 2, "#4a6b32");
+      tri(ctx, -7, yPos(-4, b), -4, yPos(-4, b), -6, yPos(-1, b), "#2d4a1e");
     } else if (theme === "ruins") {
-      px(ctx, -7, -22 + b, 2, 2, "#7f8c8d");
-      px(ctx, 6, -18 + b, 3, 2, "#95a5a6");
-      if (big) px(ctx, -1, -40 + b, 2, 2, "#d4ac0d");
+      px(ctx, -7, yPos(-22, b), 2, 2, "#7f8c8d");
+      px(ctx, 6, yPos(-18, b), 3, 2, "#95a5a6");
+      if (big) px(ctx, -1, yPos(-40, b), 2, 2, "#d4ac0d");
     } else {
-      px(ctx, -6, -4 + b, 2, 2, "#2d6a4f");
-      px(ctx, 4, -3 + b, 3, 2, "#40916c");
+      px(ctx, -6, yPos(-4, b), 2, 2, "#2d6a4f");
+      px(ctx, 4, yPos(-3, b), 3, 2, "#40916c");
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Enemy silhouettes (local coords: origin = foot center, y grows upward negative)
+  // Enemy silhouettes (local coords: y=0 = Bodenlinie, negative y = nach oben)
   // ---------------------------------------------------------------------------
+
+  const FOOT_LINE = {
+    goblin: 1, skelett: 1, bandit: 1, wolf: 1, schleim: 0, spinne: -3,
+    boss_ork: 2, boss_schatten: 0, boss_feuer: 2, boss_drache: 2, boss_nekro: 1
+  };
+
+  function getFootLine(spriteKey) {
+    return FOOT_LINE[spriteKey] ?? 1;
+  }
+
+  /** Bob nur am Oberkörper – Füße/Beine bleiben auf y=0 Bodenlinie. */
+  function yPos(y, bob) {
+    return y + (y <= -10 ? bob : 0);
+  }
 
   function drawGoblin(ctx, c, bob, big) {
     const b = bob || 0;
     // Bandit-like forest goblin: hooded scout with dagger
-    out(ctx, -10, -28 + b, 20, 8, c.cloak);
-    px(ctx, -8, -26 + b, 16, 4, c.cloakHi);
-    out(ctx, -7, -36 + b, 14, 10, c.hood);
-    px(ctx, -5, -34 + b, 10, 3, c.hoodDark);
-    px(ctx, -4, -31 + b, 3, 2, c.eye);
-    px(ctx, 2, -31 + b, 3, 2, c.eye);
-    out(ctx, -12, -12 + b, 5, 3, c.ear);
-    out(ctx, 7, -12 + b, 5, 3, c.ear);
-    out(ctx, -8, -20 + b, 16, 12, c.tunic);
-    px(ctx, -6, -18 + b, 12, 2, c.belt);
-    px(ctx, -2, -18 + b, 4, 2, c.buckle);
-    out(ctx, -7, -8 + b, 5, 8, c.leg);
-    out(ctx, 2, -8 + b, 5, 8, c.leg);
-    px(ctx, -8, -1 + b, 6, 2, c.boot);
-    px(ctx, 2, -1 + b, 6, 2, c.boot);
-    out(ctx, 6, -22 + b, 4, 10, c.arm);
-    out(ctx, 9, -16 + b, 2, 8, c.dagger);
-    px(ctx, 9, -8 + b, 2, 2, c.daggerHilt);
+    out(ctx, -10, yPos(-28, b), 20, 8, c.cloak);
+    px(ctx, -8, yPos(-26, b), 16, 4, c.cloakHi);
+    out(ctx, -7, yPos(-36, b), 14, 10, c.hood);
+    px(ctx, -5, yPos(-34, b), 10, 3, c.hoodDark);
+    px(ctx, -4, yPos(-31, b), 3, 2, c.eye);
+    px(ctx, 2, yPos(-31, b), 3, 2, c.eye);
+    out(ctx, -12, yPos(-12, b), 5, 3, c.ear);
+    out(ctx, 7, yPos(-12, b), 5, 3, c.ear);
+    out(ctx, -8, yPos(-20, b), 16, 12, c.tunic);
+    px(ctx, -6, yPos(-18, b), 12, 2, c.belt);
+    px(ctx, -2, yPos(-18, b), 4, 2, c.buckle);
+    out(ctx, -7, yPos(-8, b), 5, 8, c.leg);
+    out(ctx, 2, yPos(-8, b), 5, 8, c.leg);
+    px(ctx, -8, yPos(-1, b), 6, 2, c.boot);
+    px(ctx, 2, yPos(-1, b), 6, 2, c.boot);
+    out(ctx, 6, yPos(-22, b), 4, 10, c.arm);
+    out(ctx, 9, yPos(-16, b), 2, 8, c.dagger);
+    px(ctx, 9, yPos(-8, b), 2, 2, c.daggerHilt);
     if (big) {
-      out(ctx, -11, -38 + b, 22, 3, c.buckle);
-      px(ctx, -3, -37 + b, 6, 2, c.accent);
+      out(ctx, -11, yPos(-38, b), 22, 3, c.buckle);
+      px(ctx, -3, yPos(-37, b), 6, 2, c.accent);
     }
   }
 
   function drawSkelett(ctx, c, bob, big) {
     const b = bob || 0;
-    out(ctx, -6, -38 + b, 12, 10, c.skull);
-    px(ctx, -4, -35 + b, 3, 3, c.eye);
-    px(ctx, 2, -35 + b, 3, 3, c.eye);
-    px(ctx, -2, -30 + b, 4, 2, c.jaw);
-    px(ctx, -2, -28 + b, 4, 3, c.spine);
-    out(ctx, -9, -25 + b, 18, 14, c.ribs);
-    px(ctx, -7, -23 + b, 14, 2, c.ribLine);
-    px(ctx, -7, -19 + b, 14, 2, c.ribLine);
-    px(ctx, -7, -15 + b, 14, 2, c.ribLine);
-    out(ctx, -10, -24 + b, 4, 14, c.arm);
-    out(ctx, 6, -24 + b, 4, 14, c.arm);
-    px(ctx, -11, -12 + b, 2, 2, c.joint);
-    px(ctx, 9, -12 + b, 2, 2, c.joint);
-    out(ctx, -6, -11 + b, 5, 11, c.leg);
-    out(ctx, 1, -11 + b, 5, 11, c.leg);
-    px(ctx, -7, -1 + b, 6, 2, c.foot);
-    px(ctx, 1, -1 + b, 6, 2, c.foot);
+    out(ctx, -6, yPos(-38, b), 12, 10, c.skull);
+    px(ctx, -4, yPos(-35, b), 3, 3, c.eye);
+    px(ctx, 2, yPos(-35, b), 3, 3, c.eye);
+    px(ctx, -2, yPos(-30, b), 4, 2, c.jaw);
+    px(ctx, -2, yPos(-28, b), 4, 3, c.spine);
+    out(ctx, -9, yPos(-25, b), 18, 14, c.ribs);
+    px(ctx, -7, yPos(-23, b), 14, 2, c.ribLine);
+    px(ctx, -7, yPos(-19, b), 14, 2, c.ribLine);
+    px(ctx, -7, yPos(-15, b), 14, 2, c.ribLine);
+    out(ctx, -10, yPos(-24, b), 4, 14, c.arm);
+    out(ctx, 6, yPos(-24, b), 4, 14, c.arm);
+    px(ctx, -11, yPos(-12, b), 2, 2, c.joint);
+    px(ctx, 9, yPos(-12, b), 2, 2, c.joint);
+    out(ctx, -6, yPos(-11, b), 5, 11, c.leg);
+    out(ctx, 1, yPos(-11, b), 5, 11, c.leg);
+    px(ctx, -7, yPos(-1, b), 6, 2, c.foot);
+    px(ctx, 1, yPos(-1, b), 6, 2, c.foot);
     if (big) {
-      out(ctx, 8, -30 + b, 3, 16, c.weapon);
-      px(ctx, 8, -14 + b, 3, 4, c.weaponTip);
+      out(ctx, 8, yPos(-30, b), 3, 16, c.weapon);
+      px(ctx, 8, yPos(-14, b), 3, 4, c.weaponTip);
     }
   }
 
@@ -261,215 +275,215 @@
     const b = bob || 0;
     // Spirit slime blob – wobbly dome with inner glow
     const wob = Math.sin((bob || 0) * 2) * 1.5;
-    out(ctx, -14 + wob, -22 + b, 28, 16, c.body);
-    out(ctx, -11, -30 + b, 22, 10, c.bodyHi);
-    px(ctx, -6, -26 + b, 12, 8, c.core);
-    px(ctx, -3, -24 + b, 3, 3, c.eye);
-    px(ctx, 2, -24 + b, 3, 3, c.eye);
-    px(ctx, -8, -8 + b, 4, 6, c.drip);
-    px(ctx, 3, -6 + b, 5, 5, c.drip);
-    px(ctx, -1, -4 + b, 3, 4, c.drip);
-    tri(ctx, -16 + wob, -6 + b, -10 + wob, -6 + b, -13 + wob, -1 + b, c.bodyDark);
-    tri(ctx, 10 + wob, -5 + b, 16 + wob, -5 + b, 13 + wob, 0 + b, c.bodyDark);
+    out(ctx, -14 + wob, yPos(-22, b), 28, 16, c.body);
+    out(ctx, -11, yPos(-30, b), 22, 10, c.bodyHi);
+    px(ctx, -6, yPos(-26, b), 12, 8, c.core);
+    px(ctx, -3, yPos(-24, b), 3, 3, c.eye);
+    px(ctx, 2, yPos(-24, b), 3, 3, c.eye);
+    px(ctx, -8, yPos(-8, b), 4, 6, c.drip);
+    px(ctx, 3, yPos(-6, b), 5, 5, c.drip);
+    px(ctx, -1, yPos(-4, b), 3, 4, c.drip);
+    tri(ctx, -16 + wob, yPos(-6, b), -10 + wob, yPos(-6, b), -13 + wob, yPos(-1, b), c.bodyDark);
+    tri(ctx, 10 + wob, yPos(-5, b), 16 + wob, yPos(-5, b), 13 + wob, yPos(0, b), c.bodyDark);
     if (big) {
       ctx.save();
       ctx.globalAlpha = 0.35;
-      out(ctx, -16, -34 + b, 32, 20, c.glow);
+      out(ctx, -16, yPos(-34, b), 32, 20, c.glow);
       ctx.restore();
-      px(ctx, -2, -32 + b, 4, 4, c.accent);
+      px(ctx, -2, yPos(-32, b), 4, 4, c.accent);
     }
   }
 
   function drawBandit(ctx, c, bob, big) {
     const b = bob || 0;
     // Corrupted bandit: half-mask, torn cloak, corruption veins
-    out(ctx, -11, -34 + b, 22, 12, c.cloak);
-    px(ctx, -9, -32 + b, 8, 10, c.corrupt);
-    px(ctx, 2, -30 + b, 7, 8, c.cloakHi);
-    out(ctx, -7, -38 + b, 14, 8, c.mask);
-    px(ctx, -5, -35 + b, 4, 3, c.skin);
-    px(ctx, 2, -35 + b, 3, 3, c.eye);
-    px(ctx, -1, -33 + b, 5, 1, c.scar);
-    out(ctx, -8, -22 + b, 16, 14, c.vest);
-    px(ctx, -6, -20 + b, 12, 2, c.belt);
-    px(ctx, -8, -14 + b, 3, 8, c.corrupt);
-    out(ctx, -7, -8 + b, 5, 8, c.pants);
-    out(ctx, 2, -8 + b, 5, 8, c.pants);
-    px(ctx, -8, -1 + b, 6, 2, c.boot);
-    px(ctx, 2, -1 + b, 6, 2, c.boot);
-    out(ctx, -13, -26 + b, 5, 12, c.arm);
-    out(ctx, 8, -24 + b, 5, 12, c.arm);
-    out(ctx, 9, -18 + b, 2, 12, c.blade);
-    px(ctx, 9, -6 + b, 2, 3, c.bladeHilt);
+    out(ctx, -11, yPos(-34, b), 22, 12, c.cloak);
+    px(ctx, -9, yPos(-32, b), 8, 10, c.corrupt);
+    px(ctx, 2, yPos(-30, b), 7, 8, c.cloakHi);
+    out(ctx, -7, yPos(-38, b), 14, 8, c.mask);
+    px(ctx, -5, yPos(-35, b), 4, 3, c.skin);
+    px(ctx, 2, yPos(-35, b), 3, 3, c.eye);
+    px(ctx, -1, yPos(-33, b), 5, 1, c.scar);
+    out(ctx, -8, yPos(-22, b), 16, 14, c.vest);
+    px(ctx, -6, yPos(-20, b), 12, 2, c.belt);
+    px(ctx, -8, yPos(-14, b), 3, 8, c.corrupt);
+    out(ctx, -7, yPos(-8, b), 5, 8, c.pants);
+    out(ctx, 2, yPos(-8, b), 5, 8, c.pants);
+    px(ctx, -8, yPos(-1, b), 6, 2, c.boot);
+    px(ctx, 2, yPos(-1, b), 6, 2, c.boot);
+    out(ctx, -13, yPos(-26, b), 5, 12, c.arm);
+    out(ctx, 8, yPos(-24, b), 5, 12, c.arm);
+    out(ctx, 9, yPos(-18, b), 2, 12, c.blade);
+    px(ctx, 9, yPos(-6, b), 2, 3, c.bladeHilt);
     if (big) {
-      px(ctx, -10, -28 + b, 4, 6, c.corrupt);
-      out(ctx, -12, -36 + b, 24, 2, c.belt);
+      px(ctx, -10, yPos(-28, b), 4, 6, c.corrupt);
+      out(ctx, -12, yPos(-36, b), 24, 2, c.belt);
     }
   }
 
   function drawWolf(ctx, c, bob, big) {
     const b = bob || 0;
     // Side-profile wolf quadruped
-    out(ctx, -14, -18 + b, 24, 10, c.body);
-    out(ctx, 8, -22 + b, 10, 8, c.head);
-    px(ctx, 14, -20 + b, 4, 3, c.snout);
-    px(ctx, 16, -19 + b, 2, 2, c.nose);
-    px(ctx, 11, -23 + b, 2, 2, c.eye);
-    out(ctx, 6, -26 + b, 4, 5, c.ear);
-    out(ctx, -12, -10 + b, 4, 10, c.leg);
-    out(ctx, -4, -10 + b, 4, 10, c.leg);
-    out(ctx, 4, -10 + b, 4, 10, c.leg);
-    out(ctx, 10, -10 + b, 4, 10, c.leg);
-    px(ctx, -13, -1 + b, 5, 2, c.paw);
-    px(ctx, -5, -1 + b, 5, 2, c.paw);
-    px(ctx, 3, -1 + b, 5, 2, c.paw);
-    px(ctx, 9, -1 + b, 5, 2, c.paw);
-    out(ctx, -18, -16 + b, 8, 4, c.tail);
-    px(ctx, -20, -18 + b, 4, 3, c.tailTip);
+    out(ctx, -14, yPos(-18, b), 24, 10, c.body);
+    out(ctx, 8, yPos(-22, b), 10, 8, c.head);
+    px(ctx, 14, yPos(-20, b), 4, 3, c.snout);
+    px(ctx, 16, yPos(-19, b), 2, 2, c.nose);
+    px(ctx, 11, yPos(-23, b), 2, 2, c.eye);
+    out(ctx, 6, yPos(-26, b), 4, 5, c.ear);
+    out(ctx, -12, yPos(-10, b), 4, 10, c.leg);
+    out(ctx, -4, yPos(-10, b), 4, 10, c.leg);
+    out(ctx, 4, yPos(-10, b), 4, 10, c.leg);
+    out(ctx, 10, yPos(-10, b), 4, 10, c.leg);
+    px(ctx, -13, yPos(-1, b), 5, 2, c.paw);
+    px(ctx, -5, yPos(-1, b), 5, 2, c.paw);
+    px(ctx, 3, yPos(-1, b), 5, 2, c.paw);
+    px(ctx, 9, yPos(-1, b), 5, 2, c.paw);
+    out(ctx, -18, yPos(-16, b), 8, 4, c.tail);
+    px(ctx, -20, yPos(-18, b), 4, 3, c.tailTip);
     if (big) {
-      px(ctx, -8, -20 + b, 16, 2, c.mane);
-      px(ctx, 0, -24 + b, 6, 3, c.mane);
+      px(ctx, -8, yPos(-20, b), 16, 2, c.mane);
+      px(ctx, 0, yPos(-24, b), 6, 3, c.mane);
     }
   }
 
   function drawSpinne(ctx, c, bob, big) {
     const b = bob || 0;
     const legWave = Math.sin((bob || 0) * 3) * 1;
-    out(ctx, -8, -20 + b, 16, 12, c.abdomen);
-    out(ctx, -6, -28 + b, 12, 10, c.cephalo);
-    px(ctx, -4, -26 + b, 2, 2, c.eye);
-    px(ctx, -1, -26 + b, 2, 2, c.eye);
-    px(ctx, 2, -26 + b, 2, 2, c.eye);
-    px(ctx, -3, -24 + b, 2, 2, c.eye);
+    out(ctx, -8, yPos(-20, b), 16, 12, c.abdomen);
+    out(ctx, -6, yPos(-28, b), 12, 10, c.cephalo);
+    px(ctx, -4, yPos(-26, b), 2, 2, c.eye);
+    px(ctx, -1, yPos(-26, b), 2, 2, c.eye);
+    px(ctx, 2, yPos(-26, b), 2, 2, c.eye);
+    px(ctx, -3, yPos(-24, b), 2, 2, c.eye);
     const legs = [
       [-14, -18 + legWave], [-12, -12 - legWave], [-14, -6 + legWave],
       [10, -18 - legWave], [12, -12 + legWave], [10, -6 - legWave],
       [-10, -8 + legWave], [8, -8 - legWave]
     ];
     legs.forEach(([lx, ly]) => {
-      out(ctx, lx, ly + b, 6, 2, c.leg);
+      out(ctx, lx, ly, 6, 2, c.leg);
     });
-    px(ctx, -2, -16 + b, 4, 4, c.mark);
+    px(ctx, -2, yPos(-16, b), 4, 4, c.mark);
     if (big) {
-      out(ctx, -10, -30 + b, 20, 14, c.abdomen);
-      px(ctx, -4, -22 + b, 8, 4, c.mark);
+      out(ctx, -10, yPos(-30, b), 20, 14, c.abdomen);
+      px(ctx, -4, yPos(-22, b), 8, 4, c.mark);
     }
   }
 
   function drawBossOrk(ctx, c, bob, big) {
     const b = bob || 0;
-    out(ctx, -16, -42 + b, 32, 10, c.helm);
-    px(ctx, -10, -40 + b, 20, 4, c.helmHi);
-    px(ctx, -5, -38 + b, 4, 3, c.tusk);
-    px(ctx, 2, -38 + b, 4, 3, c.tusk);
-    px(ctx, -4, -36 + b, 3, 2, c.eye);
-    px(ctx, 2, -36 + b, 3, 2, c.eye);
-    out(ctx, -14, -32 + b, 28, 16, c.chest);
-    px(ctx, -10, -30 + b, 20, 3, c.plate);
-    px(ctx, -2, -28 + b, 4, 6, c.emblem);
-    out(ctx, -18, -30 + b, 6, 10, c.shoulder);
-    out(ctx, 12, -30 + b, 6, 10, c.shoulder);
-    out(ctx, -10, -16 + b, 8, 16, c.leg);
-    out(ctx, 2, -16 + b, 8, 16, c.leg);
-    px(ctx, -11, -1 + b, 10, 3, c.boot);
-    px(ctx, 1, -1 + b, 10, 3, c.boot);
-    out(ctx, 14, -28 + b, 4, 18, c.axe);
-    px(ctx, 14, -10 + b, 6, 8, c.axeBlade);
-    px(ctx, 16, -12 + b, 2, 10, c.axeEdge);
+    out(ctx, -16, yPos(-42, b), 32, 10, c.helm);
+    px(ctx, -10, yPos(-40, b), 20, 4, c.helmHi);
+    px(ctx, -5, yPos(-38, b), 4, 3, c.tusk);
+    px(ctx, 2, yPos(-38, b), 4, 3, c.tusk);
+    px(ctx, -4, yPos(-36, b), 3, 2, c.eye);
+    px(ctx, 2, yPos(-36, b), 3, 2, c.eye);
+    out(ctx, -14, yPos(-32, b), 28, 16, c.chest);
+    px(ctx, -10, yPos(-30, b), 20, 3, c.plate);
+    px(ctx, -2, yPos(-28, b), 4, 6, c.emblem);
+    out(ctx, -18, yPos(-30, b), 6, 10, c.shoulder);
+    out(ctx, 12, yPos(-30, b), 6, 10, c.shoulder);
+    out(ctx, -10, yPos(-16, b), 8, 16, c.leg);
+    out(ctx, 2, yPos(-16, b), 8, 16, c.leg);
+    px(ctx, -11, yPos(-1, b), 10, 3, c.boot);
+    px(ctx, 1, yPos(-1, b), 10, 3, c.boot);
+    out(ctx, 14, yPos(-28, b), 4, 18, c.axe);
+    px(ctx, 14, yPos(-10, b), 6, 8, c.axeBlade);
+    px(ctx, 16, yPos(-12, b), 2, 10, c.axeEdge);
   }
 
   function drawBossSchatten(ctx, c, bob, big) {
     const b = bob || 0;
-    out(ctx, -14, -44 + b, 28, 38, c.cloak);
-    px(ctx, -10, -40 + b, 20, 30, c.void);
-    out(ctx, -8, -38 + b, 16, 10, c.hood);
-    px(ctx, -3, -35 + b, 3, 3, c.eye);
-    px(ctx, 1, -35 + b, 3, 3, c.eye);
-    px(ctx, -2, -32 + b, 4, 1, c.eyeGlow);
-    out(ctx, -12, -28 + b, 24, 14, c.chest);
-    px(ctx, -6, -24 + b, 12, 8, c.void);
-    out(ctx, -8, -14 + b, 6, 14, c.leg);
-    out(ctx, 2, -14 + b, 6, 14, c.leg);
-    px(ctx, -16, -36 + b, 6, 20, c.cape);
-    px(ctx, 10, -36 + b, 6, 20, c.cape);
-    out(ctx, 10, -30 + b, 3, 20, c.blade);
-    px(ctx, 10, -10 + b, 3, 4, c.bladeGlow);
+    out(ctx, -14, yPos(-44, b), 28, 38, c.cloak);
+    px(ctx, -10, yPos(-40, b), 20, 30, c.void);
+    out(ctx, -8, yPos(-38, b), 16, 10, c.hood);
+    px(ctx, -3, yPos(-35, b), 3, 3, c.eye);
+    px(ctx, 1, yPos(-35, b), 3, 3, c.eye);
+    px(ctx, -2, yPos(-32, b), 4, 1, c.eyeGlow);
+    out(ctx, -12, yPos(-28, b), 24, 14, c.chest);
+    px(ctx, -6, yPos(-24, b), 12, 8, c.void);
+    out(ctx, -8, yPos(-14, b), 6, 14, c.leg);
+    out(ctx, 2, yPos(-14, b), 6, 14, c.leg);
+    px(ctx, -16, yPos(-36, b), 6, 20, c.cape);
+    px(ctx, 10, yPos(-36, b), 6, 20, c.cape);
+    out(ctx, 10, yPos(-30, b), 3, 20, c.blade);
+    px(ctx, 10, yPos(-10, b), 3, 4, c.bladeGlow);
     ctx.save();
     ctx.globalAlpha = 0.4;
-    px(ctx, -14, -46 + b, 28, 4, c.mist);
+    px(ctx, -14, yPos(-46, b), 28, 4, c.mist);
     ctx.restore();
   }
 
   function drawBossFeuer(ctx, c, bob, big) {
     const b = bob || 0;
-    px(ctx, -8, -46 + b, 4, 6, c.flame);
-    px(ctx, 3, -48 + b, 4, 8, c.flame);
-    px(ctx, -2, -50 + b, 4, 5, c.flameHi);
-    out(ctx, -10, -40 + b, 20, 12, c.head);
-    px(ctx, -6, -38 + b, 4, 3, c.horn);
-    px(ctx, 3, -38 + b, 4, 3, c.horn);
-    px(ctx, -4, -36 + b, 3, 3, c.eye);
-    px(ctx, 2, -36 + b, 3, 3, c.eye);
-    out(ctx, -14, -28 + b, 28, 16, c.body);
-    px(ctx, -10, -26 + b, 20, 4, c.crack);
-    px(ctx, -6, -20 + b, 12, 3, c.lava);
-    out(ctx, -10, -12 + b, 8, 12, c.leg);
-    out(ctx, 2, -12 + b, 8, 12, c.leg);
-    px(ctx, -11, -1 + b, 10, 3, c.foot);
-    px(ctx, 1, -1 + b, 10, 3, c.foot);
-    out(ctx, -16, -26 + b, 5, 14, c.arm);
-    out(ctx, 11, -26 + b, 5, 14, c.arm);
-    px(ctx, 12, -16 + b, 4, 4, c.orb);
+    px(ctx, -8, yPos(-46, b), 4, 6, c.flame);
+    px(ctx, 3, yPos(-48, b), 4, 8, c.flame);
+    px(ctx, -2, yPos(-50, b), 4, 5, c.flameHi);
+    out(ctx, -10, yPos(-40, b), 20, 12, c.head);
+    px(ctx, -6, yPos(-38, b), 4, 3, c.horn);
+    px(ctx, 3, yPos(-38, b), 4, 3, c.horn);
+    px(ctx, -4, yPos(-36, b), 3, 3, c.eye);
+    px(ctx, 2, yPos(-36, b), 3, 3, c.eye);
+    out(ctx, -14, yPos(-28, b), 28, 16, c.body);
+    px(ctx, -10, yPos(-26, b), 20, 4, c.crack);
+    px(ctx, -6, yPos(-20, b), 12, 3, c.lava);
+    out(ctx, -10, yPos(-12, b), 8, 12, c.leg);
+    out(ctx, 2, yPos(-12, b), 8, 12, c.leg);
+    px(ctx, -11, yPos(-1, b), 10, 3, c.foot);
+    px(ctx, 1, yPos(-1, b), 10, 3, c.foot);
+    out(ctx, -16, yPos(-26, b), 5, 14, c.arm);
+    out(ctx, 11, yPos(-26, b), 5, 14, c.arm);
+    px(ctx, 12, yPos(-16, b), 4, 4, c.orb);
     ctx.save();
     ctx.globalAlpha = 0.5;
-    px(ctx, 11, -17 + b, 6, 6, c.orbGlow);
+    px(ctx, 11, yPos(-17, b), 6, 6, c.orbGlow);
     ctx.restore();
   }
 
   function drawBossDrache(ctx, c, bob, big) {
     const b = bob || 0;
-    out(ctx, -8, -42 + b, 16, 10, c.head);
-    px(ctx, 6, -40 + b, 8, 4, c.snout);
-    px(ctx, 12, -39 + b, 3, 2, c.nostril);
-    px(ctx, 2, -40 + b, 3, 2, c.eye);
-    px(ctx, -4, -44 + b, 4, 4, c.horn);
-    out(ctx, -14, -32 + b, 28, 16, c.body);
-    px(ctx, -10, -30 + b, 20, 6, c.scale);
-    px(ctx, -8, -24 + b, 16, 4, c.scaleHi);
-    out(ctx, -18, -30 + b, 8, 12, c.wing);
-    out(ctx, 10, -30 + b, 8, 12, c.wing);
-    px(ctx, -20, -28 + b, 4, 6, c.wingMem);
-    px(ctx, 16, -28 + b, 4, 6, c.wingMem);
-    out(ctx, -8, -16 + b, 6, 16, c.leg);
-    out(ctx, 2, -16 + b, 6, 16, c.leg);
-    px(ctx, -9, -1 + b, 8, 3, c.claw);
-    px(ctx, 1, -1 + b, 8, 3, c.claw);
-    out(ctx, -20, -18 + b, 10, 4, c.tail);
-    px(ctx, -22, -16 + b, 4, 3, c.tailTip);
+    out(ctx, -8, yPos(-42, b), 16, 10, c.head);
+    px(ctx, 6, yPos(-40, b), 8, 4, c.snout);
+    px(ctx, 12, yPos(-39, b), 3, 2, c.nostril);
+    px(ctx, 2, yPos(-40, b), 3, 2, c.eye);
+    px(ctx, -4, yPos(-44, b), 4, 4, c.horn);
+    out(ctx, -14, yPos(-32, b), 28, 16, c.body);
+    px(ctx, -10, yPos(-30, b), 20, 6, c.scale);
+    px(ctx, -8, yPos(-24, b), 16, 4, c.scaleHi);
+    out(ctx, -18, yPos(-30, b), 8, 12, c.wing);
+    out(ctx, 10, yPos(-30, b), 8, 12, c.wing);
+    px(ctx, -20, yPos(-28, b), 4, 6, c.wingMem);
+    px(ctx, 16, yPos(-28, b), 4, 6, c.wingMem);
+    out(ctx, -8, yPos(-16, b), 6, 16, c.leg);
+    out(ctx, 2, yPos(-16, b), 6, 16, c.leg);
+    px(ctx, -9, yPos(-1, b), 8, 3, c.claw);
+    px(ctx, 1, yPos(-1, b), 8, 3, c.claw);
+    out(ctx, -20, yPos(-18, b), 10, 4, c.tail);
+    px(ctx, -22, yPos(-16, b), 4, 3, c.tailTip);
   }
 
   function drawBossNekro(ctx, c, bob, big) {
     const b = bob || 0;
-    out(ctx, -8, -44 + b, 16, 12, c.hood);
-    px(ctx, -5, -42 + b, 10, 6, c.face);
-    px(ctx, -3, -40 + b, 2, 2, c.eye);
-    px(ctx, 2, -40 + b, 2, 2, c.eye);
-    px(ctx, -1, -38 + b, 2, 2, c.skull);
-    out(ctx, -12, -32 + b, 24, 18, c.robes);
-    px(ctx, -8, -30 + b, 16, 4, c.trim);
-    px(ctx, -2, -28 + b, 4, 8, c.rune);
-    out(ctx, -7, -14 + b, 6, 14, c.leg);
-    out(ctx, 1, -14 + b, 6, 14, c.leg);
-    px(ctx, -8, -1 + b, 7, 2, c.shoe);
-    px(ctx, 1, -1 + b, 7, 2, c.shoe);
-    out(ctx, 8, -42 + b, 3, 38, c.staff);
-    out(ctx, 6, -44 + b, 7, 6, c.skullTop);
-    px(ctx, 8, -42 + b, 3, 2, c.eye);
-    px(ctx, -10, -36 + b, 3, 3, c.bone);
-    px(ctx, 12, -30 + b, 3, 3, c.bone);
+    out(ctx, -8, yPos(-44, b), 16, 12, c.hood);
+    px(ctx, -5, yPos(-42, b), 10, 6, c.face);
+    px(ctx, -3, yPos(-40, b), 2, 2, c.eye);
+    px(ctx, 2, yPos(-40, b), 2, 2, c.eye);
+    px(ctx, -1, yPos(-38, b), 2, 2, c.skull);
+    out(ctx, -12, yPos(-32, b), 24, 18, c.robes);
+    px(ctx, -8, yPos(-30, b), 16, 4, c.trim);
+    px(ctx, -2, yPos(-28, b), 4, 8, c.rune);
+    out(ctx, -7, yPos(-14, b), 6, 14, c.leg);
+    out(ctx, 1, yPos(-14, b), 6, 14, c.leg);
+    px(ctx, -8, yPos(-1, b), 7, 2, c.shoe);
+    px(ctx, 1, yPos(-1, b), 7, 2, c.shoe);
+    out(ctx, 8, yPos(-42, b), 3, 38, c.staff);
+    out(ctx, 6, yPos(-44, b), 7, 6, c.skullTop);
+    px(ctx, 8, yPos(-42, b), 3, 2, c.eye);
+    px(ctx, -10, yPos(-36, b), 3, 3, c.bone);
+    px(ctx, 12, yPos(-30, b), 3, 3, c.bone);
     ctx.save();
     ctx.globalAlpha = 0.45;
-    px(ctx, -2, -26 + b, 4, 4, c.magic);
+    px(ctx, -2, yPos(-26, b), 4, 4, c.magic);
     ctx.restore();
   }
 
@@ -544,7 +558,6 @@
 
   const NORMAL_VISUAL_BOOST = 1.22;
   const BOSS_VISUAL_BOOST = 1.45;
-  const ENEMY_FOOT_Y = 1;
 
   function getVisualMetrics(spriteKey, w, h, big) {
     const isBoss = !!big || (spriteKey || "").startsWith("boss_");
@@ -564,11 +577,15 @@
 
   function getBounds(spriteKey, x, y, w, h, big) {
     const m = getVisualMetrics(spriteKey, w, h, big);
+    const footLine = getFootLine(spriteKey);
+    const footBase = y + h;
+    const topLocal = (big || (spriteKey || "").startsWith("boss_")) ? -48 : -40;
+    const visualH = m.scale * (footLine - topLocal);
     return {
       x: Math.round(x + w / 2 - m.drawW / 2),
-      y: Math.round(y + h - m.drawH),
+      y: Math.round(footBase + m.scale * (topLocal - footLine)),
       w: Math.round(m.drawW),
-      h: Math.round(m.drawH)
+      h: Math.round(visualH)
     };
   }
 
@@ -641,7 +658,7 @@
 
       ctx.translate(bx + (flip ? bw - offsetX : offsetX), footBase);
       ctx.scale(flip ? -scale : scale, scale);
-      ctx.translate(-artW / 2, -ENEMY_FOOT_Y);
+      ctx.translate(-artW / 2, -getFootLine(spriteKey));
 
       drawer(ctx, pal, bVal, isBoss);
       drawThemeAccents(ctx, theme, bVal, isBoss);
