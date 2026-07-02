@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Dungeon Loop</title>
-  <link rel="stylesheet" href="style.css?v=87">
+  <link rel="stylesheet" href="style.css?v=88">
 </head>
 <body>
 
@@ -149,23 +149,6 @@
             </div>
           </div>
 
-          <div class="upgrade-overlay hidden" id="upgrade-section">
-            <div class="upgrade-panel card">
-              <div class="upgrade-header">
-                <h2>Upgrades &amp; Fähigkeiten</h2>
-                <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
-              </div>
-              <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
-              <p class="total-gold">Verfügbares Gold: <strong id="total-gold">0</strong> <span class="total-gold-hint">(Run + Gesamt)</span></p>
-              <div class="ability-section ability-section--game" id="ability-section-game">
-                <h3 class="ability-heading">Spezialfähigkeiten</h3>
-                <p class="ability-game-lead">Account-Level schaltet Slots frei · Gold kauft Fähigkeiten · Beschreibung pro Fähigkeit · <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>
-                <div id="ability-panel" class="ability-panel"></div>
-              </div>
-              <h3 class="upgrade-subheading">Stat-Upgrades</h3>
-              <div class="upgrade-grid" id="upgrade-grid"></div>
-            </div>
-          </div>
         </div>
 
         <aside class="game-sidebar">
@@ -200,6 +183,24 @@
           </div>
         </aside>
       </div>
+
+      <div class="upgrade-overlay hidden" id="upgrade-section">
+        <div class="upgrade-panel card">
+          <div class="upgrade-header">
+            <h2>Upgrades &amp; Fähigkeiten</h2>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
+          </div>
+          <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
+          <p class="total-gold">Verfügbares Gold: <strong id="total-gold">0</strong> <span class="total-gold-hint">(Run + Gesamt)</span></p>
+          <div class="ability-section ability-section--game" id="ability-section-game">
+            <h3 class="ability-heading">Spezialfähigkeiten</h3>
+            <p class="ability-game-lead">Account-Level schaltet Slots frei · Gold kauft Fähigkeiten · <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>
+            <div id="ability-panel" class="ability-panel"></div>
+          </div>
+          <h3 class="upgrade-subheading">Stat-Upgrades</h3>
+          <div class="upgrade-grid" id="upgrade-grid"></div>
+        </div>
+      </div>
     </section>
 
     <section class="card leaderboard-card hidden" id="leaderboard-section">
@@ -210,13 +211,13 @@
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build damage-display-fix-v1</p></footer>
-  <script src="world-render.js?v=87"></script>
-  <script src="visual-enemies.js?v=87"></script>
-  <script src="visual-fx.js?v=87"></script>
-  <script src="visual-sprites.js?v=87"></script>
-  <script src="hero-render.js?v=87"></script>
-  <script src="abilities.js?v=87"></script>
-  <script src="script.js?v=87"></script>
+  <footer class="footer"><p>Dungeon Loop · Build upgrade-ability-fix-v1</p></footer>
+  <script src="world-render.js?v=88"></script>
+  <script src="visual-enemies.js?v=88"></script>
+  <script src="visual-fx.js?v=88"></script>
+  <script src="visual-sprites.js?v=88"></script>
+  <script src="hero-render.js?v=88"></script>
+  <script src="abilities.js?v=88"></script>
+  <script src="script.js?v=88"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "damage-display-fix-v1";
+const BUILD_ID = "upgrade-ability-fix-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -1173,36 +1173,83 @@ function isAbilityOwned(classKey, abilityId) {
   return game.meta?.abilities[classKey]?.unlocked?.includes(abilityId);
 }
 
+function ensureMeta() {
+  if (!game.meta) game.meta = loadMeta();
+  ["warrior", "ranger", "mage"].forEach((ck) => {
+    if (!game.meta.abilities[ck]) {
+      game.meta.abilities[ck] = { unlocked: [...(DEFAULT_UNLOCKED[ck] || [])], equipped: [DEFAULT_UNLOCKED[ck]?.[0] || null, null] };
+      return;
+    }
+    if (!Array.isArray(game.meta.abilities[ck].unlocked)) {
+      game.meta.abilities[ck].unlocked = [...(DEFAULT_UNLOCKED[ck] || [])];
+    }
+    if (!Array.isArray(game.meta.abilities[ck].equipped)) {
+      game.meta.abilities[ck].equipped = [game.meta.abilities[ck].unlocked[0] || null, null];
+    }
+  });
+  return game.meta;
+}
+
+function normalizeClassKey(value) {
+  if (!value) return "warrior";
+  if (CLASSES[value]) return value;
+  const hit = Object.keys(CLASSES).find((k) => CLASSES[k].name === value);
+  return hit || "warrior";
+}
+
 function getSpendableGold() {
-  return (game.totalGold || 0) + (game.runGold || 0);
+  return Math.max(0, Math.floor(Number(game.totalGold) || 0) + Math.floor(Number(game.runGold) || 0));
 }
 
 function spendGold(amount) {
-  let left = Math.max(0, Math.floor(amount));
-  const fromRun = Math.min(game.runGold || 0, left);
+  let left = Math.max(0, Math.floor(Number(amount) || 0));
+  game.runGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
+  game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0));
+  const fromRun = Math.min(game.runGold, left);
   game.runGold -= fromRun;
   left -= fromRun;
-  game.totalGold = Math.max(0, (game.totalGold || 0) - left);
+  game.totalGold = Math.max(0, game.totalGold - left);
 }
 
 function buyAbility(classKey, abilityId) {
+  ensureMeta();
   const ab = getAbilityById(classKey, abilityId);
-  if (!ab || isAbilityOwned(classKey, abilityId)) return;
-  if (!isAbilityLevelUnlocked(getMetaLevel(), ab.slot)) return;
+  if (!ab) {
+    addLog("Fähigkeit nicht gefunden.", "damage");
+    return false;
+  }
+  if (isAbilityOwned(classKey, abilityId)) {
+    addLog(ab.name + " ist bereits freigeschaltet.", "heal");
+    return false;
+  }
+  if (!isAbilityLevelUnlocked(getMetaLevel(), ab.slot)) {
+    addLog(ab.name + " braucht Account-Lv. " + getAbilityUnlockLevel(ab.slot) + ".", "damage");
+    return false;
+  }
   const cost = getAbilityGoldCost(ab.slot);
-  if (getSpendableGold() < cost) return;
+  const spendable = getSpendableGold();
+  if (spendable < cost) {
+    addLog("Zu wenig Gold für " + ab.name + " (" + cost + " 🪙, du hast " + spendable + ").", "damage");
+    return false;
+  }
   spendGold(cost);
-  game.meta.abilities[classKey].unlocked.push(abilityId);
+  if (!game.meta.abilities[classKey].unlocked.includes(abilityId)) {
+    game.meta.abilities[classKey].unlocked.push(abilityId);
+  }
   saveMeta();
   savePlayer();
   updateTotalGold();
   renderAbilityPanel();
   renderUpgradeButtons();
+  renderSetupAbilityHint();
+  updateClassHint();
   addLog(ab.name + " freigeschaltet! (-" + cost + " Gold)", "heal");
   playSound("coin");
+  return true;
 }
 
 function setEquippedAbility(slotIdx, abilityId) {
+  ensureMeta();
   const ck = game.classKey;
   if (!game.meta.abilities[ck]) return;
   if (abilityId && !isAbilityOwned(ck, abilityId)) return;
@@ -1321,6 +1368,7 @@ function canCastAbility(ab, h, st) {
 function renderAbilityPanel() {
   const panel = $("ability-panel");
   if (!panel) return;
+  ensureMeta();
   const ck = game.classKey;
   const metaLv = getMetaLevel();
   const list = getClassAbilities(ck);
@@ -1329,10 +1377,11 @@ function renderAbilityPanel() {
 
   const spendable = getSpendableGold();
 
-  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Verfügbares Gold: <strong>' + spendable + '</strong> 🪙 · Max. 2 Fähigkeiten ausrüsten (<kbd>1</kbd>/<kbd>2</kbd>)</p>';
-  html += '<div class="ability-equip-row">';
+  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Gold: <strong>' + spendable + '</strong> 🪙 · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
-    html += '<label class="label">Taste ' + (slotIdx + 1) + '</label>';
+    html += '<div class="ability-equip-slot">';
+    html += '<label class="label ability-equip-label">Taste ' + (slotIdx + 1) + '</label>';
     html += '<select class="input ability-select" data-slot="' + slotIdx + '">';
     html += '<option value="">– Keine –</option>';
     owned.forEach((id) => {
@@ -1340,7 +1389,7 @@ function renderAbilityPanel() {
       if (!ab) return;
       html += '<option value="' + id + '"' + (equipped[slotIdx] === id ? ' selected' : '') + '>' + ab.name + '</option>';
     });
-    html += '</select>';
+    html += '</select></div>';
   });
   html += '</div><div class="ability-list">';
 
@@ -1360,26 +1409,20 @@ function renderAbilityPanel() {
     } else {
       const canAfford = spendable >= cost;
       status = '<span class="ability-buy' + (canAfford ? '' : ' ability-buy--poor') + '">' +
-        (canAfford ? 'Kaufbar' : 'Zu wenig Gold') + ': ' + cost + ' 🪙</span>';
-      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '"' +
-        (canAfford ? '' : ' disabled title="Du brauchst ' + cost + ' Gold (Run + Gesamt)"') + '>Kaufen</button>';
+        (cost > 0 ? cost + ' 🪙' : 'Gratis') +
+        (canAfford ? '' : ' · fehlen ' + (cost - spendable) + ' 🪙') + '</span>';
+      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '">' +
+        (cost > 0 ? 'Kaufen (' + cost + ' 🪙)' : 'Freischalten') + '</button>';
     }
     const eqMark = equipped.includes(ab.id) ? ' ★' : '';
     const slotLabel = ab.slot === 0 ? 'Basis' : 'Slot ' + (ab.slot + 1);
-    html += '<div class="ability-card' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
-      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · ' + ab.cd + 's CD</span></div>' +
+    html += '<div class="ability-card ability-card--shop' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
+      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · Lv. ' + getAbilityUnlockLevel(ab.slot) + ' · ' + ab.cd + 's</span></div>' +
       '<p class="ability-desc">' + ab.desc + '</p>' +
       '<div class="ability-card-foot">' + status + btnHtml + '</div></div>';
   });
   html += '</div>';
   panel.innerHTML = html;
-
-  panel.querySelectorAll(".ability-select").forEach((sel) => {
-    sel.addEventListener("change", () => setEquippedAbility(parseInt(sel.dataset.slot, 10), sel.value || null));
-  });
-  panel.querySelectorAll(".ability-buy-btn").forEach((btn) => {
-    btn.addEventListener("click", () => buyAbility(ck, btn.dataset.ability));
-  });
   renderSetupAbilityHint();
   renderAbilityLoadout();
 }
@@ -1647,6 +1690,22 @@ function bindEvents() {
   bind("btn-toggle-music", toggleMusic);
   bind("btn-toggle-sfx", toggleSfx);
 
+  const abilityPanel = $("ability-panel");
+  if (abilityPanel) {
+    abilityPanel.addEventListener("click", (e) => {
+      const btn = e.target.closest(".ability-buy-btn");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      buyAbility(game.classKey, btn.dataset.ability);
+    });
+    abilityPanel.addEventListener("change", (e) => {
+      const sel = e.target.closest(".ability-select");
+      if (!sel) return;
+      setEquippedAbility(parseInt(sel.dataset.slot, 10), sel.value || null);
+    });
+  }
+
   document.addEventListener("fullscreenchange", onFullscreenChange);
 
   canvas.addEventListener("mousemove", onMouseMove);
@@ -1855,6 +1914,8 @@ function toggleFullscreen() {
 function onFullscreenChange() {
   const btn = $("btn-fullscreen");
   if (btn) btn.textContent = document.fullscreenElement ? "✕" : "⛶";
+  const sec = $("upgrade-section");
+  if (sec && !sec.classList.contains("hidden")) mountUpgradeOverlay();
   setTimeout(() => canvas && canvas.focus(), 100);
 }
 
@@ -1891,8 +1952,9 @@ async function loadPlayer() {
   const { data, error } = await supabase.from("dungeon_players").select("*").eq("name", name).maybeSingle();
   if (error) { $("load-hint").textContent = error.message; return; }
   if (data) {
-    game.playerId = data.id; game.classKey = data.class_name || game.classKey;
-    game.totalGold = data.total_gold || 0;
+    game.playerId = data.id;
+    game.classKey = normalizeClassKey(data.class_name);
+    game.totalGold = Math.max(0, Math.floor(Number(data.total_gold) || 0));
     game.upgrades = { upgrade_attack: data.upgrade_attack||0, upgrade_health: data.upgrade_health||0,
       upgrade_defense: data.upgrade_defense||0, upgrade_crit: data.upgrade_crit||0,
       upgrade_gold: data.upgrade_gold||0, upgrade_xp: data.upgrade_xp||0,
@@ -2229,12 +2291,23 @@ function restartRun() {
   addLog("Run zurückgesetzt.");
 }
 
+function mountUpgradeOverlay() {
+  const sec = $("upgrade-section");
+  const frame = $("game-frame");
+  const card = $("game-section");
+  if (!sec || !card) return;
+  const host = (document.fullscreenElement === frame && frame) ? frame : card;
+  if (sec.parentElement !== host) host.appendChild(sec);
+}
+
 function showUpgrades() {
   $("gameover-panel").classList.add("hidden");
+  mountUpgradeOverlay();
   const sec = $("upgrade-section");
   if (!sec || !$("game-section") || $("game-section").classList.contains("hidden")) return;
   sec.classList.remove("hidden");
   sec.classList.add("highlight-pulse");
+  if (canvas) canvas.style.pointerEvents = "none";
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   if (game.isRunning && !game.isDead && !game.isPaused) {
     upgradePause = true;
@@ -2249,6 +2322,7 @@ function hideUpgrades() {
   const sec = $("upgrade-section");
   if (!sec) return;
   sec.classList.add("hidden");
+  if (canvas) canvas.style.pointerEvents = "";
   if (upgradePause) {
     upgradePause = false;
     game.isPaused = false;
@@ -3196,7 +3270,7 @@ function onDeath() {
   game.isDead = true;
   stopMusic();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
-  game.totalGold += game.runGold;
+  game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + Math.floor(Number(game.runGold) || 0));
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
