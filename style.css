@@ -513,6 +513,7 @@ kbd {
   margin-bottom: 0.6rem;
 }
 .ability-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.6rem; }
+.ability-meta--hint { margin-top: -0.35rem; margin-bottom: 0.75rem; font-size: 0.68rem; opacity: 0.92; }
 .ability-meta strong { color: var(--xp); }
 .ability-equip-grid {
   display: grid;

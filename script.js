@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "pages-stable-deploy-v1";
+const BUILD_ID = "ability-special-cd-v1";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -651,7 +651,7 @@ const UPGRADES = [
   { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 120, bonus: 0.008, bonusText: "+0.8% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
   { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 130, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
   { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 110, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
-  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 155, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Öfter Spezial = mehr Überleben.",           forClass: "all" }
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 155, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Jede Stufe: -0.35s CD + nächste Spezialfähigkeit", forClass: "all" }
 ];
 
 // Balance – Early Game fairer; Werte hier zum Feintuning
@@ -1026,6 +1026,7 @@ document.addEventListener("DOMContentLoaded", () => {
   drawPreviews();
   startHeroCardLoop();
   bindEvents();
+  syncUnlockedAbilities();
   renderUpgradeButtons();
   renderSetupAbilityHint();
   renderAbilityPanel();
@@ -1173,6 +1174,35 @@ function isAbilityOwned(classKey, abilityId) {
   return game.meta?.abilities[classKey]?.unlocked?.includes(abilityId);
 }
 
+function getSpecialCdLevel() {
+  return Math.max(0, Math.floor(Number(game.upgrades?.upgrade_cooldown) || 0));
+}
+
+function getNextCdAbilityUnlock(classKey, cdLv) {
+  return getClassAbilities(classKey).find((ab) => !isAbilityUnlockedBySpecialCd(cdLv, ab.slot)) || null;
+}
+
+function syncUnlockedAbilities(classKey) {
+  ensureMeta();
+  const cdLv = getSpecialCdLevel();
+  const classes = classKey ? [classKey] : ["warrior", "ranger", "mage"];
+  classes.forEach((ck) => {
+    game.meta.abilities[ck].unlocked = getUnlockedAbilityIds(ck, cdLv);
+    const eq = game.meta.abilities[ck].equipped || [null, null];
+    for (let i = 0; i < 2; i++) {
+      if (eq[i] && !game.meta.abilities[ck].unlocked.includes(eq[i])) eq[i] = null;
+    }
+    if (!eq[0] && game.meta.abilities[ck].unlocked.length) {
+      eq[0] = game.meta.abilities[ck].unlocked[0];
+    }
+    if (!eq[1] && game.meta.abilities[ck].unlocked.length > 1) {
+      eq[1] = game.meta.abilities[ck].unlocked.find((id) => id !== eq[0]) || null;
+    }
+    game.meta.abilities[ck].equipped = eq;
+  });
+  saveMeta();
+}
+
 function ensureMeta() {
   if (!game.meta) game.meta = loadMeta();
   ["warrior", "ranger", "mage"].forEach((ck) => {
@@ -1211,43 +1241,6 @@ function spendGold(amount) {
   game.totalGold = Math.max(0, game.totalGold - left);
 }
 
-function buyAbility(classKey, abilityId) {
-  ensureMeta();
-  const ab = getAbilityById(classKey, abilityId);
-  if (!ab) {
-    addLog("Fähigkeit nicht gefunden.", "damage");
-    return false;
-  }
-  if (isAbilityOwned(classKey, abilityId)) {
-    addLog(ab.name + " ist bereits freigeschaltet.", "heal");
-    return false;
-  }
-  if (!isAbilityLevelUnlocked(getMetaLevel(), ab.slot)) {
-    addLog(ab.name + " braucht Account-Lv. " + getAbilityUnlockLevel(ab.slot) + ".", "damage");
-    return false;
-  }
-  const cost = getAbilityGoldCost(ab.slot);
-  const spendable = getSpendableGold();
-  if (spendable < cost) {
-    addLog("Zu wenig Gold für " + ab.name + " (" + cost + " 🪙, du hast " + spendable + ").", "damage");
-    return false;
-  }
-  spendGold(cost);
-  if (!game.meta.abilities[classKey].unlocked.includes(abilityId)) {
-    game.meta.abilities[classKey].unlocked.push(abilityId);
-  }
-  saveMeta();
-  savePlayer();
-  updateTotalGold();
-  renderAbilityPanel();
-  renderUpgradeButtons();
-  renderSetupAbilityHint();
-  updateClassHint();
-  addLog(ab.name + " freigeschaltet! (-" + cost + " Gold)", "heal");
-  playSound("coin");
-  return true;
-}
-
 function setEquippedAbility(slotIdx, abilityId) {
   ensureMeta();
   const ck = game.classKey;
@@ -1268,31 +1261,31 @@ function renderSetupAbilityHint() {
   const el = $("ability-setup-hint");
   if (!el) return;
   const ck = game.classKey;
-  const metaLv = getMetaLevel();
+  const cdLv = getSpecialCdLevel();
   const list = getClassAbilities(ck);
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = (game.meta?.abilities[ck]?.equipped || [])
     .map((id, i) => (id ? { slot: i + 1, ab: getAbilityById(ck, id) } : null))
     .filter((x) => x && x.ab);
 
-  let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung per <strong>Account-Level</strong> · Kauf mit Gold über <kbd>U</kbd> im Spiel</p>';
-  html += '<p class="ability-setup-meta">Account-Lv. <strong>' + metaLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung über <strong>Spezial-CD</strong> im Upgrade-Menü (<kbd>U</kbd>)</p>';
+  html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
   html += '<div class="ability-overview">';
   list.forEach((ab) => {
     const ownedFlag = owned.includes(ab.id);
-    const levelOk = isAbilityLevelUnlocked(metaLv, ab.slot);
-    const cost = getAbilityGoldCost(ab.slot);
+    const cdOk = isAbilityUnlockedBySpecialCd(cdLv, ab.slot);
+    const needCd = getAbilityUnlockSpecialCd(ab.slot);
     const slotLabel = ab.slot === 0 ? "Basis" : "Slot " + (ab.slot + 1);
     let statusClass = "ability-overview-status--locked";
-    let statusText = "Lv. " + getAbilityUnlockLevel(ab.slot) + " nötig";
+    let statusText = "Spezial-CD Stufe " + needCd;
     if (ownedFlag) {
       statusClass = "ability-overview-status--owned";
       statusText = "Freigeschaltet";
-    } else if (levelOk) {
+    } else if (cdOk) {
       statusClass = "ability-overview-status--buy";
-      statusText = cost > 0 ? "Kauf: " + cost + " 🪙" : "Gratis";
+      statusText = "Verfügbar";
     }
-    html += '<div class="ability-overview-card' + (ownedFlag ? " owned" : "") + (levelOk ? "" : " locked") + '">' +
+    html += '<div class="ability-overview-card' + (ownedFlag ? " owned" : "") + (cdOk ? "" : " locked") + '">' +
       '<div class="ability-overview-head">' +
         '<strong>' + ab.name + '</strong>' +
         '<span class="ability-overview-meta">' + slotLabel + ' · ' + ab.cd + 's CD</span>' +
@@ -1370,14 +1363,13 @@ function renderAbilityPanel() {
   if (!panel) return;
   ensureMeta();
   const ck = game.classKey;
-  const metaLv = getMetaLevel();
+  const cdLv = getSpecialCdLevel();
   const list = getClassAbilities(ck);
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  const spendable = getSpendableGold();
-
-  let html = '<p class="ability-meta">Account-Lv. <strong>' + metaLv + '</strong> · Gold: <strong>' + spendable + '</strong> 🪙 · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>1</kbd>/<kbd>2</kbd> im Kampf</p>';
+  html += '<p class="ability-meta ability-meta--hint">Upgrade <strong>Spezial-CD</strong> im Shop – jede Stufe schaltet die nächste Fähigkeit frei.</p>';
   html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
     html += '<div class="ability-equip-slot">';
@@ -1395,31 +1387,19 @@ function renderAbilityPanel() {
 
   list.forEach((ab) => {
     const ownedFlag = owned.includes(ab.id);
-    const levelOk = isAbilityLevelUnlocked(metaLv, ab.slot);
-    const cost = getAbilityGoldCost(ab.slot);
+    const needCd = getAbilityUnlockSpecialCd(ab.slot);
     let status = "";
-    let btnHtml = "";
     if (ownedFlag) {
       status = '<span class="ability-owned">✓ Freigeschaltet</span>';
-    } else if (!levelOk) {
-      status = '<span class="ability-locked">Account-Lv. ' + getAbilityUnlockLevel(ab.slot) + ' benötigt</span>';
-    } else if (cost <= 0) {
-      status = '<span class="ability-buy">Gratis freischaltbar</span>';
-      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '">Freischalten</button>';
     } else {
-      const canAfford = spendable >= cost;
-      status = '<span class="ability-buy' + (canAfford ? '' : ' ability-buy--poor') + '">' +
-        (cost > 0 ? cost + ' 🪙' : 'Gratis') +
-        (canAfford ? '' : ' · fehlen ' + (cost - spendable) + ' 🪙') + '</span>';
-      btnHtml = '<button type="button" class="btn btn-gold btn-small ability-buy-btn" data-ability="' + ab.id + '">' +
-        (cost > 0 ? 'Kaufen (' + cost + ' 🪙)' : 'Freischalten') + '</button>';
+      status = '<span class="ability-locked">Spezial-CD Stufe ' + needCd + ' benötigt</span>';
     }
     const eqMark = equipped.includes(ab.id) ? ' ★' : '';
     const slotLabel = ab.slot === 0 ? 'Basis' : 'Slot ' + (ab.slot + 1);
-    html += '<div class="ability-card ability-card--shop' + (ownedFlag ? ' owned' : '') + (levelOk ? '' : ' locked') + '">' +
-      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · Lv. ' + getAbilityUnlockLevel(ab.slot) + ' · ' + ab.cd + 's</span></div>' +
+    html += '<div class="ability-card ability-card--shop' + (ownedFlag ? ' owned' : '') + (ownedFlag ? '' : ' locked') + '">' +
+      '<div class="ability-card-head"><strong>' + ab.name + eqMark + '</strong><span class="ability-cd">' + slotLabel + ' · CD Stufe ' + needCd + ' · ' + ab.cd + 's</span></div>' +
       '<p class="ability-desc">' + ab.desc + '</p>' +
-      '<div class="ability-card-foot">' + status + btnHtml + '</div></div>';
+      '<div class="ability-card-foot">' + status + '</div></div>';
   });
   html += '</div>';
   panel.innerHTML = html;
@@ -1669,6 +1649,7 @@ function bindEvents() {
       document.querySelectorAll(".class-btn").forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
       game.classKey = btn.dataset.class;
+      syncUnlockedAbilities(game.classKey);
       updateClassHint();
       updateHeroCardUI();
       renderSetupAbilityHint();
@@ -1692,13 +1673,6 @@ function bindEvents() {
 
   const abilityPanel = $("ability-panel");
   if (abilityPanel) {
-    abilityPanel.addEventListener("click", (e) => {
-      const btn = e.target.closest(".ability-buy-btn");
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      buyAbility(game.classKey, btn.dataset.ability);
-    });
     abilityPanel.addEventListener("change", (e) => {
       const sel = e.target.closest(".ability-select");
       if (!sel) return;
@@ -1946,6 +1920,7 @@ async function loadPlayer() {
   game.playerName = name;
   if (!supabase) {
     game.totalGold = 0; game.upgrades = emptyUpgrades();
+    syncUnlockedAbilities();
     enterGame("Los geht's! Maus auf Gegner zum Angreifen.");
     return;
   }
@@ -1961,12 +1936,14 @@ async function loadPlayer() {
       upgrade_magic: data.upgrade_magic||0, upgrade_mana: data.upgrade_mana||0,
       upgrade_cooldown: data.upgrade_cooldown||0 };
     selectClass(game.classKey);
+    syncUnlockedAbilities();
     enterGame("Willkommen zurück, " + name + "!");
   } else {
     const { data: ins, error: err } = await supabase.from("dungeon_players")
       .insert({ name, class_name: game.classKey, total_gold: 0, ...emptyUpgrades() }).select().single();
     if (err) { $("load-hint").textContent = err.message; return; }
     game.playerId = ins.id; game.totalGold = 0; game.upgrades = emptyUpgrades();
+    syncUnlockedAbilities();
     enterGame("Neuer Spieler!");
   }
 }
@@ -1977,6 +1954,7 @@ function enterGame(msg) {
   hideUpgrades();
   $("setup-section").classList.add("collapsed");
   if (!game.meta) game.meta = loadMeta();
+  syncUnlockedAbilities();
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   renderSetupAbilityHint();
   $("load-hint").textContent = msg;
@@ -3703,6 +3681,11 @@ function renderUpgradeButtons() {
     const cost = getUpgradeCost(up.key);
     const maxed = lv >= BALANCE.upgradeMax;
     const relevant = isUpgradeRelevant(up);
+    let tipText = up.tip;
+    if (up.key === "upgrade_cooldown" && !maxed) {
+      const next = getNextCdAbilityUnlock(game.classKey, lv);
+      if (next) tipText += " · Nächste Stufe: " + next.name;
+    }
     const btn = document.createElement("button");
     btn.className = "upgrade-btn" + (relevant ? " relevant" : "") + (maxed ? " maxed" : "");
     btn.disabled = maxed || getSpendableGold() < cost;
@@ -3710,7 +3693,7 @@ function renderUpgradeButtons() {
       '<span class="upgrade-info">' +
         '<span class="upgrade-name">' + up.label + (relevant ? " ★" : "") + '</span>' +
         '<span class="upgrade-level">Stufe ' + lv + (maxed ? " MAX" : "") + ' – ' + up.bonusText + '</span>' +
-        '<span class="upgrade-tip-text">' + up.tip + '</span>' +
+        '<span class="upgrade-tip-text">' + tipText + '</span>' +
       '</span>' +
       '<span class="upgrade-cost">' + (maxed ? "MAX" : cost + " 🪙") + '</span>';
     btn.onclick = () => buyUpgrade(up.key);
@@ -3721,10 +3704,22 @@ function renderUpgradeButtons() {
 async function buyUpgrade(k) {
   const cost = getUpgradeCost(k);
   if (getSpendableGold() < cost || (game.upgrades[k] || 0) >= BALANCE.upgradeMax) return;
+  const prevCd = getSpecialCdLevel();
+  const prevUnlocked = getUnlockedAbilityIds(game.classKey, prevCd);
   spendGold(cost);
   game.upgrades[k] = (game.upgrades[k] || 0) + 1;
-  addLog("Upgrade: " + UPGRADES.find(u => u.key === k).label + " Stufe " + game.upgrades[k]);
+  const up = UPGRADES.find((u) => u.key === k);
+  addLog("Upgrade: " + up.label + " Stufe " + game.upgrades[k]);
+  if (k === "upgrade_cooldown") {
+    syncUnlockedAbilities();
+    const newUnlocked = getUnlockedAbilityIds(game.classKey, getSpecialCdLevel());
+    newUnlocked.filter((id) => !prevUnlocked.includes(id)).forEach((id) => {
+      const ab = getAbilityById(game.classKey, id);
+      if (ab) addLog("Neue Fähigkeit: " + ab.name + "!", "heal");
+    });
+  }
   await savePlayer(); updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
+  updateClassHint();
 }
 
 function updateTotalGold() {
