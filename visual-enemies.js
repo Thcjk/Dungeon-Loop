@@ -542,8 +542,9 @@
     boss_nekro: "#bb8fce"
   };
 
-  const NORMAL_VISUAL_BOOST = 1.78;
-  const BOSS_VISUAL_BOOST = 3.05;
+  const NORMAL_VISUAL_BOOST = 1.22;
+  const BOSS_VISUAL_BOOST = 1.45;
+  const ENEMY_FOOT_Y = 1;
 
   function getVisualMetrics(spriteKey, w, h, big) {
     const isBoss = !!big || (spriteKey || "").startsWith("boss_");
@@ -640,7 +641,7 @@
 
       ctx.translate(bx + (flip ? bw - offsetX : offsetX), footBase);
       ctx.scale(flip ? -scale : scale, scale);
-      ctx.translate(-artW / 2, -artH);
+      ctx.translate(-artW / 2, -ENEMY_FOOT_Y);
 
       drawer(ctx, pal, bVal, isBoss);
       drawThemeAccents(ctx, theme, bVal, isBoss);

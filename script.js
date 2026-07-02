@@ -23,7 +23,7 @@ function pinCharToGround(entity) {
   if (!entity || entity.h == null) return;
   entity.y = GROUND - entity.h;
 }
-const CAM_ZOOM = 1.82; // Premium-Scale-Pass: naher, dichter Kingdom-Two-Crowns-Blick
+const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
   heroMinX: 16,
@@ -3223,7 +3223,7 @@ function render() {
   const hoveredTarget = getHoveredEnemy(CLASSES[game.classKey].range);
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
-    const bob = Math.sin(e.anim) * 2;
+    const bob = Math.sin(e.anim) * 1;
     const lunge = e.attackAnim > 0 ? (e.isBoss ? 14 : 10) * e.attackAnim : 0;
     const drawX = e.x - lunge;
     const vb = getEnemyVisualBounds(e, drawX);

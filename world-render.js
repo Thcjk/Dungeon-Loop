@@ -1283,7 +1283,7 @@ function renderMassiveForeground(ctx, worldConfig, camera, time) {
 }
 
 function wrForegroundViewport(camera) {
-  const zoom = camera?.zoom || 1.82;
+  const zoom = camera?.zoom || 1.38;
   const viewW = WR.CW / zoom;
   const cx = camera?.focusX || WR.CW / 2;
   return { left: cx - viewW / 2, width: viewW, right: cx + viewW / 2 };
