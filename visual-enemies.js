@@ -202,7 +202,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Enemy silhouettes (local coords: y=0 = Bodenlinie, negative y = nach oben)
+  // Enemy silhouettes (local coords: x=0 Fuß-Mitte, y=0 Bodenlinie)
   // ---------------------------------------------------------------------------
 
   const FOOT_LINE = {
@@ -210,8 +210,19 @@
     boss_ork: 2, boss_schatten: 0, boss_feuer: 2, boss_drache: 2, boss_nekro: 1
   };
 
+  /** Halbe Körperbreite ab Fuß-Mitte (local x=0) – Side-Profile-Sprites */
+  const BODY_HALF_W = {
+    goblin: 14, skelett: 11, bandit: 14, wolf: 18, schleim: 16, spinne: 13,
+    boss_ork: 19, boss_schatten: 17, boss_feuer: 19, boss_drache: 21, boss_nekro: 15
+  };
+
   function getFootLine(spriteKey) {
     return FOOT_LINE[spriteKey] ?? 1;
+  }
+
+  function getBodyHalfW(spriteKey, isBoss) {
+    const base = BODY_HALF_W[spriteKey] ?? 14;
+    return isBoss ? base * 1.12 : base;
   }
 
   /** Bob nur am Oberkörper – Füße/Beine bleiben auf y=0 Bodenlinie. */
@@ -582,10 +593,11 @@
     const artH = m.isBoss ? BOSS_H : ART_H;
     const bodyH = m.scale * (artH - footLine + 2);
     const cx = Math.round(x + w / 2);
+    const halfW = getBodyHalfW(spriteKey, m.isBoss) * m.scale;
     return {
-      x: Math.round(cx - m.drawW / 2),
+      x: Math.round(cx - halfW),
       y: Math.round(footBase - bodyH),
-      w: Math.round(m.drawW),
+      w: Math.round(halfW * 2),
       h: Math.round(bodyH),
       cx,
       footY: Math.round(footBase)
@@ -653,12 +665,12 @@
       }
 
       const metrics = getVisualMetrics(spriteKey, bw, bh, isBoss);
-      const artW = metrics.artW;
       const scale = metrics.scale;
 
+      // Local coords: x=0 = Fuß-Mitte, y=0 = Boden – kein artW/2-Offset
       ctx.translate(cx, footBase);
       ctx.scale(flip ? -scale : scale, scale);
-      ctx.translate(-artW / 2, -getFootLine(spriteKey));
+      ctx.translate(0, -getFootLine(spriteKey));
 
       drawer(ctx, pal, bVal, isBoss);
       drawThemeAccents(ctx, theme, bVal, isBoss);

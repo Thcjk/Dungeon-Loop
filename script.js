@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "enemy-body-hitbox";
+const BUILD_ID = "enemy-shadow-align";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
