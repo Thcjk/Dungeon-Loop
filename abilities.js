@@ -1,14 +1,31 @@
 /* ============================================
    Dungeon Loop – Fähigkeitensystem
    6 Spezialfähigkeiten pro Klasse
-   Freischaltung: Meta-Level + Gold-Kauf
+   Freischaltung: Spezial-CD-Upgrade-Stufe (kein Gold-Kauf)
    ============================================ */
 
-/** Meta-Level-Schwellen pro Fähigkeits-Slot (1–6) */
-const ABILITY_UNLOCK_LEVELS = [1, 5, 10, 20, 30, 50];
+/** Slot N freischaltbar ab Spezial-CD-Stufe N (Slot 0 = Stufe 0 = Start) */
+function getAbilityUnlockSpecialCd(slotIndex) {
+  return slotIndex;
+}
 
-/** Goldkosten nach Freischaltung (Slot 1 = kostenlos) */
-const ABILITY_GOLD_COSTS = [0, 180, 450, 1100, 2400, 5200];
+function isAbilityUnlockedBySpecialCd(specialCdLevel, slotIndex) {
+  return specialCdLevel >= getAbilityUnlockSpecialCd(slotIndex);
+}
+
+/** @deprecated – früher Account-Level, jetzt Spezial-CD */
+function getAbilityUnlockLevel(slotIndex) {
+  return getAbilityUnlockSpecialCd(slotIndex);
+}
+
+/** @deprecated – kein Gold-Kauf mehr */
+function getAbilityGoldCost(slotIndex) {
+  return 0;
+}
+
+function isAbilityLevelUnlocked(_metaLevel, slotIndex) {
+  return slotIndex <= 5;
+}
 
 /** Spezial-Sound pro Klasse – alle 6 Fähigkeiten nutzen denselben Sound */
 const CLASS_SPECIAL_SOUNDS = {
@@ -169,22 +186,9 @@ function getAbilityById(classKey, id) {
   return getClassAbilities(classKey).find((a) => a.id === id) || null;
 }
 
-function getAbilityUnlockLevel(slotIndex) {
-  return ABILITY_UNLOCK_LEVELS[slotIndex] || 99;
-}
-
-function getAbilityGoldCost(slotIndex) {
-  return ABILITY_GOLD_COSTS[slotIndex] || 99999;
-}
-
-/** Prüft ob Meta-Level die Fähigkeit freigeschaltet hat (Slot sichtbar) */
-function isAbilityLevelUnlocked(metaLevel, slotIndex) {
-  return metaLevel >= getAbilityUnlockLevel(slotIndex);
-}
-
-/** Prüft ob Spieler die Fähigkeit kaufen/ausrüsten darf */
-function canPurchaseAbility(metaLevel, slotIndex, totalGold, alreadyOwned) {
-  if (alreadyOwned) return false;
-  if (!isAbilityLevelUnlocked(metaLevel, slotIndex)) return false;
-  return totalGold >= getAbilityGoldCost(slotIndex);
+function getUnlockedAbilityIds(classKey, specialCdLevel) {
+  const cdLv = Math.max(0, Math.floor(specialCdLevel || 0));
+  return getClassAbilities(classKey)
+    .filter((ab) => isAbilityUnlockedBySpecialCd(cdLv, ab.slot))
+    .map((ab) => ab.id);
 }
