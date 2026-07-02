@@ -101,6 +101,16 @@ function wrBlock(c, x, y, w, h, col) {
   c.fillRect(x | 0, y | 0, w, h);
 }
 
+function wrTri(c, x1, y1, x2, y2, x3, y3, col) {
+  c.fillStyle = col;
+  c.beginPath();
+  c.moveTo(x1 | 0, y1 | 0);
+  c.lineTo(x2 | 0, y2 | 0);
+  c.lineTo(x3 | 0, y3 | 0);
+  c.closePath();
+  c.fill();
+}
+
 function wrGradV(c, y0, y1, stops) {
   const g = c.createLinearGradient(0, y0, 0, y1);
   stops.forEach(([p, col]) => g.addColorStop(p, col));
@@ -985,6 +995,106 @@ function renderParallaxLayers(ctx, worldConfig, camera, time) {
   }
 }
 
+function wrArchWindow(ctx, x, y, w, h, glow, frame) {
+  wrBlock(ctx, x - 1, y - 1, w + 2, h + 2, frame || "#09070b");
+  wrBlock(ctx, x, y, w, h, glow);
+  wrBlock(ctx, x + (w / 2 | 0), y, 1, h, frame || "#09070b");
+}
+
+function wrStoneBase(ctx, x, g, w, h, dark, mid, hi) {
+  wrBlock(ctx, x, g - h, w, h, dark);
+  wrBlock(ctx, x + 4, g - h + 4, w - 8, h - 7, mid);
+  for (let yy = g - h + 12; yy < g - 8; yy += 14) {
+    wrBlock(ctx, x + 5, yy, w - 10, 2, dark);
+  }
+  for (let xx = x + 10; xx < x + w - 10; xx += 18) {
+    wrBlock(ctx, xx, g - h + 8, 2, h - 16, hi);
+  }
+}
+
+function wrForestWatchtower(ctx, x, g, seed) {
+  const h = 86 + (wrR(seed) * 28 | 0);
+  wrBlock(ctx, x - 17, g - h, 34, h, "#2d1f14");
+  wrBlock(ctx, x - 13, g - h + 8, 7, h - 12, "#5c4033");
+  wrBlock(ctx, x + 6, g - h + 8, 7, h - 12, "#1a1008");
+  for (let i = 0; i < 5; i++) wrBlock(ctx, x - 24 + i * 12, g - h - 7, 7, 14, "#4a3728");
+  wrTri(ctx, x - 30, g - h - 6, x, g - h - 34, x + 30, g - h - 6, "#1a1008");
+  wrBlock(ctx, x - 24, g - 12, 48, 7, "#1b4332");
+  wrBlock(ctx, x - 7, g - h + 30, 14, 18, "#0a2218");
+  wrArchWindow(ctx, x - 4, g - h + 35, 8, 9, "#f39c12", "#120c06");
+}
+
+function wrSwampStiltHouse(ctx, x, g, seed) {
+  const h = 72 + (wrR(seed) * 20 | 0);
+  wrBlock(ctx, x - 34, g - h, 68, 38, "#2a2218");
+  wrBlock(ctx, x - 29, g - h + 5, 58, 29, "#45351f");
+  wrTri(ctx, x - 42, g - h, x, g - h - 24, x + 42, g - h, "#111308");
+  for (let i = 0; i < 4; i++) wrBlock(ctx, x - 28 + i * 18, g - h + 35, 4, h - 35, "#17120c");
+  wrBlock(ctx, x - 46, g - 18, 92, 5, "#2d321a");
+  wrArchWindow(ctx, x - 19, g - h + 12, 10, 12, "#9fba52", "#101507");
+  wrArchWindow(ctx, x + 9, g - h + 14, 10, 10, "#5f7f30", "#101507");
+  wrBlock(ctx, x - 52, g - 11, 104, 4, "#0b0c07");
+}
+
+function wrFrostNordicHall(ctx, x, g, seed) {
+  const h = 90 + (wrR(seed) * 18 | 0);
+  wrStoneBase(ctx, x - 50, g, 100, h, "#253247", "#54687a", "#d8e8f8");
+  wrTri(ctx, x - 60, g - h, x, g - h - 36, x + 60, g - h, "#19283d");
+  wrBlock(ctx, x - 48, g - h - 2, 96, 8, "#dbe8f4");
+  wrBlock(ctx, x - 5, g - h - 54, 10, 32, "#34475f");
+  wrTri(ctx, x - 14, g - h - 54, x, g - h - 72, x + 14, g - h - 54, "#dbe8f4");
+  for (let i = 0; i < 4; i++) wrArchWindow(ctx, x - 34 + i * 22, g - h + 34, 9, 16, "#8ec8ff", "#121a28");
+  wrBlock(ctx, x - 16, g - 28, 32, 28, "#162033");
+}
+
+function wrFireBlackCastle(ctx, x, g, seed) {
+  const h = 112 + (wrR(seed) * 28 | 0);
+  wrStoneBase(ctx, x - 60, g, 120, h, "#080303", "#1c0806", "#4a1008");
+  for (let i = 0; i < 3; i++) {
+    const tx = x - 52 + i * 52;
+    wrBlock(ctx, tx, g - h - 35, 28, 43, "#120504");
+    wrTri(ctx, tx - 7, g - h - 35, tx + 14, g - h - 68, tx + 35, g - h - 35, "#080202");
+    wrArchWindow(ctx, tx + 8, g - h - 19, 8, 15, "#f39c12", "#050101");
+  }
+  wrBlock(ctx, x - 68, g - 16, 136, 8, "#e74c3c");
+  for (let i = 0; i < 5; i++) wrBlock(ctx, x - 42 + i * 20, g - h + 42, 6, 18, "#f39c12");
+}
+
+function wrRuinsGrandTemple(ctx, x, g, seed) {
+  const h = 118 + (wrR(seed) * 32 | 0);
+  wrBlock(ctx, x - 72, g - h, 144, h, "#171c2d");
+  wrBlock(ctx, x - 64, g - h + 10, 128, h - 18, "#30384c");
+  wrTri(ctx, x - 84, g - h, x, g - h - 42, x + 84, g - h, "#232a40");
+  for (let i = 0; i < 6; i++) {
+    const px = x - 54 + i * 22;
+    wrBlock(ctx, px, g - h + 20, 9, h - 24, "#707989");
+    wrBlock(ctx, px + 3, g - h + 24, 3, h - 30, "#151a2a");
+  }
+  wrBlock(ctx, x - 20, g - 42, 40, 42, "#0f1322");
+  wrArchWindow(ctx, x - 10, g - 84, 20, 26, "#69d2ff", "#090b14");
+  wrBlock(ctx, x - 88, g - 12, 176, 7, "#252c40");
+}
+
+function renderWorldArchitecture(ctx, worldConfig, camera, time) {
+  const theme = worldConfig.theme;
+  const scroll = wrLayerScroll(worldConfig, camera, 3) * 1.12;
+  const spacing = theme === "ruins" ? 280 : theme === "fire" ? 250 : 230;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = 0.88;
+  for (let i = 0; i < 12; i++) {
+    const x = wrWrappedX(i, spacing, scroll, wrR(i * 61) * 120);
+    if (x < -180 || x > WR.CW + 180) continue;
+    if (theme === "forest") wrForestWatchtower(ctx, x, WR.GROUND, i * 17);
+    else if (theme === "swamp") wrSwampStiltHouse(ctx, x, WR.GROUND, i * 19);
+    else if (theme === "frost") wrFrostNordicHall(ctx, x, WR.GROUND, i * 23);
+    else if (theme === "fire") wrFireBlackCastle(ctx, x, WR.GROUND, i * 29);
+    else wrRuinsGrandTemple(ctx, x, WR.GROUND, i * 31);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function renderWaterOrLava(ctx, worldConfig, camera, time) {
   wrEnsureCache(worldConfig.theme);
   wrTileLayer(ctx, WR.cache.layers[4], wrLayerScroll(worldConfig, camera, 4));
@@ -1200,6 +1310,7 @@ function renderWorld(ctx, worldId, camera, time) {
   ctx.imageSmoothingEnabled = false;
   renderSky(ctx, cfg, time);
   renderParallaxLayers(ctx, cfg, cam, time);
+  renderWorldArchitecture(ctx, cfg, cam, time);
   renderWaterOrLava(ctx, cfg, cam, time);
   renderGround(ctx, cfg, cam, time);
   renderEnvironmentDecorations(ctx, cfg, cam, time);
@@ -1243,6 +1354,7 @@ if (typeof window !== "undefined") {
   window.renderWorld = renderWorld;
   window.renderSky = renderSky;
   window.renderParallaxLayers = renderParallaxLayers;
+  window.renderWorldArchitecture = renderWorldArchitecture;
   window.renderGround = renderGround;
   window.renderEnvironmentDecorations = renderEnvironmentDecorations;
   window.renderWorldForeground = renderWorldForeground;
