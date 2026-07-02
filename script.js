@@ -4,6 +4,8 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
+const BUILD_ID = "cc81ab8-ground-fix";
+
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
 let supabase = null;
