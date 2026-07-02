@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "enemy-shadow-align";
+const BUILD_ID = "enemy-shadow-fix-v2";
 
 const SUPABASE_URL = "DEINE_SUPABASE_URL";
 const SUPABASE_KEY = "DEIN_SUPABASE_KEY";
@@ -869,10 +869,10 @@ function getEnemyDrawX(e) {
 }
 
 function getEnemyVisualBounds(e, drawX) {
-  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBounds === "function") {
-    return VisualEnemies.getBounds(e.sprite, drawX ?? getEnemyDrawX(e), e.y, e.w, e.h, e.isBoss);
-  }
   const x = drawX ?? getEnemyDrawX(e);
+  if (typeof VisualEnemies !== "undefined" && typeof VisualEnemies.getBounds === "function") {
+    return VisualEnemies.getBounds(e.sprite, x, e.y, e.w, e.h, e.isBoss, true);
+  }
   return { x, y: e.y, w: e.w, h: e.h, cx: x + e.w / 2, footY: e.y + e.h };
 }
 

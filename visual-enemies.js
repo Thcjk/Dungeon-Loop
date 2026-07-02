@@ -205,24 +205,61 @@
   // Enemy silhouettes (local coords: x=0 Fuß-Mitte, y=0 Bodenlinie)
   // ---------------------------------------------------------------------------
 
-  const FOOT_LINE = {
-    goblin: 1, skelett: 1, bandit: 1, wolf: 1, schleim: 0, spinne: -3,
-    boss_ork: 2, boss_schatten: 0, boss_feuer: 2, boss_drache: 2, boss_nekro: 1
+  /** Pixel-Grenzen je Sprite (local space, Side-Profile nach rechts) */
+  const SPRITE_EXTENTS = {
+    goblin:        { minX: -12, maxX: 10, footX: 0, footY: 1, topY: -38 },
+    skelett:       { minX: -11, maxX: 10, footX: 0, footY: 1, topY: -40 },
+    schleim:       { minX: -16, maxX: 16, footX: 0, footY: 0, topY: -34 },
+    bandit:        { minX: -13, maxX: 11, footX: 0, footY: 1, topY: -40 },
+    wolf:          { minX: -20, maxX: 18, footX: 0, footY: 1, topY: -28 },
+    spinne:        { minX: -14, maxX: 12, footX: 0, footY: -3, topY: -32 },
+    boss_ork:      { minX: -18, maxX: 18, footX: 0, footY: 2, topY: -44 },
+    boss_schatten: { minX: -16, maxX: 12, footX: 0, footY: 0, topY: -46 },
+    boss_feuer:    { minX: -16, maxX: 14, footX: 0, footY: 2, topY: -52 },
+    boss_drache:   { minX: -22, maxX: 16, footX: 0, footY: 2, topY: -44 },
+    boss_nekro:    { minX: -12, maxX: 12, footX: 0, footY: 1, topY: -46 }
   };
 
-  /** Halbe Körperbreite ab Fuß-Mitte (local x=0) – Side-Profile-Sprites */
-  const BODY_HALF_W = {
-    goblin: 14, skelett: 11, bandit: 14, wolf: 18, schleim: 16, spinne: 13,
-    boss_ork: 19, boss_schatten: 17, boss_feuer: 19, boss_drache: 21, boss_nekro: 15
-  };
-
-  function getFootLine(spriteKey) {
-    return FOOT_LINE[spriteKey] ?? 1;
+  function getExtents(spriteKey) {
+    return SPRITE_EXTENTS[spriteKey] || { minX: -14, maxX: 14, footX: 0, footY: 1, topY: -40 };
   }
 
-  function getBodyHalfW(spriteKey, isBoss) {
-    const base = BODY_HALF_W[spriteKey] ?? 14;
-    return isBoss ? base * 1.12 : base;
+  function getFootLine(spriteKey) {
+    return getExtents(spriteKey).footY;
+  }
+
+  /** Bildschirm-Bounds aus Local-Extents (flip=true: Gegner schauen nach links) */
+  function computeScreenBounds(ext, cx, footBase, scale, flip) {
+    const s = scale;
+    const fx = ext.footX;
+    let x, w;
+    if (flip) {
+      x = cx - (ext.maxX - fx) * s;
+      w = (ext.maxX - ext.minX) * s;
+    } else {
+      x = cx + (ext.minX - fx) * s;
+      w = (ext.maxX - ext.minX) * s;
+    }
+    const h = (ext.footY - ext.topY) * s;
+    const y = footBase - h;
+    const midX = (ext.minX + ext.maxX) / 2;
+    const shadowCx = flip ? cx - (midX - fx) * s : cx + (midX - fx) * s;
+    return {
+      x: Math.round(x),
+      y: Math.round(y),
+      w: Math.round(w),
+      h: Math.round(h),
+      cx: Math.round(shadowCx),
+      footY: Math.round(footBase)
+    };
+  }
+
+  function getBounds(spriteKey, x, y, w, h, big, flip) {
+    const m = getVisualMetrics(spriteKey, w, h, big);
+    const ext = getExtents(spriteKey);
+    const cx = Math.round(x + w / 2);
+    const footBase = y + h;
+    return computeScreenBounds(ext, cx, footBase, m.scale, flip !== false);
   }
 
   /** Bob nur am Oberkörper – Füße/Beine bleiben auf y=0 Bodenlinie. */
@@ -586,24 +623,6 @@
     };
   }
 
-  function getBounds(spriteKey, x, y, w, h, big) {
-    const m = getVisualMetrics(spriteKey, w, h, big);
-    const footLine = getFootLine(spriteKey);
-    const footBase = y + h;
-    const artH = m.isBoss ? BOSS_H : ART_H;
-    const bodyH = m.scale * (artH - footLine + 2);
-    const cx = Math.round(x + w / 2);
-    const halfW = getBodyHalfW(spriteKey, m.isBoss) * m.scale;
-    return {
-      x: Math.round(cx - halfW),
-      y: Math.round(footBase - bodyH),
-      w: Math.round(halfW * 2),
-      h: Math.round(bodyH),
-      cx,
-      footY: Math.round(footBase)
-    };
-  }
-
   const DRAWERS = {
     goblin: drawGoblin,
     skelett: drawSkelett,
@@ -653,7 +672,8 @@
       const bVal = bob || 0;
       const footBase = Math.round(y + h);
       const cx = Math.round(x + w / 2);
-      const visualBounds = getBounds(spriteKey, bx, by, bw, bh, isBoss);
+      const ext = getExtents(spriteKey);
+      const visualBounds = getBounds(spriteKey, bx, by, bw, bh, isBoss, flip);
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -667,10 +687,9 @@
       const metrics = getVisualMetrics(spriteKey, bw, bh, isBoss);
       const scale = metrics.scale;
 
-      // Local coords: x=0 = Fuß-Mitte, y=0 = Boden – kein artW/2-Offset
       ctx.translate(cx, footBase);
       ctx.scale(flip ? -scale : scale, scale);
-      ctx.translate(0, -getFootLine(spriteKey));
+      ctx.translate(-ext.footX, -ext.footY);
 
       drawer(ctx, pal, bVal, isBoss);
       drawThemeAccents(ctx, theme, bVal, isBoss);
@@ -678,7 +697,6 @@
       ctx.restore();
 
       applyThemeTint(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, world);
-      drawFeetFog(ctx, visualBounds.x, visualBounds.y, visualBounds.w, visualBounds.h, world);
 
       return true;
     }
