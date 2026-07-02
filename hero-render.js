@@ -3,7 +3,7 @@ const HR = {
   W: 32,
   H: 42,
   /** Unterkante der Füße in lokalen Koordinaten (y=0 = Boden) */
-  FOOT_Y: 5,
+  FOOT_Y: 4,
   DISPLAY_SCALE: 1.05,
   MENU_FILL: 0.82,
   ANIM: {

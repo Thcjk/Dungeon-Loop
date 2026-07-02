@@ -587,13 +587,13 @@
       const bw = Math.round(w);
       const bh = Math.round(h);
       const bVal = bob || 0;
-      const footY = Math.round(y + h - bVal);
+      const footBase = Math.round(y + h);
       const cx = Math.round(x + w / 2);
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      drawShadow(ctx, cx, footY, bw, world, bVal, isBoss);
+      drawShadow(ctx, cx, footBase, bw, world, bVal, isBoss);
 
       if (isBoss && BOSS_GLOW[spriteKey]) {
         applyBossGlow(ctx, bx, by, bw, bh, BOSS_GLOW[spriteKey]);
@@ -604,11 +604,9 @@
       const bossBoost = isBoss ? 1.18 : 1;
       const scale = Math.min(bw / artW, bh / artH) * bossBoost;
       const drawW = artW * scale;
-      const drawH = artH * scale;
       const offsetX = (bw - drawW) / 2;
-      const offsetY = bh - drawH;
 
-      ctx.translate(bx + (flip ? bw - offsetX : offsetX), by + offsetY);
+      ctx.translate(bx + (flip ? bw - offsetX : offsetX), footBase);
       ctx.scale(flip ? -scale : scale, scale);
       ctx.translate(-artW / 2, -artH);
 

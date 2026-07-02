@@ -17,6 +17,12 @@ const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
+
+/** Alle Charaktere: Unterkante der Hitbox = Bodenlinie */
+function pinCharToGround(entity) {
+  if (!entity || entity.h == null) return;
+  entity.y = GROUND - entity.h;
+}
 const CAM_ZOOM = 1.38;
 const COMBAT_LAYOUT = {
   heroCombatX: 78,
@@ -817,9 +823,9 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
   if (typeof VisualEnemies !== "undefined" && VisualEnemies.draw(c, spriteKey, x, y, w, h, flip, world, bob, big)) return;
   const sprite = SPRITES[spriteKey];
   if (!sprite) return;
-  const groundY = y + h - (bob || 0);
+  const footY = y + h;
   const cx = x + w / 2;
-  drawCharShadow(c, cx, groundY, w, getCharStyle(world), bob, big);
+  drawCharShadow(c, cx, footY, w, getCharStyle(world), bob, big);
   drawCharSprite(c, sprite, x, y, flip, ENEMY_PIXEL);
   applyWorldCharTint(c, x, y, w, h, world);
   drawCharFeetFog(c, x, y, w, h, world);
@@ -828,7 +834,7 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
 function drawHero(c, h, bob, atkOff, hurtOff, world) {
   const aim = getCombatAim();
   HR.draw(c, {
-    x: h.x, h, world, atkOff, hurtOff,
+    x: h.x + (atkOff || 0), h, world, atkOff, hurtOff,
     classKey: game.classKey, aimX: aim.x, aimY: aim.y, groundY: GROUND
   });
 }
@@ -2124,6 +2130,7 @@ function createHero() {
     facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0,
     animState: "idle", animFrame: 0, animTime: 0, deathAnim: false, deathDone: false
   };
+  pinCharToGround(game.hero);
   $("hud-mana-wrap").classList.toggle("hidden", game.classKey !== "mage");
   initHeroAbilityCds(game.hero);
 }
@@ -2299,6 +2306,7 @@ function spawnEnemy(isBoss, index) {
     attackTimer: 0, attackAnim: 0, attackWindup: 0
   };
   game.enemies.push(enemy);
+  pinCharToGround(enemy);
   if (game.currentWave) game.currentWave.enemies.push({ name, isBoss });
   return enemy;
 }
@@ -2785,6 +2793,7 @@ function updateFrame(dt) {
     h.x = Math.max(COMBAT_LAYOUT.heroMinX, Math.min(maxX, h.x));
   }
   h.y = GROUND - h.h;
+  pinCharToGround(h);
   if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)
@@ -2810,6 +2819,7 @@ function updateFrame(dt) {
   // Gegner – jagen den Helden und greifen in Nahreichweite an
   game.enemies.forEach((e) => {
     if (e.dead || e.hp <= 0) return;
+    pinCharToGround(e);
     updateEnemyMovement(e, h, dt);
     e.anim += dt * (e.isChasing ? 10 : 6);
     if (e.hitFlash > 0) e.hitFlash -= dt * 30;
@@ -3136,7 +3146,7 @@ function render() {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
-    drawLivingChar(ctx, e.sprite, drawX, e.y + bob, e.w, e.h, true, world, bob, e.isBoss);
+    drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.restore();
