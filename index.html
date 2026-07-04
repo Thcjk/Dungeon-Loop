@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Dungeon Loop</title>
-  <link rel="stylesheet" href="style.css?v=97">
+  <link rel="stylesheet" href="style.css?v=98">
 </head>
 <body>
 
@@ -46,8 +46,8 @@
             <div id="ability-setup-hint" class="ability-setup-hint"></div>
           </div>
 
-          <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
-          <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten.</p>
+      <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
+      <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten. Fortschritt wird <strong>lokal</strong> gespeichert – kein Internet nötig.</p>
         </div>
 
         <aside class="hero-card warrior" id="hero-card">
@@ -203,21 +203,21 @@
       </div>
     </section>
 
-    <section class="card leaderboard-card hidden" id="leaderboard-section">
-      <h2>Online-Rangliste</h2>
+    <section class="card leaderboard-card" id="leaderboard-section">
+      <h2>Lokale Rangliste</h2>
       <button type="button" class="btn btn-secondary btn-small" id="btn-reload-leaderboard">Rangliste neu laden</button>
-      <ol class="leaderboard" id="leaderboard"><li class="loading">Lade Rangliste...</li></ol>
+      <ol class="leaderboard" id="leaderboard"><li class="empty">Noch keine Scores.</li></ol>
     </section>
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">release-v97</span></p></footer>
-  <script src="world-render.js?v=97"></script>
-  <script src="visual-enemies.js?v=97"></script>
-  <script src="visual-fx.js?v=97"></script>
-  <script src="visual-sprites.js?v=97"></script>
-  <script src="hero-render.js?v=97"></script>
-  <script src="abilities.js?v=97"></script>
-  <script src="script.js?v=97"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">offline-v98</span> · Offline-fähig</p></footer>
+  <script src="world-render.js?v=98"></script>
+  <script src="visual-enemies.js?v=98"></script>
+  <script src="visual-fx.js?v=98"></script>
+  <script src="visual-sprites.js?v=98"></script>
+  <script src="hero-render.js?v=98"></script>
+  <script src="abilities.js?v=98"></script>
+  <script src="script.js?v=98"></script>
 </body>
 </html>

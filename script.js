@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "release-v97";
+const BUILD_ID = "offline-v98";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -730,6 +730,10 @@ let audioPrefs = { musicEnabled: true, sfxEnabled: true };
 
 /** Meta-Fortschritt – Fähigkeiten-Freischaltung & Account-Level */
 const META_STORAGE_KEY = "dungeon_loop_meta";
+/** Offline-Spielstände – Gold, Upgrades, Klasse pro Spielername */
+const PLAYERS_STORAGE_KEY = "dungeon_loop_players";
+/** Lokale Highscores – ohne Internet */
+const LOCAL_SCORES_KEY = "dungeon_loop_scores";
 
 /** Gegner-KI: unterschiedliche Kampfstile pro Monstertyp */
 const ENEMY_AI = {
@@ -1050,8 +1054,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const buildEl = document.querySelector(".footer-build");
   if (buildEl) buildEl.textContent = BUILD_ID;
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
+  loadLeaderboard();
   initSupabase();
   loadGameData();
+  window.addEventListener("beforeunload", () => { if (game.playerName) saveLocalPlayer(); });
 });
 
 // ============================================
@@ -1969,41 +1975,113 @@ function loadScript(url) {
 }
 
 // ============================================
-// SPIELER / SUPABASE
+// SPIELER – Offline-Speicher (localStorage) + optional Supabase
 // ============================================
+
+function playerStorageKey(name) {
+  return (name || "").trim().toLowerCase();
+}
+
+function loadPlayersStore() {
+  try {
+    const raw = localStorage.getItem(PLAYERS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function loadLocalPlayer(name) {
+  const key = playerStorageKey(name);
+  if (!key) return null;
+  return loadPlayersStore()[key] || null;
+}
+
+function saveLocalPlayer() {
+  if (!game.playerName) return;
+  const key = playerStorageKey(game.playerName);
+  if (!key) return;
+  const store = loadPlayersStore();
+  store[key] = {
+    name: game.playerName,
+    classKey: game.classKey,
+    totalGold: Math.max(0, Math.floor(Number(game.totalGold) || 0)),
+    upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) },
+    savedAt: Date.now()
+  };
+  try { localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
+}
+
+function applyPlayerSave(data) {
+  game.classKey = normalizeClassKey(data.classKey);
+  game.totalGold = Math.max(0, Math.floor(Number(data.totalGold) || 0));
+  game.upgrades = { ...emptyUpgrades(), ...(data.upgrades || {}) };
+}
+
+function showLeaderboardSection() {
+  const sec = $("leaderboard-section");
+  if (sec) sec.classList.remove("hidden");
+}
 
 async function loadPlayer() {
   const name = $("player-name").value.trim();
   if (!name) { $("load-hint").textContent = "Bitte Namen eingeben."; return; }
   game.playerName = name;
-  if (!supabase) {
-    game.totalGold = 0; game.upgrades = emptyUpgrades();
-    syncUnlockedAbilities();
-    enterGame("Los geht's! Maus auf Gegner zum Angreifen.");
-    return;
-  }
-  const { data, error } = await supabase.from("dungeon_players").select("*").eq("name", name).maybeSingle();
-  if (error) { $("load-hint").textContent = error.message; return; }
-  if (data) {
-    game.playerId = data.id;
-    game.classKey = normalizeClassKey(data.class_name);
-    game.totalGold = Math.max(0, Math.floor(Number(data.total_gold) || 0));
-    game.upgrades = { upgrade_attack: data.upgrade_attack||0, upgrade_health: data.upgrade_health||0,
-      upgrade_defense: data.upgrade_defense||0, upgrade_crit: data.upgrade_crit||0,
-      upgrade_gold: data.upgrade_gold||0, upgrade_xp: data.upgrade_xp||0,
-      upgrade_magic: data.upgrade_magic||0, upgrade_mana: data.upgrade_mana||0,
-      upgrade_cooldown: data.upgrade_cooldown||0 };
+  game.playerId = null;
+
+  const saved = loadLocalPlayer(name);
+  if (saved) {
+    applyPlayerSave(saved);
     selectClass(game.classKey);
     syncUnlockedAbilities();
-    enterGame("Willkommen zurück, " + name + "!");
-  } else {
-    const { data: ins, error: err } = await supabase.from("dungeon_players")
-      .insert({ name, class_name: game.classKey, total_gold: 0, ...emptyUpgrades() }).select().single();
-    if (err) { $("load-hint").textContent = err.message; return; }
-    game.playerId = ins.id; game.totalGold = 0; game.upgrades = emptyUpgrades();
-    syncUnlockedAbilities();
-    enterGame("Neuer Spieler!");
+    showLeaderboardSection();
+    loadLeaderboard();
+    enterGame("Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)");
+    await tryLoadCloudPlayer(name);
+    return;
   }
+
+  game.totalGold = 0;
+  game.upgrades = emptyUpgrades();
+  game.classKey = normalizeClassKey(game.classKey);
+  saveLocalPlayer();
+  syncUnlockedAbilities();
+  showLeaderboardSection();
+  loadLeaderboard();
+  enterGame("Neuer Abenteurer: " + name + "! Fortschritt wird lokal gespeichert.");
+  await tryLoadCloudPlayer(name);
+}
+
+/** Optional: Cloud-Save laden wenn Supabase konfiguriert ist */
+async function tryLoadCloudPlayer(name) {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from("dungeon_players").select("*").eq("name", name).maybeSingle();
+    if (error || !data) return;
+    game.playerId = data.id;
+    const local = loadLocalPlayer(name);
+    const cloudTime = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+    const localTime = local?.savedAt || 0;
+    if (!local || cloudTime > localTime) {
+      applyPlayerSave({
+        classKey: data.class_name,
+        totalGold: data.total_gold,
+        upgrades: {
+          upgrade_attack: data.upgrade_attack, upgrade_health: data.upgrade_health,
+          upgrade_defense: data.upgrade_defense, upgrade_crit: data.upgrade_crit,
+          upgrade_gold: data.upgrade_gold, upgrade_xp: data.upgrade_xp,
+          upgrade_magic: data.upgrade_magic, upgrade_mana: data.upgrade_mana,
+          upgrade_cooldown: data.upgrade_cooldown
+        }
+      });
+      selectClass(game.classKey);
+      syncUnlockedAbilities();
+      saveLocalPlayer();
+      updateTotalGold();
+      renderUpgradeButtons();
+      renderAbilityPanel();
+    }
+  } catch (_) { /* offline */ }
 }
 
 function enterGame(msg) {
@@ -2027,11 +2105,14 @@ function selectClass(k) {
 }
 
 async function savePlayer() {
+  saveLocalPlayer();
   if (!supabase || !game.playerId) return;
-  await supabase.from("dungeon_players").update({
-    class_name: game.classKey, total_gold: game.totalGold,
-    ...game.upgrades
-  }).eq("id", game.playerId);
+  try {
+    await supabase.from("dungeon_players").update({
+      class_name: game.classKey, total_gold: game.totalGold,
+      ...game.upgrades
+    }).eq("id", game.playerId);
+  } catch (_) { /* offline ok */ }
 }
 
 // ============================================
@@ -3816,29 +3897,71 @@ function updateTotalGold() {
 }
 function calcScore() { return game.dungeonLevel*100 + game.monstersDefeated*50 + game.runGold + game.playerLevel*200; }
 
-async function saveScore() {
-  if (!supabase) { $("save-hint").textContent = "Supabase nicht konfiguriert."; return; }
-  const { error } = await supabase.from("dungeon_scores").insert({
-    name: game.playerName, class_name: CLASSES[game.classKey].name, score: calcScore(),
-    dungeon_level: game.dungeonLevel, monsters_defeated: game.monstersDefeated,
-    gold: game.runGold, player_level: game.playerLevel
+function loadLocalScores() {
+  try {
+    const raw = localStorage.getItem(LOCAL_SCORES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveLocalScore(entry) {
+  const scores = loadLocalScores();
+  scores.push({ ...entry, savedAt: Date.now() });
+  scores.sort((a, b) => (b.score || 0) - (a.score || 0));
+  try { localStorage.setItem(LOCAL_SCORES_KEY, JSON.stringify(scores.slice(0, 50))); } catch (_) {}
+}
+
+function renderLeaderboardList(list, data) {
+  if (!data?.length) {
+    list.innerHTML = '<li class="empty">Noch keine Scores – sterb tapfer!</li>';
+    return;
+  }
+  const medals = ["🥇", "🥈", "🥉"];
+  list.innerHTML = "";
+  data.forEach((e, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span>' + (medals[i] || (i + 1) + ".") + '</span><span>' + e.name + '</span><span class="lb-score">' + e.score + '</span>';
+    list.appendChild(li);
   });
-  $("save-hint").textContent = error ? error.message : "Score gespeichert!";
-  if (!error) loadLeaderboard();
+}
+
+async function saveScore() {
+  const entry = {
+    name: game.playerName,
+    class_name: CLASSES[game.classKey].name,
+    score: calcScore(),
+    dungeon_level: game.dungeonLevel,
+    monsters_defeated: game.monstersDefeated,
+    gold: game.runGold,
+    player_level: game.playerLevel
+  };
+  saveLocalScore(entry);
+  $("save-hint").textContent = "Score lokal gespeichert!";
+  loadLeaderboard();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from("dungeon_scores").insert(entry);
+    if (!error) $("save-hint").textContent = "Score lokal + online gespeichert!";
+  } catch (_) { /* offline ok */ }
 }
 
 async function loadLeaderboard() {
   const list = $("leaderboard"); if (!list) return;
-  if (!supabase) { list.innerHTML = '<li class="empty">Supabase nicht konfiguriert.</li>'; return; }
-  const { data, error } = await supabase.from("dungeon_scores").select("*").order("score",{ascending:false}).limit(10);
-  if (error || !data?.length) { list.innerHTML = '<li class="empty">Keine Scores.</li>'; return; }
-  const medals = ["🥇","🥈","🥉"];
-  list.innerHTML = "";
-  data.forEach((e,i) => {
-    const li = document.createElement("li");
-    li.innerHTML = '<span>' + (medals[i]||(i+1)+".") + '</span><span>' + e.name + '</span><span class="lb-score">' + e.score + '</span>';
-    list.appendChild(li);
-  });
+  const local = loadLocalScores().slice(0, 10);
+  if (!supabase) {
+    renderLeaderboardList(list, local);
+    return;
+  }
+  try {
+    const { data, error } = await supabase.from("dungeon_scores").select("*").order("score", { ascending: false }).limit(10);
+    if (!error && data?.length) {
+      renderLeaderboardList(list, data);
+      return;
+    }
+  } catch (_) { /* offline */ }
+  renderLeaderboardList(list, local);
 }
 
 function addLog(msg, css) {
