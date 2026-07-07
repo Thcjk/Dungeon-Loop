@@ -1037,7 +1037,7 @@ function drawPreviews() {
 // INIT
 // ============================================
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   canvas = $("game-canvas");
   ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
@@ -1056,7 +1056,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
   loadLeaderboard();
   initSupabase();
-  loadGameData();
+  await loadGameData();
   window.addEventListener("beforeunload", () => { if (game.playerName) saveLocalPlayer(); });
 });
 
@@ -1070,34 +1070,27 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=60");
+    const res = await fetch("sounds.json?v=99");
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
-  tryMenuMusic();
+  if (audioUnlocked) tryMenuMusic();
 }
 
-function playMenuMusic() {
-  if (game.isRunning && !game.isDead) return;
-  const key = SOUND_MAP?.music?.menu || "music_menu";
-  if (getSoundSrc(key)) playMusic(key);
-}
-
-function tryMenuMusic() {
-  if (!game.isRunning || game.isDead) playMenuMusic();
-}
-
-function getSoundSrc(key) {
-  return SOUND_MAP?.files?.[key] || null;
-}
-
-function resolveAudioSrc(src) {
-  if (!src) return null;
-  if (/^https?:\/\//.test(src)) return src;
-  try { return new URL(src, location.href).href; } catch (_) { return src; }
+function primeAudioInGesture() {
+  if (!SOUND_MAP?.enabled) return;
+  ["coin", "player_melee", "music_menu"].forEach((key) => {
+    const src = getSoundSrc(key);
+    if (!src || audioCache[src]) return;
+    const a = new Audio(resolveAudioSrc(src));
+    a.volume = 0.001;
+    audioCache[src] = a;
+    a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = SOUND_MAP.sfxVolume ?? 0.55; }).catch(() => {});
+  });
 }
 
 function unlockAudio() {
   audioUnlocked = true;
+  primeAudioInGesture();
   tryMenuMusic();
 }
 
@@ -1114,6 +1107,7 @@ function saveAudioPrefs() {
 }
 
 function toggleMusic() {
+  unlockAudio();
   audioPrefs.musicEnabled = !audioPrefs.musicEnabled;
   saveAudioPrefs();
   updateAudioToggleUI();
@@ -1123,6 +1117,7 @@ function toggleMusic() {
 }
 
 function toggleSfx() {
+  unlockAudio();
   audioPrefs.sfxEnabled = !audioPrefs.sfxEnabled;
   saveAudioPrefs();
   updateAudioToggleUI();
@@ -1447,6 +1442,10 @@ function playSound(key) {
   const audio = audioCache[src];
   audio.volume = vol;
   audio.currentTime = 0;
+  if (!audioUnlocked) {
+    audio.play().then(() => { audioUnlocked = true; }).catch(() => {});
+    return;
+  }
   audio.play().catch(() => {});
 }
 
@@ -1463,7 +1462,31 @@ function playMusic(key) {
   musicTrack = new Audio(resolveAudioSrc(src));
   musicTrack.loop = true;
   musicTrack.volume = SOUND_MAP.musicVolume ?? 0.32;
+  if (!audioUnlocked) {
+    musicTrack.play().then(() => { audioUnlocked = true; }).catch(() => {});
+    return;
+  }
   musicTrack.play().catch(() => {});
+}
+
+function playMenuMusic() {
+  if (game.isRunning && !game.isDead) return;
+  const key = SOUND_MAP?.music?.menu || "music_menu";
+  if (getSoundSrc(key)) playMusic(key);
+}
+
+function tryMenuMusic() {
+  if (!game.isRunning || game.isDead) playMenuMusic();
+}
+
+function getSoundSrc(key) {
+  return SOUND_MAP?.files?.[key] || null;
+}
+
+function resolveAudioSrc(src) {
+  if (!src) return null;
+  if (/^https?:\/\//.test(src)) return src;
+  try { return new URL(src, location.href).href; } catch (_) { return src; }
 }
 
 function stopMusic() {
@@ -1778,6 +1801,7 @@ function handlePointerMove(e) {
 }
 
 function handlePointerDown(e) {
+  unlockAudio();
   updatePointerCanvasPos(e);
   const aim = getAim();
   updateCoinCatchMovement(aim);
@@ -2353,6 +2377,7 @@ function beginRunLoop() {
 }
 
 function startRun() {
+  unlockAudio();
   if (game.isRunning && !game.isDead) {
     ensureGameLoop();
     if (countAliveEnemies() === 0) safeSpawnWave();

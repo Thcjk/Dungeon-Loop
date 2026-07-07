@@ -25,7 +25,7 @@
     "player_special_mage": "sounds/combat/fireball.wav",
     "player_hurt": "sounds/combat/player_hurt.wav",
     "enemy_attack": "sounds/combat/enemy_attack.wav",
-    "enemy_hit": "sounds/combat/enemy_hit.ogg",
+    "enemy_hit": "sounds/combat/sword_swing.wav",
     "explosion": "sounds/combat/explosion.wav",
     "coin": "sounds/ui/coin.wav",
     "level_up": "sounds/ui/level_up.wav",
