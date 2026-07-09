@@ -33,19 +33,34 @@ chmod +x play.sh update-offline.sh
 
 ## Desktop-Ordner aktualisieren
 
-Wenn du schon einen alten Ordner auf dem Desktop hast:
+Dein alter Ordner hat **kein Update-Skript**? Kein Problem:
 
-### Option A – Update-Skript (empfohlen)
-1. **`update-offline.bat`** doppelklicken (Windows)
-2. Warten bis „Update fertig!“
-3. **`play.bat`** starten
+### Sofort (Windows, einmal Internet)
 
-*(Mac/Linux: `./update-offline.sh`)*
+**Option 1 – In deinem Dungeon-Loop Ordner:**
+Doppelklick auf **`play.bat`** → fragt automatisch „Jetzt updaten?“ wenn Grafiken fehlen.
 
-### Option B – Manuell
-1. Alten Ordner loeschen oder umbenennen (z. B. `Dungeon-Loop-alt`)
-2. Neues ZIP von GitHub laden und entpacken
-3. **`play.bat`**-Verknuepfung neu anlegen
+**Option 2 – Update-Befehl:**
+```bat
+play.bat update
+```
+
+**Option 3 – Ohne neue Dateien (PowerShell im Ordner):**
+```powershell
+cd Desktop\Dungeon-Loop
+Invoke-WebRequest -Uri "https://github.com/Thcjk/Dungeon-Loop/archive/refs/heads/main.zip" -OutFile dl.zip
+Expand-Archive dl.zip .
+xcopy /E /Y Dungeon-Loop-main\* .
+rmdir /S /Q Dungeon-Loop-main
+del dl.zip
+```
+
+**Option 4 – Komplett neu:**
+1. https://github.com/Thcjk/Dungeon-Loop → **Code → Download ZIP**
+2. Alten Desktop-Ordner loeschen, neues ZIP entpacken
+3. `play.bat` starten
+
+*(Mac/Linux: `./play.sh update` oder `./update-offline.sh`)*
 
 **Speicherstaende bleiben erhalten** – die liegen im Browser (localStorage), nicht im Ordner.
 
@@ -55,13 +70,13 @@ Wenn du schon einen alten Ordner auf dem Desktop hast:
 
 | Pfad | Zweck |
 |------|-------|
-| `play.bat` / `play.sh` | Spiel starten |
-| `update-offline.bat` | Update von GitHub |
+| `play.bat` / `play.sh` | Spiel starten (`play.bat update` = Update) |
+| `UPDATE.bat` | Gleich wie `play.bat update` |
 | `assets/miniworld/` | **Welt-Grafiken** (neu in v100) |
 | `sounds/` | Sound-Dateien |
 | `index.html`, `script.js`, … | Spiel-Code |
 
-Fehlt `assets/miniworld/`, zeigt `play.bat` eine Warnung – dann `update-offline.bat` ausfuehren.
+Fehlt `assets/miniworld/`, fragt `play.bat` automatisch nach Update.
 
 ---
 
