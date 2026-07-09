@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "atmosphere-v108";
+const BUILD_ID = "controls-v109";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -1689,11 +1689,17 @@ function bindEvents() {
   canvas.addEventListener("mouseleave", () => { mouse.onCanvas = false; });
 
   window.addEventListener("keydown", (e) => {
-    keys[e.key.toLowerCase()] = true;
-    if (e.key.toLowerCase() === "p" && game.isRunning) togglePause();
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    // Pfeiltasten im Spiel nicht die Seite scrollen lassen
+    if (game.isRunning && !isTypingInForm() &&
+      (k === "arrowleft" || k === "arrowright" || k === "arrowup" || k === "arrowdown")) {
+      e.preventDefault();
+    }
+    if (k === "p" && game.isRunning) togglePause();
     if (!isTypingInForm()) {
-      if (e.key.toLowerCase() === "w" && game.isRunning) useEquippedAbility(0);
-      if (e.key.toLowerCase() === "s" && game.isRunning) useEquippedAbility(1);
+      if ((k === "w" || k === "arrowup") && game.isRunning) useEquippedAbility(0);
+      if ((k === "s" || k === "arrowdown") && game.isRunning) useEquippedAbility(1);
     }
     if (e.key.toLowerCase() === "f") toggleFullscreen();
     if (e.key.toLowerCase() === "u" && !$("game-section").classList.contains("hidden")) {
@@ -1719,14 +1725,10 @@ function updateClassHint() {
   if (!hint || !cls) return;
   const slots = [0, 1].map((i) => getEquippedAbilityAtSlot(i)).filter(Boolean);
   const eq = slots.map((a) => a.name).join(", ") || "–";
-  const keyHint = "<kbd>W</kbd>/<kbd>S</kbd> Spezial";
-  if (cls.attackType === "melee") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schwert</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
-  } else if (cls.attackType === "ranged") {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Schießen</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
-  } else {
-    hint.innerHTML = "<kbd>A</kbd>/<kbd>D</kbd> Bewegen | <kbd>Maus</kbd> = <strong>Zaubern</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
-  }
+  const keyHint = "<kbd>W</kbd>/<kbd>S</kbd> (<kbd>↑</kbd>/<kbd>↓</kbd>) Spezial";
+  const moveHint = "<kbd>A</kbd>/<kbd>D</kbd> (<kbd>←</kbd>/<kbd>→</kbd>) Bewegen";
+  const action = cls.attackType === "melee" ? "Schwert" : cls.attackType === "ranged" ? "Schießen" : "Zaubern";
+  hint.innerHTML = moveHint + " | <kbd>Maus</kbd> = <strong>" + action + "</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
 }
 
 function onMouseMove(e) {
@@ -3166,11 +3168,13 @@ function updateFrame(dt) {
   if (game.zoomPulse > 0) game.zoomPulse = Math.max(0, game.zoomPulse - dt * 0.06);
   updateBossIntro(dt);
 
-  const heroMoving = !!(game.isRunning && !game.isPaused && !game.isDead && (keys.a || keys.d));
+  const moveLeft = keys.a || keys.arrowleft;
+  const moveRight = keys.d || keys.arrowright;
+  const heroMoving = !!(game.isRunning && !game.isPaused && !game.isDead && (moveLeft || moveRight));
   if (game.isRunning && !game.isPaused && !game.isDead) {
     const spd = CLASSES[game.classKey].moveSpeed;
-    if (keys.a) { h.x -= spd * dt; h.facing = -1; }
-    if (keys.d) { h.x += spd * dt; h.facing = 1; }
+    if (moveLeft) { h.x -= spd * dt; h.facing = -1; }
+    if (moveRight) { h.x += spd * dt; h.facing = 1; }
     h.x = Math.max(getHeroMinX(h), Math.min(getHeroMaxX(h), h.x));
   }
   h.y = GROUND - h.h;
