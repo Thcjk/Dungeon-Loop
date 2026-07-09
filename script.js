@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "hero-redesign-v105";
+const BUILD_ID = "hero-world-v106";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -3477,11 +3477,6 @@ function render() {
   applyCamera(ctx, zoomBoost);
 
   renderUnifiedBackground(world);
-  renderWorldAtmosphere(world);
-  if (typeof VisualFX !== "undefined") {
-    VisualFX.renderAtmosphere(ctx, world);
-    VisualFX.renderWeather(ctx, world);
-  }
 
   if (!game.hero) {
     ctx.restore();
@@ -3647,8 +3642,6 @@ function render() {
       zoom: visualCamera.zoom
     }, typeof WR !== "undefined" ? WR.animTime : 0);
   }
-
-  if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);
 
   ctx.restore();
 
