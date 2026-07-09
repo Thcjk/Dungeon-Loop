@@ -4,11 +4,11 @@
    Gameplay-Hooks (HR.draw, HR.drawHeroCard, updateAnim, Maße) bleiben stabil. */
 
 const HR = {
-  W: 22,
-  H: 30,
+  W: 26,
+  H: 38,
   /** Fuß-Unterkante in lokalen Koordinaten (y=0 = Bodenlinie) */
-  FOOT_Y: 2,
-  DISPLAY_SCALE: 1.0,
+  FOOT_Y: 3,
+  DISPLAY_SCALE: 1.45,
   MENU_FILL: 0.82,
   ANIM: {
     idle: { n: 4, t: 0.3 },
