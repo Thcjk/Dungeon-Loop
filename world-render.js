@@ -115,17 +115,21 @@ function wrTreeCluster(c, x, baseY, scale, tones) {
   const dark = tones[0];
   const base = tones[1] || tones[0];
   const light = tones[2] || base;
-  const trunkH = 10 * scale;
-  const trunkW = Math.max(2, 3 * scale);
+  const trunkH = 14 * scale;
+  const trunkW = Math.max(2, 3.5 * scale);
   c.fillStyle = dark;
   c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, trunkW | 0, (trunkH + 2) | 0);
-  const cy = baseY - trunkH - 6 * scale;
-  const r = 9 * scale;
-  wrSoftBlob(c, x - r * 0.7, cy + r * 0.3, r * 0.9, dark);
-  wrSoftBlob(c, x + r * 0.7, cy + r * 0.25, r * 0.95, base);
-  wrSoftBlob(c, x, cy - r * 0.5, r * 1.05, base);
-  wrSoftBlob(c, x - r * 0.2, cy - r * 0.9, r * 0.7, light);
-  wrSoftBlob(c, x + r * 0.35, cy - r * 0.4, r * 0.55, light);
+  const r = 12 * scale;
+  const cy = baseY - trunkH - r * 0.35;
+  // volle, hohe Krone (mehrlagig für dichten Wald)
+  wrSoftBlob(c, x - r * 0.85, cy + r * 0.35, r * 1.0, dark);
+  wrSoftBlob(c, x + r * 0.85, cy + r * 0.3, r * 1.05, dark);
+  wrSoftBlob(c, x, cy + r * 0.15, r * 1.2, base);
+  wrSoftBlob(c, x - r * 0.55, cy - r * 0.5, r * 0.95, base);
+  wrSoftBlob(c, x + r * 0.55, cy - r * 0.55, r * 0.9, base);
+  wrSoftBlob(c, x, cy - r * 1.05, r * 0.95, base);
+  wrSoftBlob(c, x - r * 0.15, cy - r * 1.15, r * 0.6, light);
+  wrSoftBlob(c, x + r * 0.4, cy - r * 0.6, r * 0.55, light);
 }
 
 function wrDeadTree(c, x, baseY, scale, tone) {
@@ -287,9 +291,9 @@ function wrBuildDetail(pal) {
 function wrBuildAllLayers(theme) {
   const pal = getWorldPal(theme);
   return {
-    far: wrBuildBand(pal, 0, 0.8, 40, 11),
-    mid: wrBuildBand(pal, 1, 1.05, 66, 53),
-    near: wrBuildBand(pal, 2, 1.35, 104, 97),
+    far: wrBuildBand(pal, 0, 1.15, 30, 11),
+    mid: wrBuildBand(pal, 1, 1.75, 46, 53),
+    near: wrBuildBand(pal, 2, 2.45, 74, 97),
     ground: wrBuildGround(pal),
     detail: wrBuildDetail(pal)
   };
