@@ -23,7 +23,7 @@ do_update() {
   rm -f "$zip"
   rm -rf "$tmp"
   echo ""
-  echo "  Update fertig! Build: miniworld-v101"
+  echo "  Update fertig! Build: miniworld-v102"
   echo ""
 }
 
@@ -35,7 +35,7 @@ fi
 echo ""
 echo "  ========================================"
 echo "   Dungeon Loop - Offline Edition"
-echo "   Build: miniworld-v101"
+echo "   Build: miniworld-v102"
 echo "  ========================================"
 echo ""
 echo "  Ordner: $ROOT"

@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "miniworld-v101";
+const BUILD_ID = "miniworld-v102";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -3387,11 +3387,22 @@ function render() {
     VisualFX.renderWeather(ctx, world);
   }
 
+  if (typeof renderWorldForeground === "function") {
+    renderWorldForeground(ctx, world, {
+      scrollX: game.scrollX,
+      focusX: visualCamera.x,
+      zoom: visualCamera.zoom
+    }, typeof WR !== "undefined" ? WR.animTime : 0);
+  }
+
   if (!game.hero) {
     ctx.restore();
     ctx.restore();
     return;
   }
+
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
 
   drawCoinDrops(ctx);
 
@@ -3436,6 +3447,8 @@ function render() {
   });
 
   // Gegner
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = 0;
@@ -3542,14 +3555,6 @@ function render() {
       const label = getAbilityKeyLabel(slotIdx) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
       ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
     });
-  }
-
-  if (typeof renderWorldForeground === "function") {
-    renderWorldForeground(ctx, world, {
-      scrollX: game.scrollX,
-      focusX: visualCamera.x,
-      zoom: visualCamera.zoom
-    }, typeof WR !== "undefined" ? WR.animTime : 0);
   }
 
   if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);

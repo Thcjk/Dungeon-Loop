@@ -1,6 +1,6 @@
 # Dungeon Loop – Offline spielen (Desktop-Ordner)
 
-**Aktuelle Version:** `miniworld-v101` (ruhigere MiniWorld-Weltgrafik + Sounds)
+**Aktuelle Version:** `miniworld-v102` (ruhigere MiniWorld-Weltgrafik + Sounds)
 
 ---
 
