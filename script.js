@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "miniworld-v100";
+const BUILD_ID = "miniworld-v101";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];

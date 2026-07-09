@@ -38,7 +38,7 @@ del "%ZIP%"
 
 echo.
 echo  Update fertig!
-echo  Build: miniworld-v100 (Welt-Grafik + Sounds)
+echo  Build: miniworld-v101 (ruhigere Welt-Grafik + Sounds)
 echo.
 echo  Starte das Spiel mit play.bat
 echo.

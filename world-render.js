@@ -187,11 +187,64 @@ function wrDrawSky(c, w, g, colors, tint) {
   c.fillStyle = wrGradV(c, 0, g, colors.map((col, i) => [i / (colors.length - 1), col]));
   c.fillRect(0, 0, w, g);
   if (tint) {
-    c.globalAlpha = 0.35;
+    c.globalAlpha = 0.24;
     c.fillStyle = tint;
-    c.fillRect(0, g * 0.45, w, g * 0.55);
+    c.fillRect(0, g * 0.36, w, g * 0.64);
     c.globalAlpha = 1;
   }
+}
+
+function wrThemeShade(theme, step) {
+  const pal = {
+    forest: ["#06110c", "#0b1c12", "#12301f"],
+    swamp: ["#080e06", "#10180c", "#1b2815"],
+    frost: ["#08162a", "#102642", "#24405f"],
+    fire: ["#120302", "#2a0705", "#4a1008"],
+    ruins: ["#070815", "#11162a", "#22263f"]
+  };
+  return (pal[theme] || pal.forest)[step] || pal.forest[0];
+}
+
+function wrDrawPixelCloud(c, x, y, w, h, col, alpha) {
+  c.save();
+  c.globalAlpha = alpha;
+  c.fillStyle = col;
+  for (let i = 0; i < 5; i++) {
+    const bx = x + i * (w / 5);
+    const by = y + (i % 2) * (h * 0.25);
+    c.fillRect(bx | 0, by | 0, (w / 3) | 0, (h * (0.55 + (i % 3) * 0.12)) | 0);
+  }
+  c.restore();
+}
+
+function wrDrawRidge(c, w, baseY, amp, color, seed) {
+  c.fillStyle = color;
+  c.beginPath();
+  c.moveTo(0, WR.CH);
+  c.lineTo(0, baseY);
+  for (let x = 0; x <= w + 80; x += 80) {
+    const y = baseY - amp * (0.35 + wrR(seed + x * 0.07) * 0.65);
+    c.lineTo(x, y | 0);
+  }
+  c.lineTo(w, WR.CH);
+  c.closePath();
+  c.fill();
+}
+
+function wrDrawDistantBackdrop(c, w, g, theme) {
+  const upper = wrThemeShade(theme, 0);
+  const mid = wrThemeShade(theme, 1);
+  const near = wrThemeShade(theme, 2);
+  c.save();
+  c.globalAlpha = 0.38;
+  wrDrawPixelCloud(c, 48, 42, 110, 18, upper, 0.5);
+  wrDrawPixelCloud(c, 360, 30, 145, 22, upper, 0.42);
+  wrDrawPixelCloud(c, 720, 54, 130, 18, upper, 0.45);
+  c.globalAlpha = 1;
+  wrDrawRidge(c, w, 176, 46, upper, theme.length * 3);
+  wrDrawRidge(c, w, 218, 58, mid, theme.length * 7);
+  wrDrawRidge(c, w, 258, 42, near, theme.length * 11);
+  c.restore();
 }
 
 function wrDrawHills(c, w, g, cliffImg, seed, alpha) {
@@ -255,10 +308,10 @@ function wrDrawBuilding(c, sheet, x, g, seed, alpha) {
   if (alpha != null) c.globalAlpha = alpha;
   const cols = Math.max(1, (sheet.width / WR.TILE) | 0);
   const rows = Math.max(1, (sheet.height / WR.TILE) | 0);
-  const bw = [2, 3, 4, 5, 6][Math.floor(wrR(seed) * 5)] || 3;
-  const bh = [3, 4, 5, 6][Math.floor(wrR(seed + 1) * 4)] || 4;
-  const col = Math.min(Math.floor(wrR(seed + 2) * cols), cols - bw);
-  const row = Math.min(Math.floor(wrR(seed + 3) * rows), rows - bh);
+  const bw = Math.min(cols, [2, 3, 4, 5, 6][Math.floor(wrR(seed) * 5)] || 3);
+  const bh = Math.min(rows, [3, 4, 5, 6][Math.floor(wrR(seed + 1) * 4)] || 4);
+  const col = Math.max(0, Math.min(Math.floor(wrR(seed + 2) * cols), cols - bw));
+  const row = Math.max(0, Math.min(Math.floor(wrR(seed + 3) * rows), rows - bh));
   const pw = bw * WR.TILE, ph = bh * WR.TILE;
   c.drawImage(sheet, col * WR.TILE, row * WR.TILE, pw, ph, x - pw / 2, g - ph, pw, ph);
   c.restore();
@@ -309,36 +362,39 @@ function wrBuildLayer(theme, layerIdx) {
 
   if (layerIdx === 0) {
     wrDrawSky(c, w, g, cfg.skyColors, ta.tint);
-    wrDrawHills(c, w, g, cliffImg, 100, 0.35);
+    wrDrawDistantBackdrop(c, w, g, theme);
+    wrDrawHills(c, w, g, cliffImg, 100, 0.16);
   } else if (layerIdx === 1) {
     wrDrawSky(c, w, g, cfg.skyColors, null);
-    for (let i = 0; i < 28; i++) {
-      const x = i * 92 + (wrR(i * 13) * 40 | 0);
-      wrDrawTree(c, pineImg || treeImg, x, g - 20, i * 17, 1.8 + wrR(i) * 0.8);
-    }
+    wrDrawDistantBackdrop(c, w, g, theme);
     c.globalAlpha = 0.45;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
+      const x = i * 184 + (wrR(i * 13) * 42 | 0);
+      wrDrawTree(c, pineImg || treeImg, x, g - 22, i * 17, 1.45 + wrR(i) * 0.45);
+    }
+    c.globalAlpha = 0.25;
+    for (let i = 0; i < 5; i++) {
       const sheet = buildingSheets[i % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 240 + 60, g - 10, i * 23, 0.45);
+      wrDrawBuilding(c, sheet, i * 520 + 100, g - 16, i * 23, 0.28);
     }
     c.globalAlpha = 1;
   } else if (layerIdx === 2) {
     c.clearRect(0, 0, w, h);
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 6; i++) {
       const sheet = buildingSheets[i % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 180 + (wrR(i * 7) * 50 | 0), g, i * 31, 0.75);
+      wrDrawBuilding(c, sheet, i * 430 + (wrR(i * 7) * 70 | 0), g - 5, i * 31, 0.58);
     }
-    for (let i = 0; i < 18; i++) {
-      wrDrawTree(c, treeImg, i * 140 + 30, g, i * 19, 2 + wrR(i) * 0.6);
+    for (let i = 0; i < 9; i++) {
+      wrDrawTree(c, treeImg, i * 285 + 45, g, i * 19, 1.8 + wrR(i) * 0.45);
     }
   } else if (layerIdx === 3) {
     c.clearRect(0, 0, w, h);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 5; i++) {
       const sheet = buildingSheets[(i + 2) % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 160 + 20, g, i * 37, 0.9);
+      wrDrawBuilding(c, sheet, i * 500 + 80, g, i * 37, 0.7);
     }
-    for (let i = 0; i < 22; i++) {
-      wrDrawTree(c, pineImg || treeImg, i * 115 + 10, g, i * 41, 2.2 + wrR(i) * 0.8);
+    for (let i = 0; i < 10; i++) {
+      wrDrawTree(c, pineImg || treeImg, i * 250 + 25, g, i * 41, 1.9 + wrR(i) * 0.55);
     }
   } else if (layerIdx === 4) {
     c.clearRect(0, 0, w, h);
@@ -373,29 +429,27 @@ function wrBuildLayer(theme, layerIdx) {
     wrTileGround(c, w, g, groundImg, groundAlt, theme.charCodeAt(0) * 17);
   } else if (layerIdx === 6) {
     c.clearRect(0, 0, w, h);
-    for (let i = 0; i < 35; i++) {
-      wrDrawRock(c, rockImg, i * 72 + (wrR(i * 5) * 20 | 0), g + 2, i * 11, 1 + wrR(i) * 1.2);
+    for (let i = 0; i < 14; i++) {
+      wrDrawRock(c, rockImg, i * 180 + (wrR(i * 5) * 38 | 0), g + 2, i * 11, 0.9 + wrR(i) * 0.8);
     }
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 6; i++) {
       const sheet = miscSheets[i % Math.max(1, miscSheets.length)];
-      wrDrawMisc(c, sheet, i * 210 + 40, g, i * 29);
+      wrDrawMisc(c, sheet, i * 420 + 60, g, i * 29);
     }
     const wheatImg = ta.wheat ? MW.images[ta.wheat] : null;
     if (wheatImg && wheatImg.naturalWidth) {
-      for (let i = 0; i < 20; i++) {
-        wrDrawTree(c, wheatImg, i * 128 + 16, g, i * 7, 1.5);
+      for (let i = 0; i < 8; i++) {
+        wrDrawTree(c, wheatImg, i * 310 + 30, g, i * 7, 1.25);
       }
     }
   } else if (layerIdx === 7) {
     c.clearRect(0, 0, w, h);
-    const density = cfg.density || 1;
-    const spacing = Math.max(100, 170 / density);
-    for (let i = 0; i < Math.ceil(w / spacing) + 2; i++) {
-      const x = i * spacing + (wrR(i * 17) * 40 | 0);
-      wrDrawTree(c, treeImg, x, g, i * 19, 3.5 + wrR(i) * 1.5);
+    for (let i = 0; i < 7; i++) {
+      const x = i * 380 + (wrR(i * 17) * 60 | 0);
+      wrDrawTree(c, treeImg, x, g, i * 19, 2.4 + wrR(i) * 0.65);
     }
-    for (let i = 0; i < 8; i++) {
-      wrDrawTree(c, pineImg || treeImg, i * 320 + 80, g, i * 43, 4 + wrR(i));
+    for (let i = 0; i < 4; i++) {
+      wrDrawTree(c, pineImg || treeImg, i * 660 + 140, g, i * 43, 2.6 + wrR(i) * 0.6);
     }
   }
 
@@ -612,22 +666,24 @@ function renderWorldForeground(ctx, worldId, camera, time) {
   const left = vp.left;
   const w = vp.width;
   const g = WR.GROUND;
-  const treeImg = MW.images[ta.trees];
-  const pineImg = MW.images[ta.pines];
+  const rockImg = MW.images[ta.rocks];
+  const wheatImg = ta.wheat ? MW.images[ta.wheat] : null;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = 0.72;
+  ctx.globalAlpha = 0.45;
 
-  for (let i = 0; i < 6; i++) {
-    const x = left + (i / 5) * w + Math.sin(time + i) * 6;
-    wrDrawTree(ctx, pineImg || treeImg, x, g + 4, i * 13 + theme.length, 3.2 + wrR(i) * 0.8);
+  for (let i = 0; i < 10; i++) {
+    const x = left + (i / 9) * w + Math.sin(time * 0.8 + i) * 4;
+    wrDrawRock(ctx, rockImg, x, g + 5, i * 23 + theme.length, 0.65 + (i % 3) * 0.15);
   }
 
-  ctx.globalAlpha = 0.55;
-  for (let i = 0; i < 4; i++) {
-    const x = left + (i / 3) * w + Math.cos(time * 0.7 + i) * 10;
-    wrDrawTree(ctx, treeImg, x, g + 2, i * 29, 2.8 + wrR(i + 3));
+  if (wheatImg && wheatImg.naturalWidth) {
+    ctx.globalAlpha = 0.32;
+    for (let i = 0; i < 6; i++) {
+      const x = left + (i / 5) * w;
+      wrDrawTree(ctx, wheatImg, x, g + 3, i * 17, 0.85);
+    }
   }
 
   ctx.globalAlpha = 1;
