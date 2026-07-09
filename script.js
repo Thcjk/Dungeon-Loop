@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "hero-world-v107";
+const BUILD_ID = "atmosphere-v108";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
