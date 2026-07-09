@@ -302,6 +302,43 @@ function wrDrawTree(c, treeImg, x, g, seed, scale) {
   c.drawImage(treeImg, sx, treeImg.height - sh, tw, sh, x - dw / 2, g - dh, dw, dh);
 }
 
+function wrDrawTreeSilhouette(c, x, baseY, scale, theme, seed) {
+  const trunk = wrThemeShade(theme, 0);
+  const crown = wrThemeShade(theme, seed % 2 ? 1 : 2);
+  const w = 18 * scale;
+  const h = (42 + wrR(seed) * 24) * scale;
+  c.fillStyle = trunk;
+  c.fillRect((x - 3 * scale) | 0, (baseY - h * 0.52) | 0, (6 * scale) | 0, (h * 0.52) | 0);
+  c.fillStyle = crown;
+  c.fillRect((x - w * 0.44) | 0, (baseY - h) | 0, (w * 0.88) | 0, (h * 0.34) | 0);
+  c.fillRect((x - w * 0.58) | 0, (baseY - h * 0.78) | 0, (w * 1.16) | 0, (h * 0.32) | 0);
+  c.fillRect((x - w * 0.5) | 0, (baseY - h * 0.56) | 0, w | 0, (h * 0.28) | 0);
+}
+
+function wrDrawSilhouetteForest(c, w, baseY, theme, seed, count, alpha, scale) {
+  c.save();
+  c.globalAlpha = alpha;
+  const spacing = w / count;
+  for (let i = -1; i <= count + 1; i++) {
+    const x = i * spacing + wrR(seed + i * 11) * spacing * 0.65;
+    wrDrawTreeSilhouette(c, x, baseY + wrR(seed + i * 5) * 10, scale * (0.82 + wrR(seed + i) * 0.36), theme, seed + i * 17);
+  }
+  c.restore();
+}
+
+function wrDrawAssetTreeRow(c, treeImg, altImg, w, baseY, theme, seed, count, minScale, maxScale, alpha) {
+  c.save();
+  c.globalAlpha = alpha;
+  const spacing = w / count;
+  for (let i = -1; i <= count + 1; i++) {
+    const img = (i % 3 === 0 && altImg && altImg.naturalWidth) ? altImg : treeImg;
+    const x = i * spacing + wrR(seed + i * 19) * spacing * 0.62;
+    const sc = minScale + wrR(seed + i * 23) * (maxScale - minScale);
+    wrDrawTree(c, img, x, baseY + wrR(seed + i * 29) * 8, seed + i * 31, sc);
+  }
+  c.restore();
+}
+
 function wrDrawBuilding(c, sheet, x, g, seed, alpha) {
   if (!sheet || !sheet.naturalWidth) return;
   c.save();
@@ -363,38 +400,36 @@ function wrBuildLayer(theme, layerIdx) {
   if (layerIdx === 0) {
     wrDrawSky(c, w, g, cfg.skyColors, ta.tint);
     wrDrawDistantBackdrop(c, w, g, theme);
+    wrDrawSilhouetteForest(c, w, g - 44, theme, 230, 30, 0.28, 1.05);
     wrDrawHills(c, w, g, cliffImg, 100, 0.16);
   } else if (layerIdx === 1) {
     wrDrawSky(c, w, g, cfg.skyColors, null);
     wrDrawDistantBackdrop(c, w, g, theme);
-    c.globalAlpha = 0.45;
-    for (let i = 0; i < 14; i++) {
-      const x = i * 184 + (wrR(i * 13) * 42 | 0);
-      wrDrawTree(c, pineImg || treeImg, x, g - 22, i * 17, 1.45 + wrR(i) * 0.45);
-    }
+    wrDrawSilhouetteForest(c, w, g - 28, theme, 410, 24, 0.34, 1.15);
+    wrDrawAssetTreeRow(c, pineImg || treeImg, treeImg, w, g - 18, theme, 510, 20, 1.35, 1.95, 0.42);
     c.globalAlpha = 0.25;
-    for (let i = 0; i < 5; i++) {
+    const farBuildingCount = theme === "forest" ? 2 : 4;
+    for (let i = 0; i < farBuildingCount; i++) {
       const sheet = buildingSheets[i % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 520 + 100, g - 16, i * 23, 0.28);
+      wrDrawBuilding(c, sheet, i * (w / farBuildingCount) + 180, g - 18, i * 23, 0.22);
     }
     c.globalAlpha = 1;
   } else if (layerIdx === 2) {
     c.clearRect(0, 0, w, h);
-    for (let i = 0; i < 6; i++) {
+    wrDrawSilhouetteForest(c, w, g - 8, theme, 720, 18, 0.24, 1.25);
+    wrDrawAssetTreeRow(c, treeImg, pineImg, w, g - 2, theme, 820, 18, 1.85, 2.55, 0.7);
+    const midBuildingCount = theme === "forest" ? 2 : 4;
+    for (let i = 0; i < midBuildingCount; i++) {
       const sheet = buildingSheets[i % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 430 + (wrR(i * 7) * 70 | 0), g - 5, i * 31, 0.58);
-    }
-    for (let i = 0; i < 9; i++) {
-      wrDrawTree(c, treeImg, i * 285 + 45, g, i * 19, 1.8 + wrR(i) * 0.45);
+      wrDrawBuilding(c, sheet, i * (w / midBuildingCount) + 260 + (wrR(i * 7) * 60 | 0), g - 4, i * 31, theme === "forest" ? 0.42 : 0.55);
     }
   } else if (layerIdx === 3) {
     c.clearRect(0, 0, w, h);
-    for (let i = 0; i < 5; i++) {
+    wrDrawAssetTreeRow(c, pineImg || treeImg, treeImg, w, g + 1, theme, 930, 13, 2.2, 3.05, 0.72);
+    const nearBuildingCount = theme === "forest" ? 1 : 3;
+    for (let i = 0; i < nearBuildingCount; i++) {
       const sheet = buildingSheets[(i + 2) % buildingSheets.length];
-      wrDrawBuilding(c, sheet, i * 500 + 80, g, i * 37, 0.7);
-    }
-    for (let i = 0; i < 10; i++) {
-      wrDrawTree(c, pineImg || treeImg, i * 250 + 25, g, i * 41, 1.9 + wrR(i) * 0.55);
+      wrDrawBuilding(c, sheet, i * (w / nearBuildingCount) + 420, g, i * 37, theme === "forest" ? 0.38 : 0.62);
     }
   } else if (layerIdx === 4) {
     c.clearRect(0, 0, w, h);

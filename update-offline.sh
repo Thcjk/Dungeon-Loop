@@ -34,6 +34,6 @@ cp -a "$TMP"/. .
 rm -rf "$TMP"
 
 echo ""
-echo "  Update fertig! Build: miniworld-v103"
+echo "  Update fertig! Build: miniworld-v104"
 echo "  Starte mit ./play.sh"
 echo ""
