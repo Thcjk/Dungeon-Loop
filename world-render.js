@@ -93,6 +93,18 @@ function wrGradV(c, y0, y1, stops) {
   return g;
 }
 
+function wrHex(h) {
+  h = h.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function wrRgba(hex, a) {
+  const [r, g, b] = wrHex(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 function getWorldPal(theme) {
   return WORLD_PAL[theme] || WORLD_PAL.forest;
 }
@@ -111,16 +123,26 @@ function wrSoftBlob(c, x, y, r, color) {
   c.fill();
 }
 
+function pal_trunk() {
+  return ["#241810", "#3d2c1a"];
+}
+
 function wrTreeCluster(c, x, baseY, scale, tones) {
   const dark = tones[0];
   const base = tones[1] || tones[0];
   const light = tones[2] || base;
-  const trunkH = 14 * scale;
-  const trunkW = Math.max(2, 3.5 * scale);
-  c.fillStyle = dark;
-  c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, trunkW | 0, (trunkH + 2) | 0);
   const r = 12 * scale;
-  const cy = baseY - trunkH - r * 0.35;
+  const trunkH = 12 * scale;
+  const trunkW = Math.max(2, 3 * scale);
+  const trunkCol = pal_trunk(tones);
+  // sichtbarer Stamm mit heller Kante + Wurzelansatz
+  c.fillStyle = trunkCol[0];
+  c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, trunkW | 0, (trunkH + 2) | 0);
+  c.fillStyle = trunkCol[1];
+  c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, Math.max(1, trunkW * 0.35) | 0, (trunkH + 2) | 0);
+  c.fillStyle = trunkCol[0];
+  c.fillRect((x - trunkW) | 0, (baseY - 1) | 0, (trunkW * 2) | 0, 2);
+  const cy = baseY - trunkH - r * 1.15;
   // volle, hohe Krone (mehrlagig für dichten Wald)
   wrSoftBlob(c, x - r * 0.85, cy + r * 0.35, r * 1.0, dark);
   wrSoftBlob(c, x + r * 0.85, cy + r * 0.3, r * 1.05, dark);
@@ -348,6 +370,36 @@ function wrDrawSky(ctx, pal, time) {
   ctx.restore();
 }
 
+function wrDepthHaze(ctx, pal, topY, alpha) {
+  const grd = ctx.createLinearGradient(0, topY, 0, WR.GROUND + 4);
+  grd.addColorStop(0, wrRgba(pal.sky[2], alpha));
+  grd.addColorStop(1, wrRgba(pal.sky[2], 0));
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, topY, WR.CW, WR.GROUND - topY + 4);
+}
+
+function wrGodRays(ctx, pal, time) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const cols = [WR.CW * 0.28, WR.CW * 0.55, WR.CW * 0.78];
+  cols.forEach((cx, i) => {
+    const sway = Math.sin(time * 0.18 + i * 1.3) * 12;
+    const a = 0.05 + (Math.sin(time * 0.25 + i) * 0.5 + 0.5) * 0.05;
+    const grd = ctx.createLinearGradient(0, 0, 0, WR.GROUND);
+    grd.addColorStop(0, wrRgba(pal.accent, a));
+    grd.addColorStop(1, wrRgba(pal.accent, 0));
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(cx - 16 + sway, -10);
+    ctx.lineTo(cx + 16 + sway, -10);
+    ctx.lineTo(cx + 46 + sway, WR.GROUND);
+    ctx.lineTo(cx - 6 + sway, WR.GROUND);
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
 function initWorldAmbient(world) {
   WR.ambient = [];
   const pal = getWorldPal(world?.theme || "forest");
@@ -451,6 +503,12 @@ function wrDrawLighting(ctx, pal) {
   light.addColorStop(0.6, "rgba(0,0,0,0)");
   ctx.fillStyle = light;
   ctx.fillRect(0, 0, WR.CW, WR.GROUND);
+  // weiches Bodenlicht-Pool auf der Kampfbahn (Stimmung + Fokus)
+  const pool = ctx.createRadialGradient(WR.CW / 2, WR.GROUND - 6, 8, WR.CW / 2, WR.GROUND - 6, 240);
+  pool.addColorStop(0, wrRgba(pal.accent, 0.12));
+  pool.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = pool;
+  ctx.fillRect(0, WR.GROUND - 90, WR.CW, 130);
   ctx.restore();
   // sanfte Vignette für Fokus auf die Kampfbahn
   ctx.save();
@@ -479,10 +537,13 @@ function renderWorld(ctx, worldId, camera, time) {
   ctx.imageSmoothingEnabled = true;
   wrDrawSky(ctx, pal, time);
   wrTile(ctx, L.far, wrScroll(cam, 1));
+  wrDepthHaze(ctx, pal, WR.GROUND - 150, 0.45);
   wrTile(ctx, L.mid, wrScroll(cam, 2));
+  wrDepthHaze(ctx, pal, WR.GROUND - 120, 0.24);
   wrTile(ctx, L.near, wrScroll(cam, 3));
   wrTile(ctx, L.ground, wrScroll(cam, 4));
   wrTile(ctx, L.detail, wrScroll(cam, 5));
+  wrGodRays(ctx, pal, time);
   wrRenderAmbient(ctx, pal);
   wrDrawLighting(ctx, pal);
   ctx.restore();
