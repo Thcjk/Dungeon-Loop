@@ -84,23 +84,23 @@
   const THEME_STYLE = {
     forest: {
       shadow: "rgba(3,12,6,0.52)", contact: "rgba(18,42,24,0.42)",
-      tint: "#2d6a4f", tintA: 0.13, fog: "rgba(8,28,18,0.55)", rim: null
+      tint: "#2d6a4f", tintA: 0.04, fog: "rgba(8,28,18,0.55)", rim: null
     },
     swamp: {
       shadow: "rgba(6,10,4,0.58)", contact: "rgba(30,45,20,0.38)",
-      tint: "#354828", tintA: 0.16, fog: "rgba(15,25,10,0.55)", rim: "rgba(82,183,136,0.18)"
+      tint: "#354828", tintA: 0.05, fog: "rgba(15,25,10,0.55)", rim: "rgba(82,183,136,0.12)"
     },
     frost: {
       shadow: "rgba(8,16,32,0.52)", contact: "rgba(120,160,200,0.28)",
-      tint: "#85c1e9", tintA: 0.12, fog: "rgba(160,200,240,0.35)", rim: "rgba(212,232,248,0.2)"
+      tint: "#85c1e9", tintA: 0.04, fog: "rgba(160,200,240,0.35)", rim: "rgba(212,232,248,0.12)"
     },
     fire: {
       shadow: "rgba(22,5,0,0.62)", contact: "rgba(160,50,12,0.48)",
-      tint: "#922b21", tintA: 0.19, fog: "rgba(80,20,5,0.45)", rim: "rgba(243,156,18,0.25)"
+      tint: "#922b21", tintA: 0.06, fog: "rgba(80,20,5,0.45)", rim: "rgba(243,156,18,0.14)"
     },
     ruins: {
       shadow: "rgba(10,8,16,0.52)", contact: "rgba(40,36,48,0.36)",
-      tint: "#5a6068", tintA: 0.11, fog: "rgba(25,20,35,0.45)", rim: "rgba(241,196,15,0.14)"
+      tint: "#5a6068", tintA: 0.04, fog: "rgba(25,20,35,0.45)", rim: "rgba(241,196,15,0.1)"
     }
   };
 

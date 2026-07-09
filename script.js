@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "miniworld-v102";
+const BUILD_ID = "miniworld-v103";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -743,6 +743,17 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
   drawCharSprite(c, sprite, x, y, flip, ENEMY_PIXEL);
   applyWorldCharTint(c, x, y, w, h, world);
   drawCharFeetFog(c, x, y, w, h, world);
+}
+
+function drawEnemyReadabilityBacking(c, bounds, boss) {
+  c.save();
+  c.globalAlpha = 1;
+  c.globalCompositeOperation = "source-over";
+  c.fillStyle = boss ? "rgba(8,6,4,0.92)" : "rgba(4,5,5,0.86)";
+  c.beginPath();
+  c.ellipse(bounds.cx, bounds.y + bounds.h * 0.52, bounds.w * 0.48, bounds.h * 0.47, 0, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
 }
 
 function getEnemyDrawX(e) {
@@ -3454,15 +3465,24 @@ function render() {
     const bob = 0;
     const drawX = getEnemyDrawX(e);
     const vb = getEnemyVisualBounds(e, drawX);
+    drawEnemyReadabilityBacking(ctx, vb, e.isBoss);
     ctx.save();
-    if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
     if (e.attackWindup > 0) {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
     drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
+    if (e.hitFlash > 0) {
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = 0.26;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(vb.x - 2, vb.y - 2, vb.w + 4, vb.h + 4);
+    }
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
     ctx.restore();
     const barW = Math.min(vb.w, e.isBoss ? 96 : 56);
     const barX = vb.x + (vb.w - barW) / 2;
