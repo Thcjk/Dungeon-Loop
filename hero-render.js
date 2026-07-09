@@ -1,21 +1,27 @@
-/* Art Remake v2 – Premium Hero Canvas Renderer (gameplay hooks unchanged) */
+/* Dungeon Loop – Hero Renderer (Redesign nach Design-Vorlage)
+   Ziel: kleiner, schlanker, klar lesbar. 3 Klassen mit eigener Silhouette,
+   detaillierte Waffen, helle Akzente + Outline für Kontrast auf dunklem Grund.
+   Gameplay-Hooks (HR.draw, HR.drawHeroCard, updateAnim, Maße) bleiben stabil. */
+
 const HR = {
-  W: 32,
-  H: 42,
-  /** Unterkante der Füße in lokalen Koordinaten (y=0 = Boden) */
-  FOOT_Y: 4,
-  DISPLAY_SCALE: 1.05,
+  W: 22,
+  H: 30,
+  /** Fuß-Unterkante in lokalen Koordinaten (y=0 = Bodenlinie) */
+  FOOT_Y: 2,
+  DISPLAY_SCALE: 1.0,
   MENU_FILL: 0.82,
   ANIM: {
-    idle: { n: 4, t: 0.28 },
-    walk: { n: 4, t: 0.1 },
-    run: { n: 4, t: 0.08 },
+    idle: { n: 4, t: 0.3 },
+    walk: { n: 4, t: 0.12 },
+    run: { n: 4, t: 0.09 },
     attack: { n: 3, t: 0.08 },
-    cast: { n: 3, t: 0.09 },
+    cast: { n: 3, t: 0.1 },
     hurt: { n: 1, t: 0.14 },
     death: { n: 2, t: 0.22 }
   }
 };
+
+const HERO_OUTLINE = "#0a090d";
 
 HR.displayW = () => HR.W;
 HR.displayH = () => HR.H;
@@ -46,330 +52,294 @@ HR.updateAnim = (h, dt, moving) => {
   }
 };
 
-function px(ctx, x, y, w, h, color) {
+function hpx(ctx, x, y, w, h, color) {
+  if (!color) return;
   ctx.fillStyle = color;
   ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
-function out(ctx, x, y, w, h, color) {
-  px(ctx, x - 1, y, 1, h, "#09070b");
-  px(ctx, x + w, y, 1, h, "#09070b");
-  px(ctx, x, y - 1, w, 1, "#09070b");
-  px(ctx, x, y + h, w, 1, "#09070b");
-  px(ctx, x, y, w, h, color);
+function hout(ctx, x, y, w, h, color) {
+  hpx(ctx, x - 1, y, 1, h, HERO_OUTLINE);
+  hpx(ctx, x + w, y, 1, h, HERO_OUTLINE);
+  hpx(ctx, x, y - 1, w, 1, HERO_OUTLINE);
+  hpx(ctx, x, y + h, w, 1, HERO_OUTLINE);
+  hpx(ctx, x, y, w, h, color);
 }
 
-function drawShadow(ctx, cx, groundY, scale) {
+function heroShadow(ctx, cx, groundY, scale) {
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.52)";
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.beginPath();
-  ctx.ellipse(cx, groundY + 2 * scale, 15 * scale, 4.5 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, groundY + 2 * scale, 10 * scale, 3 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath();
-  ctx.ellipse(cx, groundY + 1 * scale, 10 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, groundY + 1 * scale, 6 * scale, 1.6 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
 
-function drawBase(ctx, c, frame, attacking) {
-  const bob = frame === 1 ? -1 : frame === 3 ? 1 : 0;
-  const step = frame % 2 === 0 ? 0 : 1;
-  const runLean = frame === 2 ? -1 : 0;
-
-  out(ctx, -7, -20 + bob, 6, 14, c.leg);
-  out(ctx, 2, -20 - bob, 6, 14, c.leg);
-  px(ctx, -9, -7 + bob, 9, 3, c.boot);
-  px(ctx, 1, -7 - bob, 9, 3, c.boot);
-  px(ctx, -8, -5 + bob, 2, 2, c.bootHi || c.boot);
-  px(ctx, 2, -5 - bob, 2, 2, c.bootHi || c.boot);
-
-  out(ctx, -9, -25, 18, 5, c.belt);
-  px(ctx, -2, -25, 4, 5, c.gold);
-  px(ctx, -1, -24, 2, 2, c.goldHi || "#fff8d0");
-
-  out(ctx, -11, -39 + runLean, 22, 16, c.body);
-  px(ctx, -8, -36 + runLean, 16, 3, c.light);
-  px(ctx, -10, -28 + runLean, 20, 3, c.dark);
-  px(ctx, -9, -33 + runLean, 3, 8, c.dark);
-
-  out(ctx, -15, -38 + runLean, 6, 8, c.shoulder);
-  out(ctx, 10, -38 + runLean, 6, 8, c.shoulder);
-  px(ctx, -14, -37 + runLean, 4, 2, c.light);
-  px(ctx, 11, -37 + runLean, 4, 2, c.light);
-
-  out(ctx, -3, -43 + runLean, 6, 4, c.skin);
-  out(ctx, -7, -53 + runLean, 14, 12, c.skin);
-  px(ctx, -6, -51 + runLean, 4, 2, c.skinHi || c.skin);
-  px(ctx, -7, -55 + runLean, 14, 4, c.hair);
-  px(ctx, -8, -51 + runLean, 3, 5, c.hair);
-  px(ctx, 5, -51 + runLean, 3, 5, c.hair);
-  px(ctx, -4, -49 + runLean, 2, 2, "#17100d");
-  px(ctx, 3, -49 + runLean, 2, 2, "#17100d");
-
-  const armY = attacking ? -38 : -35;
-  out(ctx, -18, armY + step, 5, 13, c.arm);
-  out(ctx, 13, armY - step, 5, 13, c.arm);
-  px(ctx, -18, armY + 13 + step, 5, 3, c.skin);
-  px(ctx, 13, armY + 13 - step, 5, 3, c.skin);
-
-  return {
-    leftHand: { x: -16, y: armY + 13 + step },
-    rightHand: { x: 16, y: armY + 13 - step }
-  };
+/** Pose je Anim-Zustand (uy = Oberkörper-Hub, step = Beinversatz, lean = Neigung) */
+function heroPose(state, frame) {
+  const p = { uy: 0, step: 0, lean: 0, arm: 0 };
+  if (state === "run" || state === "walk") {
+    p.step = frame % 2 === 0 ? -1 : 1;
+    p.uy = frame === 1 || frame === 3 ? -1 : 0;
+    p.lean = 1;
+    p.arm = p.step;
+  } else if (state === "idle") {
+    p.uy = frame === 1 || frame === 2 ? -1 : 0;
+  }
+  return p;
 }
 
-function drawWarrior(ctx, frame, attacking, attackFrame) {
-  const c = {
-    skin: "#d0a070", skinHi: "#e8c090", hair: "#2b211c",
-    body: "#5a6270", light: "#b8c4d0", dark: "#2a2e34",
-    shoulder: "#707a88", arm: "#646e7c",
-    leg: "#484f58", boot: "#1e1816", bootHi: "#3a3028",
-    belt: "#5c3d25", gold: "#d3a84d", goldHi: "#f5d878"
-  };
+/* ---------- gemeinsame Körperteile (lokal: y=0 = Boden, oben = negativ) ---------- */
 
-  out(ctx, -13, -40, 26, 24, "#4a1820");
-  px(ctx, -10, -38, 20, 20, "#7a2530");
-  px(ctx, -8, -36, 4, 14, "#5a1820");
+function drawLegs(ctx, c, p) {
+  const ll = p.step < 0 ? 1 : 0;
+  const rl = p.step > 0 ? 1 : 0;
+  hout(ctx, -4, -11 + ll, 3, 7, c.leg);
+  hout(ctx, 1, -11 + rl, 3, 7, c.leg);
+  hout(ctx, -5, -4 + ll, 4, 3, c.boot);
+  hout(ctx, 1, -4 + rl, 4, 3, c.boot);
+  hpx(ctx, -5, -4 + ll, 4, 1, c.bootHi || c.boot);
+  hpx(ctx, 1, -4 + rl, 4, 1, c.bootHi || c.boot);
+}
 
-  const hands = drawBase(ctx, c, frame, attacking);
+function drawTorso(ctx, c, p) {
+  const uy = p.uy;
+  hout(ctx, -4, -20 + uy, 8, 9, c.body);
+  hpx(ctx, -3 + p.lean, -19 + uy, 6, 2, c.light);
+  hpx(ctx, -4, -14 + uy, 8, 2, c.dark);
+  hpx(ctx, -4, -12 + uy, 8, 1, c.belt);
+  hpx(ctx, -1, -12 + uy, 2, 1, c.beltHi || c.belt);
+}
 
-  out(ctx, -26, -40, 11, 17, "#4a3020");
-  px(ctx, -24, -38, 7, 13, "#a07840");
-  px(ctx, -22, -35, 4, 7, "#e8c860");
-  px(ctx, -23, -32, 2, 3, "#fff0a0");
-  px(ctx, -25, -28, 1, 8, "#6a5030");
+function drawBackArm(ctx, c, p) {
+  const uy = p.uy;
+  const a = p.arm;
+  hout(ctx, -6, -19 + uy - a, 2, 7, c.armDark || c.arm);
+  hpx(ctx, -6, -13 + uy - a, 2, 2, c.skin);
+}
 
-  const swordAngles = [-0.45, -0.78, -1.05];
+function drawFrontArm(ctx, c, p) {
+  const uy = p.uy;
+  const a = p.arm;
+  hout(ctx, 4, -19 + uy + a, 2, 7, c.arm);
+  hpx(ctx, 4, -13 + uy + a, 2, 2, c.skin);
+  return { x: 5, y: -12 + uy + a };
+}
+
+function drawHeadBase(ctx, c, p) {
+  const uy = p.uy;
+  const hx = p.lean;
+  hout(ctx, -3 + hx, -26 + uy, 5, 5, c.skin);
+  hpx(ctx, -2 + hx, -25 + uy, 2, 1, c.skinHi || c.skin);
+  hpx(ctx, 0 + hx, -24 + uy, 1, 1, c.eye || "#241611");
+  hpx(ctx, 2 + hx, -24 + uy, 1, 1, c.eye || "#241611");
+}
+
+/* ---------------------------- KRIEGER ---------------------------- */
+
+const WARRIOR_C = {
+  skin: "#dcae80", skinHi: "#f2cc98", eye: "#2a1a12",
+  body: "#8a95a6", light: "#cfd9e6", dark: "#3a414c",
+  arm: "#77828f", armDark: "#4c5560",
+  leg: "#4a515b", boot: "#241a14", bootHi: "#4a3728",
+  belt: "#6d4a2a", beltHi: "#e8c24e"
+};
+
+function drawShield(ctx, p) {
+  const uy = p.uy;
+  hout(ctx, -9, -19 + uy, 6, 11, "#6e4a2a");
+  hpx(ctx, -8, -18 + uy, 4, 9, "#8a5f36");
+  hpx(ctx, -7, -17 + uy, 2, 6, "#a5764a");
+  hpx(ctx, -9, -19 + uy, 6, 1, "#c7cdd6");
+  hpx(ctx, -9, -9 + uy, 6, 1, "#c7cdd6");
+  hout(ctx, -7, -15 + uy, 2, 2, "#e8c24e");
+}
+
+function drawSword(ctx, hand, attacking, af) {
+  const ang = attacking ? [-1.05, -0.25, 0.6][af] ?? -0.5 : -0.5;
   ctx.save();
-  ctx.translate(hands.rightHand.x, hands.rightHand.y);
-  ctx.rotate(attacking ? (swordAngles[attackFrame] ?? -1.05) : -0.45);
-  px(ctx, 0, -21, 3, 21, "#c8d4e0");
-  px(ctx, 1, -19, 1, 15, "#ffffff");
-  px(ctx, -1, -14, 1, 10, "#e8f0ff");
-  px(ctx, -5, -3, 11, 3, "#c89848");
-  px(ctx, -4, -2, 9, 1, "#f0d878");
-  px(ctx, 1, 0, 2, 7, "#3a2418");
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(ang);
+  hpx(ctx, -1, 0, 2, 4, "#5a3a1e");
+  hpx(ctx, -1, 1, 1, 2, "#7a4e28");
+  hpx(ctx, -3, -1, 6, 2, "#e8c24e");
+  hpx(ctx, -3, -1, 6, 1, "#fff0b0");
+  hpx(ctx, -1, -14, 2, 13, "#b3bdca");
+  hpx(ctx, 0, -14, 1, 13, "#eef4ff");
+  hpx(ctx, -1, -14, 1, 4, "#7d8794");
+  hpx(ctx, 0, -14, 1, 1, "#ffffff");
   ctx.restore();
 }
 
-function getBowPull(attacking, attackFrame, attackAnim) {
-  if (!attacking) return { pull: 0, releasing: false, releaseAmt: 0 };
-  const phasePull = [0.08, 0.58, 0.96][attackFrame] ?? 0.96;
-  const releasing = attackFrame === 2;
-  const releaseAmt = releasing ? Math.max(0, 1 - (attackAnim || 0) / 0.12) : 0;
-  const pull = releasing ? phasePull * (1 - releaseAmt * 0.9) : phasePull;
-  return { pull, releasing, releaseAmt };
+function drawWarrior(ctx, p, attacking, af, casting) {
+  const c = WARRIOR_C;
+  drawBackArm(ctx, c, p);
+  drawLegs(ctx, c, p);
+  drawTorso(ctx, c, p);
+  // rotes Wappen-Tabard über der Brust
+  hpx(ctx, -2, -19 + p.uy, 4, 7, "#a8302f");
+  hpx(ctx, -1, -18 + p.uy, 2, 5, "#c8413c");
+  // Schulterplatten mit hellen Kanten
+  hout(ctx, -6, -21 + p.uy, 3, 3, "#9aa6b4");
+  hout(ctx, 3, -21 + p.uy, 3, 3, "#9aa6b4");
+  hpx(ctx, -6, -21 + p.uy, 3, 1, "#dbe4ef");
+  hpx(ctx, 3, -21 + p.uy, 3, 1, "#dbe4ef");
+  drawHeadBase(ctx, c, p);
+  // Helm mit Nasenschutz + heller Kante
+  hpx(ctx, -3 + p.lean, -27 + p.uy, 5, 2, "#6d7885");
+  hpx(ctx, -3 + p.lean, -27 + p.uy, 5, 1, "#c2ccd8");
+  hpx(ctx, -1 + p.lean, -25 + p.uy, 1, 3, "#8b96a3");
+  drawShield(ctx, p);
+  const hand = drawFrontArm(ctx, c, p);
+  drawSword(ctx, hand, attacking && !casting, af);
 }
 
-function drawBow(ctx, attacking, attackFrame, attackAnim) {
-  const { pull, releasing, releaseAmt } = getBowPull(attacking, attackFrame, attackAnim);
-  const bowLift = attacking ? [-0.5, -2, 0.5][attackFrame] ?? 0 : 0;
-  const limbFlex = pull * 6;
-  const gripX = 18;
-  const gripY = -34 + bowLift;
+/* ---------------------------- WALDLÄUFER ---------------------------- */
 
+const RANGER_C = {
+  skin: "#cf9d6f", skinHi: "#e6b88a", eye: "#221a12",
+  body: "#3c6b46", light: "#6fae70", dark: "#20402a",
+  arm: "#3a5f42", armDark: "#233f2b",
+  leg: "#3a5233", boot: "#22190f", bootHi: "#3d2c18",
+  belt: "#6d4626", beltHi: "#cbb98a"
+};
+
+function drawQuiver(ctx, p) {
+  const uy = p.uy;
+  hout(ctx, 3, -20 + uy, 3, 8, "#5a3f24");
+  hpx(ctx, 4, -21 + uy, 1, 2, "#cbb98a");
+  hpx(ctx, 5, -22 + uy, 1, 3, "#cbb98a");
+  hpx(ctx, 4, -22 + uy, 1, 1, "#9aa25c");
+  hpx(ctx, 5, -23 + uy, 1, 1, "#9aa25c");
+}
+
+function drawBow(ctx, hand, attacking, af) {
+  const pull = attacking ? [0.18, 0.72, 0.95][af] ?? 0.4 : 0.16;
   ctx.save();
-  ctx.translate(gripX, gripY);
-
-  // Bogenholz – obere/untere Limbs biegen sich beim Spannen
-  ctx.strokeStyle = "#9a6530";
-  ctx.lineWidth = 3;
+  ctx.translate(hand.x + 2, hand.y - 1);
+  ctx.strokeStyle = "#8a5a2c";
+  ctx.lineWidth = 1.5;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(0, -14);
-  ctx.quadraticCurveTo(8 + limbFlex * 0.35, -4, 1, 0);
-  ctx.stroke();
-  ctx.beginPath();
+  ctx.moveTo(0, -9);
+  ctx.quadraticCurveTo(6, -4, 1, 0);
   ctx.moveTo(1, 0);
-  ctx.quadraticCurveTo(8 - pull * 2.5, 4, 0, 14);
+  ctx.quadraticCurveTo(6, 4, 0, 9);
   ctx.stroke();
-
-  // Griff
-  px(ctx, -2, -3, 4, 6, "#5c3a1e");
-  px(ctx, -1, -2, 2, 4, "#7a4e28");
-
-  // Sehne – zieht beim Spannen deutlich nach hinten
-  const stringX = -pull * 15;
-  ctx.strokeStyle = "#f0e6cc";
+  hpx(ctx, -1, -1, 2, 3, "#a5764a");
+  const sx = -pull * 8;
+  ctx.strokeStyle = "#efe4c8";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, -14);
-  ctx.quadraticCurveTo(stringX, 0, 0, 14);
+  ctx.moveTo(0, -9);
+  ctx.quadraticCurveTo(sx, 0, 0, 9);
   ctx.stroke();
-
-  // Eingehakter Pfeil (dünner Holzstiel + Eisenspitze)
-  const showArrow = pull > 0.18 && (!releasing || releaseAmt < 0.55);
-  if (showArrow) {
-    const fade = releasing ? Math.max(0, 1 - releaseAmt * 1.8) : 1;
-    ctx.globalAlpha = fade;
-    const ax = stringX - 11;
-    px(ctx, ax, 0, 10, 1, "#b8894a");
-    px(ctx, ax + 1, -1, 9, 3, "#c49452");
-    px(ctx, ax + 9, -1, 3, 3, "#8a949c");
-    px(ctx, ax + 11, 0, 2, 1, "#c8d0d8");
-    px(ctx, ax - 2, -1, 2, 3, "#6a9a58");
-    ctx.globalAlpha = 1;
+  if (pull > 0.22) {
+    hpx(ctx, sx - 6, -1, 8, 1, "#c49452");
+    hpx(ctx, sx + 2, -1, 2, 2, "#c8d0d8");
+    hpx(ctx, sx - 6, -1, 2, 1, "#7fae5c");
   }
-
-  // Loslassen-Blitz
-  if (releasing && releaseAmt < 0.65) {
-    const flash = 1 - releaseAmt / 0.65;
-    px(ctx, 2, -2, 8 + flash * 10, 2, `rgba(255,245,180,${flash * 0.85})`);
-    px(ctx, 10 + flash * 6, -1, 4, 2, `rgba(255,255,220,${flash * 0.55})`);
+  if (attacking && af === 2) {
+    hpx(ctx, 2, -1, 7, 1, "rgba(255,245,190,0.8)");
   }
-
   ctx.restore();
-  return { gripX, gripY, pull, stringX: gripX + stringX, stringY: gripY };
 }
 
-function drawRangerBowArms(ctx, c, bowPose, frame) {
-  if (!bowPose || bowPose.pull < 0.04) return;
-  const step = frame % 2 === 0 ? 0 : 1;
-  const { gripX, gripY, pull, stringX, stringY } = bowPose;
-
-  // Linker Arm am Bogengriff
-  px(ctx, gripX - 8, gripY - 5, 8, 8, c.body);
-  out(ctx, gripX - 6, gripY - 4, 5, 11, c.arm);
-  px(ctx, gripX - 5, gripY + 7, 4, 3, c.skin);
-
-  // Rechter Arm zieht die Sehne zurück
-  const handX = stringX - 3;
-  const handY = stringY + 1 + step * 0.5;
-  px(ctx, handX - 2, handY - 8, 7, 10, c.body);
-  out(ctx, handX - 1, handY - 6, 5, 12, c.arm);
-  px(ctx, handX, handY + 5, 4, 3, c.skin);
-
-  // Spann-Muskelspannung / Sehnenhand
-  if (pull > 0.35) {
-    px(ctx, handX - 1, handY + 2, 3, 2, c.skin);
-  }
+function drawRanger(ctx, p, attacking, af, casting) {
+  const c = RANGER_C;
+  drawQuiver(ctx, p);
+  drawBackArm(ctx, c, p);
+  drawLegs(ctx, c, p);
+  drawTorso(ctx, c, p);
+  // Lederwams-Riemen + Gürteltasche (beige Akzente)
+  hpx(ctx, -3 + p.lean, -19 + p.uy, 1, 7, "#8a6a3c");
+  hpx(ctx, -4, -12 + p.uy, 2, 2, "#cbb98a");
+  drawHeadBase(ctx, c, p);
+  // Kapuze über dem Kopf
+  hout(ctx, -4 + p.lean, -27 + p.uy, 7, 4, "#3a5f3f");
+  hpx(ctx, -3 + p.lean, -26 + p.uy, 5, 1, "#6fae70");
+  hpx(ctx, -4 + p.lean, -24 + p.uy, 2, 3, "#274a30");
+  hpx(ctx, -3 + p.lean, -23 + p.uy, 5, 1, "#20402a");
+  const hand = drawFrontArm(ctx, c, p);
+  drawBow(ctx, hand, attacking && !casting, af);
 }
 
-function drawRanger(ctx, frame, attacking, attackFrame, attackAnim) {
-  const c = {
-    skin: "#c9976d", skinHi: "#ddb088", hair: "#241c16",
-    body: "#2a5038", light: "#6a9a62", dark: "#182820",
-    shoulder: "#3d6848", arm: "#4a7050",
-    leg: "#3a5032", boot: "#1a1410", bootHi: "#3a3028",
-    belt: "#6d4828", gold: "#c99b4d"
-  };
+/* ---------------------------- MAGIER ---------------------------- */
 
-  out(ctx, -15, -41, 6, 20, "#3a2818");
-  px(ctx, -14, -44, 4, 16, "#5a4028");
-  px(ctx, -13, -42, 1, 4, "#d8c080");
-  px(ctx, -12, -40, 1, 5, "#d8c080");
-  px(ctx, -11, -38, 1, 4, "#d8c080");
+const MAGE_C = {
+  skin: "#d3a37c", skinHi: "#eabb90", eye: "#241a30",
+  body: "#5a3aa0", light: "#9a78e0", dark: "#2c1c50",
+  arm: "#4c2f88", armDark: "#2a1a52",
+  leg: "#3a2668", boot: "#211636", bootHi: "#3a2a58",
+  belt: "#c9a24a", beltHi: "#f0d284"
+};
 
-  drawBase(ctx, c, frame, attacking);
-
-  out(ctx, -10, -58, 20, 10, "#1a3828");
-  px(ctx, -7, -56, 14, 6, "#4a8058");
-  px(ctx, -5, -54, 10, 2, "#2a5038");
-
-  const bowPose = drawBow(ctx, attacking, attackFrame, attackAnim);
-  if (attacking) drawRangerBowArms(ctx, c, bowPose, frame);
+function drawRobeSkirt(ctx, c, p) {
+  const uy = p.uy;
+  hout(ctx, -5, -12, 10, 9, c.body);
+  hpx(ctx, -4, -11, 8, 2, c.dark);
+  hpx(ctx, -5, -5, 10, 2, c.light);
+  hpx(ctx, -1, -12, 2, 9, "#2a1a48");
 }
 
-function drawStaff(ctx, attacking, attackFrame) {
-  const staffAngles = [0.05, -0.22, -0.5];
-  const angle = attacking ? (staffAngles[attackFrame] ?? -0.5) : 0.05;
-  const glowLift = attacking ? attackFrame * -2 : 0;
-
+function drawStaff(ctx, hand, attacking, af, casting) {
+  const ang = attacking ? [-0.15, -0.45, -0.78][af] ?? -0.4 : 0.02;
   ctx.save();
-  ctx.translate(20, -31 + glowLift);
-  ctx.rotate(angle);
-  px(ctx, 0, -25, 3, 30, "#74502f");
-
-  const orbW = attacking ? [11, 13, 15][attackFrame] ?? 15 : 11;
-  const orbH = attacking ? [8, 10, 12][attackFrame] ?? 12 : 8;
-  out(ctx, -Math.floor(orbW / 2), -32 - (attacking ? attackFrame : 0), orbW, orbH, "#80dcff");
-  px(ctx, -3, -29 - (attacking ? attackFrame : 0), 7, 4, "#e4fbff");
-
-  if (attacking && attackFrame === 2) {
-    px(ctx, -8, -36, 4, 4, "#c8f0ff");
-    px(ctx, 6, -34, 3, 3, "#ffffff");
-  }
-  ctx.restore();
-}
-
-function drawMage(ctx, frame, attacking, attackFrame) {
-  const c = {
-    skin: "#d0a17a", skinHi: "#e8b890", hair: "#33254a",
-    body: "#4a2878", light: "#9870d8", dark: "#241838",
-    shoulder: "#603898", arm: "#6840a0",
-    leg: "#342058", boot: "#1a1028", bootHi: "#2a2040",
-    belt: "#a77d3b", gold: "#d8b25d"
-  };
-
-  out(ctx, -14, -35, 28, 26, "#3a2060");
-  px(ctx, -10, -32, 20, 4, "#8868c8");
-  px(ctx, -4, -34, 8, 24, "#1a1030");
-  px(ctx, -2, -30, 4, 3, "#b898f0");
-
-  drawBase(ctx, c, frame, attacking);
-
-  out(ctx, -11, -59, 22, 10, "#281848");
-  px(ctx, -6, -63, 12, 6, "#5030a0");
-  px(ctx, -3, -61, 6, 2, "#8060d0");
-
-  drawStaff(ctx, attacking, attackFrame);
-
-  ctx.save();
-  ctx.globalAlpha = attacking ? [0.65, 0.85, 1][attackFrame] ?? 1 : 0.5;
-  ctx.shadowColor = "#a080ff";
-  ctx.shadowBlur = attacking ? 8 : 4;
-  px(ctx, 24, -56, 3, 3, "#d4a8ff");
-  px(ctx, 15, -61, 2, 2, "#8bd8ff");
-  px(ctx, 27, -43, 2, 2, "#ffffff");
-  if (attacking && attackFrame >= 1) {
-    px(ctx, 21, -49, 2, 2, "#ffffff");
-    px(ctx, 29, -59, 2, 2, "#b8e8ff");
-    px(ctx, 18, -44, 3, 3, "#e8d0ff");
-  }
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-function drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnim, casting) {
-  const atkFrame = attacking ? attackFrame : 0;
-  if (casting) {
-    if (classKey === "ranger") drawRanger(ctx, frame, false, 0, 0);
-    else if (classKey === "mage") drawMage(ctx, frame, false, 0);
-    else drawWarrior(ctx, frame, false, 0);
-    drawCastGlow(ctx, classKey, frame);
-    return;
-  }
-  if (classKey === "ranger") drawRanger(ctx, frame, attacking, atkFrame, attackAnim);
-  else if (classKey === "mage") drawMage(ctx, frame, attacking, atkFrame);
-  else drawWarrior(ctx, frame, attacking, atkFrame);
-}
-
-function drawCastGlow(ctx, classKey, frame) {
-  const pulse = frame === 1 ? 1 : frame === 2 ? 0.85 : 0.65;
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(ang);
+  hpx(ctx, 0, -3, 2, 15, "#6e4a28");
+  hpx(ctx, 0, -3, 1, 15, "#8a5f36");
+  const active = attacking || casting;
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = 0.55 * pulse;
-  if (classKey === "mage") {
-    px(ctx, 22, -58, 4, 4, "#e8d0ff");
-    px(ctx, 18, -52, 6, 6, "#b388ff");
-    px(ctx, 14, -46, 8, 8, "#7c4dff");
-    px(ctx, 10, -40, 4, 4, "#ffffff");
-    px(ctx, -8, -44, 3, 3, "#8bd8ff");
-    px(ctx, 12, -36, 2, 2, "#ffffff");
-  } else if (classKey === "ranger") {
-    px(ctx, 20, -48, 3, 3, "#a8ffb0");
-    px(ctx, 24, -52, 4, 4, "#6ecf78");
-    px(ctx, 28, -46, 2, 2, "#ffffff");
-    px(ctx, 16, -42, 2, 2, "#d4ffb8");
-  } else {
-    px(ctx, -20, -46, 4, 4, "#ffd080");
-    px(ctx, -16, -50, 5, 5, "#f0a030");
-    px(ctx, 12, -52, 3, 8, "#e8f0ff");
-    px(ctx, 13, -54, 1, 4, "#ffffff");
-  }
+  ctx.globalAlpha = active ? 0.85 : 0.5;
+  ctx.fillStyle = "#7cc4ff";
+  ctx.beginPath();
+  ctx.arc(1, -15, active ? 6 : 4.5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
+  hout(ctx, -1, -17, 4, 4, "#7cc4ff");
+  hpx(ctx, 0, -16, 2, 1, "#e2f2ff");
+  hpx(ctx, 0, -16, 1, 1, "#ffffff");
+  ctx.restore();
+}
+
+function drawMage(ctx, p, attacking, af, casting) {
+  const c = MAGE_C;
+  drawBackArm(ctx, c, p);
+  drawLegs(ctx, c, p);
+  drawRobeSkirt(ctx, c, p);
+  drawTorso(ctx, c, p);
+  // goldene Robenborte + Rune
+  hpx(ctx, -4, -19 + p.uy, 8, 1, "#c9a24a");
+  hpx(ctx, -1, -17 + p.uy, 2, 2, "#7cc4ff");
+  drawHeadBase(ctx, c, p);
+  // Spitzhut
+  hpx(ctx, -4 + p.lean, -27 + p.uy, 7, 2, "#4a2f88");
+  hpx(ctx, -2 + p.lean, -30 + p.uy, 4, 3, "#4a2f88");
+  hpx(ctx, -1 + p.lean, -32 + p.uy, 2, 2, "#3a2568");
+  hpx(ctx, -4 + p.lean, -27 + p.uy, 7, 1, "#8b6fd0");
+  hpx(ctx, 0 + p.lean, -30 + p.uy, 1, 1, "#c9a24a");
+  const hand = drawFrontArm(ctx, c, p);
+  drawStaff(ctx, hand, attacking && !casting, af, casting);
+  if (attacking || casting) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 0.8;
+    hpx(ctx, 7, -14 + p.uy, 2, 2, "#d4b0ff");
+    hpx(ctx, 9, -10 + p.uy, 1, 1, "#ffffff");
+    ctx.restore();
+  }
+}
+
+function drawHeroFigure(ctx, classKey, p, attacking, af, casting) {
+  if (classKey === "ranger") drawRanger(ctx, p, attacking, af, casting);
+  else if (classKey === "mage") drawMage(ctx, p, attacking, af, casting);
+  else drawWarrior(ctx, p, attacking, af, casting);
 }
 
 function renderHero(ctx, opts) {
@@ -384,49 +354,40 @@ function renderHero(ctx, opts) {
   const attackAnimVal = h.attackAnim || 0;
   const casting = animState === "cast";
   const attacking = !casting && (attackAnimVal > 0.04 || animState === "attack");
-  const attackFrame = attacking ? frame : 0;
+  const af = attacking ? Math.min(2, frame) : 0;
+  const p = heroPose(animState, frame);
+  if (animState === "death") p.uy = 3;
 
-  drawShadow(ctx, cx, groundY, scale);
+  heroShadow(ctx, cx, groundY, scale);
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.translate(cx, groundY);
   ctx.scale(facing * scale, scale);
   ctx.translate(0, HR.FOOT_Y);
-  if ((h.hurtAnim || 0) > 0.05) {
-    ctx.translate(facing * -2, 0);
-  }
-  drawHeroFigure(ctx, classKey, frame, attacking, attackFrame, attackAnimVal, casting);
+  if ((h.hurtAnim || 0) > 0.05) ctx.translate(facing * -2, 0);
+  if (animState === "death") ctx.rotate(facing * 0.4);
+  drawHeroFigure(ctx, classKey, p, attacking, af, casting);
   ctx.restore();
 
+  // dezenter Klassen-Glow für Lesbarkeit
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const glow = ctx.createRadialGradient(
-    cx,
-    groundY - 30 * scale,
-    2,
-    cx,
-    groundY - 30 * scale,
-    38 * scale
-  );
+  const gy = groundY - 18 * scale;
+  const glow = ctx.createRadialGradient(cx, gy, 2, cx, gy, 26 * scale);
   const glowColor =
-    classKey === "mage"
-      ? "rgba(150,110,255,0.18)"
-      : classKey === "ranger"
-      ? "rgba(120,220,130,0.13)"
-      : "rgba(255,210,130,0.14)";
+    classKey === "mage" ? "rgba(150,110,255,0.16)"
+      : classKey === "ranger" ? "rgba(120,220,130,0.12)"
+        : "rgba(255,210,130,0.12)";
   glow.addColorStop(0, glowColor);
   glow.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glow;
-  ctx.fillRect(cx - 45 * scale, groundY - 70 * scale, 90 * scale, 80 * scale);
+  ctx.fillRect(cx - 30 * scale, groundY - 40 * scale, 60 * scale, 50 * scale);
   ctx.restore();
 }
 
 HR.draw = (ctx, opts) => {
-  renderHero(ctx, {
-    ...opts,
-    menuMode: false
-  });
+  renderHero(ctx, { ...opts, menuMode: false });
 };
 
 HR.drawHeroCard = (ctx, classKey, w, h, frame = 0) => {
@@ -434,18 +395,31 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame = 0) => {
   ctx.imageSmoothingEnabled = false;
 
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, "#1a2230");
-  bg.addColorStop(1, "#090d14");
+  bg.addColorStop(0, "#1b2434");
+  bg.addColorStop(1, "#0a0e16");
   ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // sanfte Bühnen-Beleuchtung
+  const stage = ctx.createRadialGradient(w / 2, h * 0.62, 4, w / 2, h * 0.62, w * 0.6);
+  const tint =
+    classKey === "mage" ? "rgba(150,110,255,0.22)"
+      : classKey === "ranger" ? "rgba(120,220,130,0.2)"
+        : "rgba(255,210,130,0.2)";
+  stage.addColorStop(0, tint);
+  stage.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = stage;
   ctx.fillRect(0, 0, w, h);
 
   ctx.strokeStyle = "rgba(255,255,255,0.14)";
   ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-  const scale = Math.min(w / 78, h / 78);
+  // Charakter 2–3× größer als im Spiel präsentieren
+  const scale = Math.max(2, Math.min(w / 26, (h - 16) / 30));
   const fakeHero = {
     facing: 1,
-    animFrame: frame,
+    animState: "idle",
+    animFrame: frame % 4,
     attackAnim: 0,
     hurtAnim: 0,
     w: HR.W,
@@ -456,7 +430,7 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame = 0) => {
     x: w / 2,
     h: fakeHero,
     classKey,
-    groundY: h - 18,
+    groundY: h - 12,
     menuMode: true,
     scale
   });
