@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "offline-v98";
+const BUILD_ID = "miniworld-v100";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -27,8 +27,6 @@ const PIXEL = 3;
 const CHAR_PIXEL = 3;
 const ENEMY_PIXEL = CHAR_PIXEL * 1.2;
 const WEAPON_PIXEL = 2;
-const DECOR_PIXEL = 5;
-const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
 
@@ -299,140 +297,6 @@ const SPRITES = {
     ".KPPBBBBPK.",
     "..KPP..PPK..",
     "..KKK..KKK.."
-  ],
-  tree: [
-    ".....KK.....","....KGGK....","...KGGGGK...","...KGGGGGK..",
-    "..KGGGGGGK..","...KGGGGK...","....KGGK....",".....GK.....",
-    ".....GK.....",".....GK.....","....KGGK....","...KAAAK....",
-    "..KAAAAAK...","..KAAAAAK..."
-  ],
-  pine_tree: [
-    ".....KK.....","....KLLK....","...KJMJK....","..KJMMJK....",
-    ".KJMMMMJK...","..KJMMJK....","...KJMJK....","....KJJk....",
-    ".....Jk.....",".....Jk.....","....KAAK....","...KAAEAK...",
-    "..KAAAAAK...","..KAAAAAK...","...KAAAK...."
-  ],
-  pine_silhouette: [
-    "....KKKK....","...KLLLLK...","..KJJMJJk..",".KJJMMJJJK.",
-    "KJJMMMMJJKK","KJJMMMMMJJJK",".KJJMMJJJK.","..KJJMJJk..",
-    "...KJJJK....","....KJK.....",".....Jk.....","....KAAK....",
-    "...KAAAK....","..KAAAAK...."
-  ],
-  dead_tree: [
-    ".....KK.....","....KAAK....","...KAEAEK...","..Kk...kK..",
-    "..K.....K..","...K...K....","....K.K.....","....K.K.....",
-    "...K...K....","..K.....K..","..K.....K..","...K...K...."
-  ],
-  mushroom: [
-    ".....KK.....","...KRRRRK...","..KRWwwWRK..",".KRWwwwwWRK.",
-    "..KWWWWWWK..","...KWWWWK...","....KWWK....","....KWWK....",
-    "....KDDK....","....KDDK...."
-  ],
-  stump: [
-    "....KKK....","...KAAAK...","..KAAAAAK..",".KAAAAAAAK.",
-    ".KAAEEAAK.","..KAAAAAK..","...KAAAK..."
-  ],
-  bush_dark: [
-    ".....KK.....","...KvVVvK...","..KvNNNVvk..",".KvNNNNNVvk.",
-    ".KvNNNNNVvk.","..KvVVVVk...","....KvVk...."
-  ],
-  bones: [
-    ".....KK.....","...KWWWWK...","..KW.K.KWK..","..KWWWWWk...",
-    "...KWWWK....","....KKK....."
-  ],
-  firefly: ["..K..",".QyQ.","..K.."],
-  stalactite: [
-    "....KKK....","...KXXXk...","..KXXxXXK..","..KXXxXXK..",
-    ".KXXxXXXK..","..KXXXXK...","...KXXK....","....KXK...."
-  ],
-  skull_rock: [
-    "....KKK....","...KWWWk...","..KWsWsWK..",".KWWWWWWWK.",
-    ".KWWWWWWWK.","..KXXXXXK..","...KXXXK..."
-  ],
-  torch: [
-    ".....KK.....","....KffK....","...KffffK...","..KffffffK..",
-    "...KffffK...","....KyyK....","....KDDK....","....KDDK....",
-    "....KDDK...."
-  ],
-  pillar_ruin: [
-    "....KKK....","...KXXXK...","..KXXXXXK..",".KXXXXXXXK.",
-    ".KXXXXXXXK.",".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.",
-    ".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.","..KXXXXXK..",
-    "...KXXXXK..","....KXXXK...",".....KKK...."
-  ],
-  rubble: [
-    ".....KK.....","...KXXXK....","..KxX.XxXK..",".KXXXXXXXK.",
-    "..KXXXXXK...","...KXXXK...."
-  ],
-  banner: [
-    ".....KK.....","....KRRK....","...KRRRRK...","..KRRRRRRK..",
-    "..KRRRRRRK..","...KRRRRK...","....KDDK....","....KDDK....",
-    "....KDDK....","....KDDK...."
-  ],
-  lava_rock: [
-    "....KKK....","...KHHHk...","..KHffHHK..",".KHffffHHK.",
-    ".KHHHHHHHK.","..KHHHHHK..","...KHHHK..."
-  ],
-  smoke_puff: ["..K..",".KXK.","..K.."],
-  dragon_bone: [
-    ".....KKKK.....","....KYYYYK....","...KYYYYYYK...","..KYYYYYYYYK..",
-    "..KYYYYYYYYYK.",".KYY.....YYK..","..KYY....YK...","...KYY..YK....",
-    "....KYYYYK....",".....KYYK.....","......YK......"
-  ],
-  obsidian: [
-    "....KKK....","...Kuuuk...","..KuPPuPK..",".KuPPPPuPK.",
-    ".KuPPPPuPK.","..KuuuuK...","...KKKK...."
-  ],
-  cave_crystal: [
-    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
-    ".KiBiBiBiK.","..KiBBiBK..","...KiBK...."
-  ],
-  grave: [
-    "....KKK....","...KWWWk...","..KWWWWWK..",".KWWWWWWWK.",
-    ".KWWWWWWWK.",".KWWWWWWWK.","..KWWWWWK..","...KWWWK...",
-    "....KKK...."
-  ],
-  bush: [
-    ".....KK.....","...KmZmZK...","..KmZZZZmk..",".KmZZZZZZmk.",
-    ".KmZZZZZZmk.","..KmZZZZK...","....KmZK...."
-  ],
-  rock: [
-    "....KKK....","...KXXXk...","..KXXXXXK..",".KXXxXXXxXK",
-    ".KXXXXXXXK.","..KXXXXXK..","...KXXXK..."
-  ],
-  crystal: [
-    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
-    "..KiBBiBK..","...KiBiK...","....KkK...."
-  ],
-  glow_mushroom: [
-    ".....KK.....","....KQQQK....","...KQQQQQK...","..KQQwwQQK..",
-    ".KQQwwwwQQK.","..KQQwwQQK..","...KWWWWK...","....KDDK....",
-    "....KDDK...."
-  ],
-  glow_pod: [
-    ".....KK.....","....KiBiK....","...KiBBiBK...","..KiBBBBiBK..",
-    "...KiBBiBK...","....KiBiK....","....KDDK....."
-  ],
-  hanging_vine: [
-    "....KK....","...KGGK...","...KGGK...","..KGGGGK..",
-    "..KGGGGK..","...KGGK...","...KGGK...","....GK...."
-  ],
-  fern: [
-    ".....KK.....","....KGGK....","...KGGGGK...","..KGGGGGK..",
-    ".KGGGGGGGK.","..KGGGGGK..","...KGGGGK...","....KGGK....",
-    "....KDDK...."
-  ],
-  stone_lantern: [
-    ".....KK.....","....KXXXK....","...KXXyXXK...","..KXXyyyXK..",
-    "...KXXyXK...","....KDDK....","....KDDK....","....KDDK...."
-  ],
-  root_cluster: [
-    "....KKKK....","...KAAAK...","..KAEAEAK..",".Kk...kK..",
-    "..K.....K..","...KAAAK...","....KKK...."
-  ],
-  branch_fg: [
-    "...KKKKK...","..KJJMJJk..",".KJJMMJJJK.","KJJMMMMJJKK",
-    ".KJJMMJJJK.","..KJJMJJk..","...KJJJK..."
   ],
   cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
   moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
@@ -767,14 +631,6 @@ function drawSprite(c, rows, x, y, flip) {
   drawSpriteScaled(c, rows, x, y, flip, PIXEL);
 }
 
-function drawDecorSprite(c, rows, x, y, flip, sc) {
-  drawSpriteScaled(c, rows, x, y, flip, sc || DECOR_PIXEL);
-}
-
-function drawBgSprite(c, rows, x, y, flip) {
-  drawSpriteScaled(c, rows, x, y, flip, BG_PIXEL);
-}
-
 function drawCharSprite(c, rows, x, y, flip, sc) {
   drawSpriteScaled(c, rows, x, y, flip, sc || CHAR_PIXEL);
 }
@@ -794,8 +650,6 @@ function drawSpriteScaled(c, rows, x, y, flip, sc) {
 
 function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
-function spriteDecorW(rows, sc) { return rows[0].length * (sc || DECOR_PIXEL); }
-function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
 function spriteWeaponW(rows) { return rows[0].length * WEAPON_PIXEL; }
 function spriteWeaponH(rows) { return rows.length * WEAPON_PIXEL; }
 
