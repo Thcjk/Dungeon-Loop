@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "miniworld-v104";
+const BUILD_ID = "offline-v98";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -27,6 +27,8 @@ const PIXEL = 3;
 const CHAR_PIXEL = 3;
 const ENEMY_PIXEL = CHAR_PIXEL * 1.2;
 const WEAPON_PIXEL = 2;
+const DECOR_PIXEL = 5;
+const BG_PIXEL = 6;
 const CW = 640, CH = 360;
 const GROUND = 308;
 
@@ -297,6 +299,140 @@ const SPRITES = {
     ".KPPBBBBPK.",
     "..KPP..PPK..",
     "..KKK..KKK.."
+  ],
+  tree: [
+    ".....KK.....","....KGGK....","...KGGGGK...","...KGGGGGK..",
+    "..KGGGGGGK..","...KGGGGK...","....KGGK....",".....GK.....",
+    ".....GK.....",".....GK.....","....KGGK....","...KAAAK....",
+    "..KAAAAAK...","..KAAAAAK..."
+  ],
+  pine_tree: [
+    ".....KK.....","....KLLK....","...KJMJK....","..KJMMJK....",
+    ".KJMMMMJK...","..KJMMJK....","...KJMJK....","....KJJk....",
+    ".....Jk.....",".....Jk.....","....KAAK....","...KAAEAK...",
+    "..KAAAAAK...","..KAAAAAK...","...KAAAK...."
+  ],
+  pine_silhouette: [
+    "....KKKK....","...KLLLLK...","..KJJMJJk..",".KJJMMJJJK.",
+    "KJJMMMMJJKK","KJJMMMMMJJJK",".KJJMMJJJK.","..KJJMJJk..",
+    "...KJJJK....","....KJK.....",".....Jk.....","....KAAK....",
+    "...KAAAK....","..KAAAAK...."
+  ],
+  dead_tree: [
+    ".....KK.....","....KAAK....","...KAEAEK...","..Kk...kK..",
+    "..K.....K..","...K...K....","....K.K.....","....K.K.....",
+    "...K...K....","..K.....K..","..K.....K..","...K...K...."
+  ],
+  mushroom: [
+    ".....KK.....","...KRRRRK...","..KRWwwWRK..",".KRWwwwwWRK.",
+    "..KWWWWWWK..","...KWWWWK...","....KWWK....","....KWWK....",
+    "....KDDK....","....KDDK...."
+  ],
+  stump: [
+    "....KKK....","...KAAAK...","..KAAAAAK..",".KAAAAAAAK.",
+    ".KAAEEAAK.","..KAAAAAK..","...KAAAK..."
+  ],
+  bush_dark: [
+    ".....KK.....","...KvVVvK...","..KvNNNVvk..",".KvNNNNNVvk.",
+    ".KvNNNNNVvk.","..KvVVVVk...","....KvVk...."
+  ],
+  bones: [
+    ".....KK.....","...KWWWWK...","..KW.K.KWK..","..KWWWWWk...",
+    "...KWWWK....","....KKK....."
+  ],
+  firefly: ["..K..",".QyQ.","..K.."],
+  stalactite: [
+    "....KKK....","...KXXXk...","..KXXxXXK..","..KXXxXXK..",
+    ".KXXxXXXK..","..KXXXXK...","...KXXK....","....KXK...."
+  ],
+  skull_rock: [
+    "....KKK....","...KWWWk...","..KWsWsWK..",".KWWWWWWWK.",
+    ".KWWWWWWWK.","..KXXXXXK..","...KXXXK..."
+  ],
+  torch: [
+    ".....KK.....","....KffK....","...KffffK...","..KffffffK..",
+    "...KffffK...","....KyyK....","....KDDK....","....KDDK....",
+    "....KDDK...."
+  ],
+  pillar_ruin: [
+    "....KKK....","...KXXXK...","..KXXXXXK..",".KXXXXXXXK.",
+    ".KXXXXXXXK.",".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.",
+    ".KXXxXXXxXK",".KXXXXXXXK.",".KXXXXXXXK.","..KXXXXXK..",
+    "...KXXXXK..","....KXXXK...",".....KKK...."
+  ],
+  rubble: [
+    ".....KK.....","...KXXXK....","..KxX.XxXK..",".KXXXXXXXK.",
+    "..KXXXXXK...","...KXXXK...."
+  ],
+  banner: [
+    ".....KK.....","....KRRK....","...KRRRRK...","..KRRRRRRK..",
+    "..KRRRRRRK..","...KRRRRK...","....KDDK....","....KDDK....",
+    "....KDDK....","....KDDK...."
+  ],
+  lava_rock: [
+    "....KKK....","...KHHHk...","..KHffHHK..",".KHffffHHK.",
+    ".KHHHHHHHK.","..KHHHHHK..","...KHHHK..."
+  ],
+  smoke_puff: ["..K..",".KXK.","..K.."],
+  dragon_bone: [
+    ".....KKKK.....","....KYYYYK....","...KYYYYYYK...","..KYYYYYYYYK..",
+    "..KYYYYYYYYYK.",".KYY.....YYK..","..KYY....YK...","...KYY..YK....",
+    "....KYYYYK....",".....KYYK.....","......YK......"
+  ],
+  obsidian: [
+    "....KKK....","...Kuuuk...","..KuPPuPK..",".KuPPPPuPK.",
+    ".KuPPPPuPK.","..KuuuuK...","...KKKK...."
+  ],
+  cave_crystal: [
+    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
+    ".KiBiBiBiK.","..KiBBiBK..","...KiBK...."
+  ],
+  grave: [
+    "....KKK....","...KWWWk...","..KWWWWWK..",".KWWWWWWWK.",
+    ".KWWWWWWWK.",".KWWWWWWWK.","..KWWWWWK..","...KWWWK...",
+    "....KKK...."
+  ],
+  bush: [
+    ".....KK.....","...KmZmZK...","..KmZZZZmk..",".KmZZZZZZmk.",
+    ".KmZZZZZZmk.","..KmZZZZK...","....KmZK...."
+  ],
+  rock: [
+    "....KKK....","...KXXXk...","..KXXXXXK..",".KXXxXXXxXK",
+    ".KXXXXXXXK.","..KXXXXXK..","...KXXXK..."
+  ],
+  crystal: [
+    "....KiK....","...KiBiK...","..KiBBiBK..",".KiBBBBiBK..",
+    "..KiBBiBK..","...KiBiK...","....KkK...."
+  ],
+  glow_mushroom: [
+    ".....KK.....","....KQQQK....","...KQQQQQK...","..KQQwwQQK..",
+    ".KQQwwwwQQK.","..KQQwwQQK..","...KWWWWK...","....KDDK....",
+    "....KDDK...."
+  ],
+  glow_pod: [
+    ".....KK.....","....KiBiK....","...KiBBiBK...","..KiBBBBiBK..",
+    "...KiBBiBK...","....KiBiK....","....KDDK....."
+  ],
+  hanging_vine: [
+    "....KK....","...KGGK...","...KGGK...","..KGGGGK..",
+    "..KGGGGK..","...KGGK...","...KGGK...","....GK...."
+  ],
+  fern: [
+    ".....KK.....","....KGGK....","...KGGGGK...","..KGGGGGK..",
+    ".KGGGGGGGK.","..KGGGGGK..","...KGGGGK...","....KGGK....",
+    "....KDDK...."
+  ],
+  stone_lantern: [
+    ".....KK.....","....KXXXK....","...KXXyXXK...","..KXXyyyXK..",
+    "...KXXyXK...","....KDDK....","....KDDK....","....KDDK...."
+  ],
+  root_cluster: [
+    "....KKKK....","...KAAAK...","..KAEAEAK..",".Kk...kK..",
+    "..K.....K..","...KAAAK...","....KKK...."
+  ],
+  branch_fg: [
+    "...KKKKK...","..KJJMJJk..",".KJJMMJJJK.","KJJMMMMJJKK",
+    ".KJJMMJJJK.","..KJJMJJk..","...KJJJK..."
   ],
   cross: ["..K..",".KwK.","KwwwK",".KwK.","..K.."],
   moon: ["..KyK.",".KyyyK",".KyyyK","..KyK."],
@@ -631,6 +767,14 @@ function drawSprite(c, rows, x, y, flip) {
   drawSpriteScaled(c, rows, x, y, flip, PIXEL);
 }
 
+function drawDecorSprite(c, rows, x, y, flip, sc) {
+  drawSpriteScaled(c, rows, x, y, flip, sc || DECOR_PIXEL);
+}
+
+function drawBgSprite(c, rows, x, y, flip) {
+  drawSpriteScaled(c, rows, x, y, flip, BG_PIXEL);
+}
+
 function drawCharSprite(c, rows, x, y, flip, sc) {
   drawSpriteScaled(c, rows, x, y, flip, sc || CHAR_PIXEL);
 }
@@ -650,6 +794,8 @@ function drawSpriteScaled(c, rows, x, y, flip, sc) {
 
 function spriteW(rows) { return rows[0].length * PIXEL; }
 function spriteH(rows) { return rows.length * PIXEL; }
+function spriteDecorW(rows, sc) { return rows[0].length * (sc || DECOR_PIXEL); }
+function spriteDecorH(rows, sc) { return rows.length * (sc || DECOR_PIXEL); }
 function spriteWeaponW(rows) { return rows[0].length * WEAPON_PIXEL; }
 function spriteWeaponH(rows) { return rows.length * WEAPON_PIXEL; }
 
@@ -743,17 +889,6 @@ function drawLivingChar(c, spriteKey, x, y, w, h, flip, world, bob, big) {
   drawCharSprite(c, sprite, x, y, flip, ENEMY_PIXEL);
   applyWorldCharTint(c, x, y, w, h, world);
   drawCharFeetFog(c, x, y, w, h, world);
-}
-
-function drawEnemyReadabilityBacking(c, bounds, boss) {
-  c.save();
-  c.globalAlpha = 1;
-  c.globalCompositeOperation = "source-over";
-  c.fillStyle = boss ? "rgba(8,6,4,0.92)" : "rgba(4,5,5,0.86)";
-  c.beginPath();
-  c.ellipse(bounds.cx, bounds.y + bounds.h * 0.52, bounds.w * 0.48, bounds.h * 0.47, 0, 0, Math.PI * 2);
-  c.fill();
-  c.restore();
 }
 
 function getEnemyDrawX(e) {
@@ -3398,22 +3533,11 @@ function render() {
     VisualFX.renderWeather(ctx, world);
   }
 
-  if (typeof renderWorldForeground === "function") {
-    renderWorldForeground(ctx, world, {
-      scrollX: game.scrollX,
-      focusX: visualCamera.x,
-      zoom: visualCamera.zoom
-    }, typeof WR !== "undefined" ? WR.animTime : 0);
-  }
-
   if (!game.hero) {
     ctx.restore();
     ctx.restore();
     return;
   }
-
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
 
   drawCoinDrops(ctx);
 
@@ -3458,31 +3582,20 @@ function render() {
   });
 
   // Gegner
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = 0;
     const drawX = getEnemyDrawX(e);
     const vb = getEnemyVisualBounds(e, drawX);
-    drawEnemyReadabilityBacking(ctx, vb, e.isBoss);
     ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
+    if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     if (e.attackWindup > 0) {
       ctx.shadowColor = "#e74c3c";
       ctx.shadowBlur = 6 + e.attackWindup * 10;
     }
     drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
-    if (e.hitFlash > 0) {
-      ctx.globalCompositeOperation = "screen";
-      ctx.globalAlpha = 0.26;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(vb.x - 2, vb.y - 2, vb.w + 4, vb.h + 4);
-    }
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
     ctx.restore();
     const barW = Math.min(vb.w, e.isBoss ? 96 : 56);
     const barX = vb.x + (vb.w - barW) / 2;
@@ -3575,6 +3688,14 @@ function render() {
       const label = getAbilityKeyLabel(slotIdx) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
       ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
     });
+  }
+
+  if (typeof renderWorldForeground === "function") {
+    renderWorldForeground(ctx, world, {
+      scrollX: game.scrollX,
+      focusX: visualCamera.x,
+      zoom: visualCamera.zoom
+    }, typeof WR !== "undefined" ? WR.animTime : 0);
   }
 
   if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);
