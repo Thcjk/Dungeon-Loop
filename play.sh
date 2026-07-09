@@ -3,11 +3,24 @@ cd "$(dirname "$0")"
 echo ""
 echo "  ========================================"
 echo "   Dungeon Loop - Offline Edition"
+echo "   Build: miniworld-v100"
 echo "  ========================================"
 echo ""
+echo "  Ordner: $(pwd)"
 echo "  Server: http://localhost:8080"
 echo "  Beenden: Strg+C"
 echo ""
+
+if [ ! -f "assets/miniworld/Ground/Grass.png" ]; then
+  echo "  WARNUNG: Welt-Grafiken fehlen!"
+  echo "  Bitte ./update-offline.sh ausfuehren oder ZIP neu laden."
+  echo ""
+fi
+
+if [ ! -f "index.html" ]; then
+  echo "  FEHLER: index.html nicht gefunden."
+  exit 1
+fi
 
 open_browser() {
   sleep 1

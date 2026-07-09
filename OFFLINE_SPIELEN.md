@@ -1,50 +1,82 @@
-# Dungeon Loop – Offline spielen (wie ein Steam-Spiel)
+# Dungeon Loop – Offline spielen (Desktop-Ordner)
 
-## Schnellstart
-
-### Windows
-Doppelklick auf **`play.bat`**
-
-### Mac / Linux
-Im Terminal:
-```bash
-chmod +x play.sh
-./play.sh
-```
-
-Der Browser öffnet **http://localhost:8080** – danach **kein Internet mehr nötig**.
+**Aktuelle Version:** `miniworld-v100` (MiniWorld-Weltgrafik + Sounds)
 
 ---
 
-## Download
+## Schnellstart (Desktop)
 
-1. https://github.com/Thcjk/Dungeon-Loop
-2. **Code → Download ZIP**
-3. ZIP entpacken (z. B. `Dungeon-Loop`)
-4. `play.bat` (Windows) oder `play.sh` (Mac/Linux) starten
+### Windows
+1. Doppelklick auf **`play.bat`**
+2. Browser oeffnet http://localhost:8080
+3. **Kein Internet mehr noetig** waehrend des Spielens
+
+### Mac / Linux
+```bash
+chmod +x play.sh update-offline.sh
+./play.sh
+```
+
+---
+
+## Desktop-Ordner einrichten (einmalig)
+
+1. https://github.com/Thcjk/Dungeon-Loop → **Code → Download ZIP**
+2. ZIP entpacken (z. B. `Dungeon-Loop`)
+3. Ordner auf den **Desktop** legen (oder `C:\Spiele\Dungeon-Loop`)
+4. Rechtsklick auf **`play.bat`** → **Verknuepfung erstellen** → Verknuepfung auf Desktop ziehen
+5. Fertig – jederzeit per Doppelklick starten
+
+**Wichtig:** Nicht `index.html` direkt oeffnen – der Mini-Server (`play.bat`) ist noetig, damit Grafiken und Sounds laden.
+
+---
+
+## Desktop-Ordner aktualisieren
+
+Wenn du schon einen alten Ordner auf dem Desktop hast:
+
+### Option A – Update-Skript (empfohlen)
+1. **`update-offline.bat`** doppelklicken (Windows)
+2. Warten bis „Update fertig!“
+3. **`play.bat`** starten
+
+*(Mac/Linux: `./update-offline.sh`)*
+
+### Option B – Manuell
+1. Alten Ordner loeschen oder umbenennen (z. B. `Dungeon-Loop-alt`)
+2. Neues ZIP von GitHub laden und entpacken
+3. **`play.bat`**-Verknuepfung neu anlegen
+
+**Speicherstaende bleiben erhalten** – die liegen im Browser (localStorage), nicht im Ordner.
+
+---
+
+## Ordner-Inhalt (wichtig fuer Offline)
+
+| Pfad | Zweck |
+|------|-------|
+| `play.bat` / `play.sh` | Spiel starten |
+| `update-offline.bat` | Update von GitHub |
+| `assets/miniworld/` | **Welt-Grafiken** (neu in v100) |
+| `sounds/` | Sound-Dateien |
+| `index.html`, `script.js`, … | Spiel-Code |
+
+Fehlt `assets/miniworld/`, zeigt `play.bat` eine Warnung – dann `update-offline.bat` ausfuehren.
 
 ---
 
 ## Was wird gespeichert?
 
-Alles läuft **lokal im Browser** (localStorage):
+Alles laeuft **lokal im Browser** (localStorage):
 
 | Gespeichert | Wo |
 |---|---|
 | Gold & Upgrades | Pro Spielername |
-| Fähigkeiten & Loadout | Pro Browser |
+| Faehigkeiten & Loadout | Pro Browser |
 | Audio-Einstellungen | Pro Browser |
 | Highscores | Lokale Rangliste |
 
-**Gleicher Name = gleicher Speicherstand** beim nächsten Start.
-
----
-
-## Wichtig
-
-- **Nicht** `index.html` per Doppelklick öffnen – der Mini-Server (`play.bat`) ist nötig
-- Fortschritt liegt im **Browser-Profil** – anderen Browser oder privates Fenster = neuer Speicher
-- **Supabase optional** – nur für Online-Rangliste, wenn du URL/Key in `script.js` einträgst
+**Gleicher Name = gleicher Speicherstand** beim naechsten Start.
 
 ---
 
@@ -52,16 +84,13 @@ Alles läuft **lokal im Browser** (localStorage):
 
 ```bash
 cd Dungeon-Loop
-python3 -m http.server 8080
+python -m http.server 8080
 ```
 
 Dann: http://localhost:8080
 
 ---
 
-## Steam-ähnliches Setup
+## Supabase (optional)
 
-1. ZIP herunterladen und entpacken
-2. Ordner z. B. nach `C:\Spiele\Dungeon-Loop` legen
-3. Verknüpfung zu `play.bat` auf den Desktop
-4. Fertig – jederzeit offline spielbar
+Nur fuer Online-Rangliste – URL/Key in `script.js` eintragen. Offline-Spiel funktioniert ohne Supabase.
