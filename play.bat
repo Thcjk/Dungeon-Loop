@@ -8,7 +8,7 @@ if /i "%~1"=="update" goto :do_update
 echo.
 echo  ========================================
 echo   Dungeon Loop - Offline Edition
-echo   Build: miniworld-v100
+echo   Build: miniworld-v103
 echo  ========================================
 echo.
 echo  Ordner: %~dp0
@@ -84,7 +84,7 @@ rmdir /S /Q "%TMP%" 2>nul
 del "%ZIP%" 2>nul
 
 echo.
-echo  Update fertig! Build: miniworld-v100
+echo  Update fertig! Build: miniworld-v103
 echo.
 if /i not "%~1"=="update" goto :start_server
 exit /b 0

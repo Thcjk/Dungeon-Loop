@@ -1,6 +1,6 @@
 # Dungeon Loop – Offline spielen (Desktop-Ordner)
 
-**Aktuelle Version:** `miniworld-v100` (MiniWorld-Weltgrafik + Sounds)
+**Aktuelle Version:** `miniworld-v103` (ruhigere MiniWorld-Weltgrafik + Sounds)
 
 ---
 
@@ -72,7 +72,7 @@ del dl.zip
 |------|-------|
 | `play.bat` / `play.sh` | Spiel starten (`play.bat update` = Update) |
 | `UPDATE.bat` | Gleich wie `play.bat update` |
-| `assets/miniworld/` | **Welt-Grafiken** (neu in v100) |
+| `assets/miniworld/` | **Welt-Grafiken** |
 | `sounds/` | Sound-Dateien |
 | `index.html`, `script.js`, … | Spiel-Code |
 
