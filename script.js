@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "offline-v98";
+const BUILD_ID = "hero-world-v106";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -129,56 +129,6 @@ const PAL = {
 };
 
 const SPRITES = {
-  warrior: [
-    ".....KKKKKK.....","....KHHHHHHK....","...KHyyyyyyHK...","...KHsyyySsyHK..",
-    "...KHyyyyyyHK...","...KHHHooHHHK...","....KHDDDDHK....","....KHDGGDHK....",
-    "....KHo..oHK....","....KDGGGGDK....","....KDGGGGDK....","....KD...DK.....",
-    "....KD...DK.....","....KK...KK....."
-  ],
-  ranger: [
-    "....KKKKKK....","...KlGGGGlK...","..KlGGGGGGlK..","..KlGssSSslK..",
-    "..KlGGGGGGlK..","..KlGGllGGlK..","...KlGGGGlK...","...KlGooGlK...",
-    "....KlGGlK....","....KgGGgK....","....Kg..gK....","....Kg..gK....",
-    "....KK..KK...."
-  ],
-  mage: [
-    "....KKKKKK....","...KuPPPPuK...","..KuPPPPPPuK..","..KuPssSSPuK..",
-    "..KuPPPPPPuK..","..KuPPBBPPuK..","...KuPPPPuK...","...KuPooPuK...",
-    "....KuPPuK....","....KpBBpK....","....Kp..pK....","....Kp..pK....",
-    "....KK..KK...."
-  ],
-  shield: [
-    "....KKKK....","...KWWWWK...","..KWwSSwWK..","..KWSSSSWK..",
-    "..KWSSSSWK..","...KWWWWK...","....KDDK....",".....KK....."
-  ],
-  sword: [
-    ".....K.....","....KwK....","....KWWK....","....KWWK....",
-    "....KWWK....","....KWWK....","....KWWK....","....KwWK....",
-    "....KDDK....",".....KK....."
-  ],
-  sword_heavy: [
-    ".....K.....","....KWWK....","...KWWWWK...","...KWWWWK...",
-    "...KWWWWK...","...KWWWWK...","....KwWWK...","....KDDDK...",
-    ".....KK....."
-  ],
-  bow: [
-    ".....K.....","....KyK....","...Ky.wyK..","..Ky...wyK.",
-    "..Ky.....wyK","...Ky.wyK..","....KyK....",".....K....."
-  ],
-  bow_aim: [
-    ".....K.....","....KyK....","...KyywyK..","..KyyyyyK..",
-    ".KyyywyyyyK","..KyyyyyK..","...KyywyK..","....KyK....",
-    ".....K....."
-  ],
-  staff: [
-    "....KiK....","...KiBiK...","..KiBBiBK..","...KiBiK...",
-    "....KiK....",".....YWk....",".....YWk....",".....YWk....",
-    ".....YWk....",".....YWk....","....KDDK....",".....KK....."
-  ],
-  orb_glow: [
-    "....KiK....","...KiBiK...","..KiBBiBK..","...KiBiK...",
-    "....KkK...."
-  ],
   goblin: [
     "....KKKK....",
     "...KGGGGK...",
@@ -3527,11 +3477,6 @@ function render() {
   applyCamera(ctx, zoomBoost);
 
   renderUnifiedBackground(world);
-  renderWorldAtmosphere(world);
-  if (typeof VisualFX !== "undefined") {
-    VisualFX.renderAtmosphere(ctx, world);
-    VisualFX.renderWeather(ctx, world);
-  }
 
   if (!game.hero) {
     ctx.restore();
@@ -3697,8 +3642,6 @@ function render() {
       zoom: visualCamera.zoom
     }, typeof WR !== "undefined" ? WR.animTime : 0);
   }
-
-  if (typeof VisualFX !== "undefined") VisualFX.renderLighting(ctx, world, h);
 
   ctx.restore();
 
