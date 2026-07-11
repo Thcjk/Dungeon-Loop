@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "controls-v109";
+const BUILD_ID = "balance-v110";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -608,12 +608,12 @@ const LOOT_EFFECTS = [
   { key: "goldBonus", label: "Gold" }, { key: "magicDamage", label: "Magie" }, { key: "mana", label: "Mana" }
 ];
 const UPGRADES = [
-  { key: "upgrade_health",   label: "Leben",        baseCost: 85,  bonus: 20,  bonusText: "+20 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
-  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 75,  bonus: 1,   bonusText: "+1 DEF",       tip: "Weniger Schaden. Krieger & Magier zuerst.", forClass: "warrior,mage" },
-  { key: "upgrade_attack",   label: "Angriff",      baseCost: 95,  bonus: 3,   bonusText: "+3 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
+  { key: "upgrade_health",   label: "Leben",        baseCost: 85,  bonus: 24,  bonusText: "+24 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
+  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 75,  bonus: 1,   bonusText: "+1 DEF",       tip: "Weniger Schaden – für jede Klasse nützlich.", forClass: "all" },
+  { key: "upgrade_attack",   label: "Angriff",      baseCost: 95,  bonus: 4,   bonusText: "+4 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
   { key: "upgrade_magic",    label: "Magieschaden", baseCost: 110, bonus: 5,   bonusText: "+5 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
   { key: "upgrade_mana",     label: "Mana",         baseCost: 100, bonus: 15,  bonusText: "+15 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
-  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 120, bonus: 0.008, bonusText: "+0.8% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
+  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 120, bonus: 0.011, bonusText: "+1.1% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
   { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 130, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
   { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 110, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 165, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
@@ -625,11 +625,11 @@ const BALANCE = {
   upgradeMax: 25,
   lootChance: 0.18,
   xpPerLevel: 155,          // niedriger = schnelleres Held-Level
-  levelScalePow: 1.068,       // niedriger = langsamere Gegner-Skalierung
-  levelUpHealPct: 0.10,
+  levelScalePow: 1.060,       // niedriger = langsamere Gegner-Skalierung
+  levelUpHealPct: 0.14,
   waveCooldown: 2.15,
   minWaveCooldown: 0.95,
-  defenseFactor: 1.18,          // höher = Verteidigung wirkt stärker
+  defenseFactor: 1.3,           // höher = Verteidigung wirkt stärker
   earlyEaseUntil: 15,           // erste N Dungeon-Level leichter
   earlyHpEase: 0.12,            // max. HP-Reduktion Early Game
   earlyAtkEase: 0.22,           // max. Schaden-Reduktion Early Game
@@ -2531,7 +2531,7 @@ function getScaledLevel(lv) {
 
 function getMetaEase() {
   const total = Object.values(game.upgrades).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.84, 1 - total * 0.008);
+  return Math.max(0.72, 1 - total * 0.011);
 }
 
 function getDifficultyScale() {
@@ -2566,10 +2566,11 @@ function getEnemyStats(isBoss) {
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
+  const hpEase = lv <= 14 ? 0.88 : lv <= 26 ? 0.94 : 1;
 
   return {
-    hp: Math.floor((24 + lv * 3.6) * hpScale * boss.hp * earlyHp),
-    attack: Math.max(1, Math.floor((3 + lv * 0.9) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
+    hp: Math.floor((24 + lv * 3.1) * hpScale * boss.hp * earlyHp * hpEase),
+    attack: Math.max(1, Math.floor((3 + lv * 0.78) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
     gold: Math.floor((5 + lv * 1.55) * boss.rew * (1 + lv * 0.034)),
     xp: Math.floor((11 + lv * 2.45) * boss.rew),
     speed: (isBoss ? 0.52 : 0.72) * world.speedMult + lv * 0.009,
