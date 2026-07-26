@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "balance-v110";
+const BUILD_ID = "save-v111";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -682,8 +682,15 @@ let audioPrefs = { musicEnabled: true, sfxEnabled: true };
 const META_STORAGE_KEY = "dungeon_loop_meta";
 /** Offline-Spielstände – Gold, Upgrades, Klasse pro Spielername */
 const PLAYERS_STORAGE_KEY = "dungeon_loop_players";
+/** Aktiver Run – Fortsetzen nach Reload / Tab schließen */
+const RUN_STORAGE_KEY = "dungeon_loop_active_run";
+/** Zuletzt genutzter Spielername (Eingabefeld vorausfüllen) */
+const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 /** Lokale Highscores – ohne Internet */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
+const RUN_SAVE_VERSION = 1;
+let runSaveTimer = 0;
+let runSaveDirty = false;
 
 /** Gegner-KI: unterschiedliche Kampfstile pro Monstertyp */
 const ENEMY_AI = {
@@ -1007,7 +1014,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadLeaderboard();
   initSupabase();
   await loadGameData();
-  window.addEventListener("beforeunload", () => { if (game.playerName) saveLocalPlayer(); });
+  restoreSetupFromSave();
+  window.addEventListener("beforeunload", () => {
+    if (game.playerName) saveLocalPlayer();
+    if (game.isRunning && !game.isDead) saveActiveRun(true);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && game.isRunning && !game.isDead) {
+      saveActiveRun(true);
+      if (game.playerName) saveLocalPlayer();
+    }
+  });
 });
 
 // ============================================
@@ -1211,6 +1228,7 @@ function spendGold(amount) {
   game.runGold -= fromRun;
   left -= fromRun;
   game.totalGold = Math.max(0, game.totalGold - left);
+  if (game.isRunning && !game.isDead) markRunSaveDirty();
 }
 
 function setEquippedAbility(slotIdx, abilityId) {
@@ -1224,6 +1242,7 @@ function setEquippedAbility(slotIdx, abilityId) {
   }
   game.meta.abilities[ck].equipped[slotIdx] = abilityId;
   saveMeta();
+  if (game.isRunning && !game.isDead) { markRunSaveDirty(); saveActiveRun(true); }
   renderAbilityPanel();
   updateClassHint();
   updateStatus();
@@ -1658,11 +1677,12 @@ function bindEvents() {
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
   bind("btn-load-player", () => { unlockAudio(); loadPlayer(); });
-  bind("btn-start-run", startRun);
+  bind("btn-new-game", () => { startNewGameFromSetup(); });
+  bind("btn-start-run", continueOrStartRun);
   bind("btn-pause", togglePause);
   bind("btn-restart", restartRun);
   bind("btn-save-score", saveScore);
-  bind("btn-gameover-run", startRun);
+  bind("btn-gameover-run", () => { clearActiveRun(); startRun(); });
   bind("btn-gameover-upgrade", goToUpgrades);
   bind("btn-open-upgrades", toggleUpgrades);
   bind("btn-close-upgrades", hideUpgrades);
@@ -1822,6 +1842,7 @@ function collectCoinDrop(coin, isBonus) {
   } else {
     addLog("Du sammelst " + amount + " Gold.", "damage");
   }
+  markRunSaveDirty();
 }
 
 function updateCoinCatchMovement(aim) {
@@ -1986,6 +2007,327 @@ function saveLocalPlayer() {
     savedAt: Date.now()
   };
   try { localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
+  try { localStorage.setItem(LAST_PLAYER_KEY, game.playerName); } catch (_) {}
+}
+
+function getLastPlayerName() {
+  try { return (localStorage.getItem(LAST_PLAYER_KEY) || "").trim(); } catch (_) { return ""; }
+}
+
+function restoreSetupFromSave() {
+  const last = getLastPlayerName();
+  const nameInput = $("player-name");
+  if (last && nameInput && !nameInput.value) nameInput.value = last;
+  const run = peekActiveRun();
+  const btn = $("btn-load-player");
+  const newBtn = $("btn-new-game");
+  const hint = $("load-hint");
+  if (run && last && playerStorageKey(run.playerName) === playerStorageKey(last)) {
+    if (btn) btn.textContent = "Weiter spielen";
+    if (newBtn) newBtn.classList.remove("hidden");
+    if (hint) {
+      hint.textContent = "Spielstand gefunden: Dungeon " + run.dungeonLevel +
+        " · Held-Lv " + run.playerLevel + " · " + run.monstersDefeated +
+        " Monster – „Weiter spielen“ setzt fort.";
+    }
+  } else if (hint) {
+    hint.textContent = "Name eingeben, Klasse wählen, dann starten. Fortschritt und aktiver Run werden lokal gespeichert – kein Internet nötig.";
+  }
+  updateRunButtons();
+}
+
+function loadRunStore() {
+  try {
+    const raw = localStorage.getItem(RUN_STORAGE_KEY);
+    if (!raw) return {};
+    const data = JSON.parse(raw);
+    // Migration: altes Einzel-Objekt → Store
+    if (data && data.version === RUN_SAVE_VERSION && data.playerName && data.hero) {
+      const key = playerStorageKey(data.playerName);
+      return key ? { [key]: data } : {};
+    }
+    return data && typeof data === "object" ? data : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function peekActiveRun() {
+  const last = getLastPlayerName();
+  if (last) {
+    const forLast = loadActiveRunFor(last);
+    if (forLast) return forLast;
+  }
+  const store = loadRunStore();
+  const keys = Object.keys(store);
+  if (!keys.length) return null;
+  const data = store[keys[0]];
+  if (!data || data.version !== RUN_SAVE_VERSION || !data.playerName || !data.hero) return null;
+  return data;
+}
+
+function loadActiveRunFor(name) {
+  const key = playerStorageKey(name);
+  if (!key) return null;
+  const data = loadRunStore()[key];
+  if (!data || data.version !== RUN_SAVE_VERSION || !data.hero) return null;
+  return data;
+}
+
+function clearActiveRun(name) {
+  runSaveDirty = false;
+  const key = playerStorageKey(name || game.playerName);
+  try {
+    if (!key) {
+      localStorage.removeItem(RUN_STORAGE_KEY);
+    } else {
+      const store = loadRunStore();
+      delete store[key];
+      if (Object.keys(store).length) localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+      else localStorage.removeItem(RUN_STORAGE_KEY);
+    }
+  } catch (_) {}
+  updateRunButtons();
+  const newBtn = $("btn-new-game");
+  if (newBtn && !game.isRunning) {
+    const still = peekActiveRun();
+    if (!still) newBtn.classList.add("hidden");
+  }
+}
+
+function markRunSaveDirty() {
+  runSaveDirty = true;
+}
+
+function serializeHero(h) {
+  if (!h) return null;
+  return {
+    x: h.x, facing: h.facing || 1,
+    hp: h.hp, mana: h.mana,
+    maxHp: h.maxHp, maxMana: h.maxMana,
+    attack: h.attack, defense: h.defense, crit: h.crit,
+    magicDamage: h.magicDamage, goldBonus: h.goldBonus, xpBonus: h.xpBonus,
+    specialCd: h.specialCd, specialTimer: h.specialTimer || 0,
+    abilityCds: { ...(h.abilityCds || {}) },
+    warriorBuff: h.warriorBuff || 0,
+    warriorBuffMult: h.warriorBuffMult || 1,
+    shieldTimer: h.shieldTimer || 0,
+    shieldReduction: h.shieldReduction || 0,
+    lootBonuses: { ...(h.lootBonuses || {}) },
+    equipment: h.equipment || null
+  };
+}
+
+function serializeEnemy(e) {
+  return {
+    id: e.id, name: e.name, sprite: e.sprite, isBoss: !!e.isBoss, index: e.index || 0,
+    x: e.x, walkingIn: !!e.walkingIn,
+    maxHp: e.maxHp, hp: e.hp, attack: e.attack,
+    goldReward: e.goldReward, xpReward: e.xpReward,
+    speed: e.speed, attackInterval: e.attackInterval,
+    aiStyle: e.aiStyle, aiSpeedMult: e.aiSpeedMult || 1,
+    isRanged: !!e.isRanged, rangedRange: e.rangedRange || 0,
+    jumpTimer: e.jumpTimer || 0, bossSpecialTimer: e.bossSpecialTimer || 0,
+    attackTimer: e.attackTimer || 0, dead: !!e.dead
+  };
+}
+
+function saveActiveRun(force) {
+  if (!game.playerName || !game.hero || !game.isRunning || game.isDead) return false;
+  if (!force && !runSaveDirty) return false;
+  const payload = {
+    version: RUN_SAVE_VERSION,
+    buildId: BUILD_ID,
+    savedAt: Date.now(),
+    playerName: game.playerName,
+    classKey: game.classKey,
+    dungeonLevel: game.dungeonLevel,
+    runGold: game.runGold,
+    runXp: game.runXp,
+    playerLevel: game.playerLevel,
+    monstersDefeated: game.monstersDefeated,
+    waveCooldown: game.waveCooldown || 0,
+    specialTimer: game.specialTimer || 0,
+    abilityCastLock: game.abilityCastLock || 0,
+    waveNumber: game.waveNumber || 0,
+    combatReady: !!game.combatReady,
+    waveIntro: !!game.waveIntro,
+    bestLoot: game.bestLoot || null,
+    enemyId: enemyId,
+    hero: serializeHero(game.hero),
+    enemies: game.enemies.filter((e) => e && e.hp > 0 && !e.dead).map(serializeEnemy)
+  };
+  const key = playerStorageKey(game.playerName);
+  if (!key) return false;
+  try {
+    const store = loadRunStore();
+    store[key] = payload;
+    localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+    runSaveDirty = false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function restoreHeroFromSave(data) {
+  createHero();
+  const h = game.hero;
+  const s = data.hero;
+  if (!s) return;
+  h.x = Number.isFinite(s.x) ? s.x : h.x;
+  h.facing = s.facing === -1 ? -1 : 1;
+  h.maxHp = Number(s.maxHp) || h.maxHp;
+  h.maxMana = Number(s.maxMana) || h.maxMana;
+  h.attack = Number(s.attack) || h.attack;
+  h.defense = Number(s.defense) || h.defense;
+  h.crit = Number(s.crit) || h.crit;
+  h.magicDamage = Number(s.magicDamage) || h.magicDamage;
+  h.goldBonus = Number(s.goldBonus) || h.goldBonus;
+  h.xpBonus = Number(s.xpBonus) || h.xpBonus;
+  h.specialCd = Number(s.specialCd) || h.specialCd;
+  h.specialTimer = Math.max(0, Number(s.specialTimer) || 0);
+  h.abilityCds = { ...(s.abilityCds || h.abilityCds || {}) };
+  h.warriorBuff = Math.max(0, Number(s.warriorBuff) || 0);
+  h.warriorBuffMult = Number(s.warriorBuffMult) || 1;
+  h.shieldTimer = Math.max(0, Number(s.shieldTimer) || 0);
+  h.shieldReduction = Number(s.shieldReduction) || 0;
+  h.lootBonuses = {
+    attack: 0, hp: 0, defense: 0, crit: 0, goldBonus: 0, magicDamage: 0, mana: 0,
+    ...(s.lootBonuses || {})
+  };
+  h.equipment = s.equipment || null;
+  const st = heroStats();
+  h.hp = Math.max(1, Math.min(st.maxHp, Number(s.hp) || st.maxHp));
+  h.mana = Math.max(0, Math.min(st.maxMana, Number.isFinite(Number(s.mana)) ? Number(s.mana) : st.maxMana));
+  pinCharToGround(h);
+}
+
+function restoreEnemiesFromSave(data) {
+  game.enemies = [];
+  const list = Array.isArray(data.enemies) ? data.enemies : [];
+  list.forEach((s) => {
+    const sp = SPRITES[s.sprite];
+    if (!sp) return;
+    const enemy = {
+      id: s.id || ++enemyId,
+      name: s.name || "Gegner",
+      sprite: s.sprite,
+      isBoss: !!s.isBoss,
+      index: s.index || 0,
+      x: Number.isFinite(s.x) ? s.x : CW + 40,
+      walkingIn: !!s.walkingIn,
+      y: GROUND - spriteCharH(sp),
+      w: spriteCharW(sp),
+      h: spriteCharH(sp),
+      maxHp: Math.max(1, Number(s.maxHp) || 1),
+      hp: Math.max(1, Number(s.hp) || 1),
+      attack: Math.max(1, Number(s.attack) || 1),
+      goldReward: Math.max(0, Number(s.goldReward) || 0),
+      xpReward: Math.max(0, Number(s.xpReward) || 0),
+      speed: Number(s.speed) || 0.7,
+      attackInterval: Number(s.attackInterval) || 1.2,
+      aiStyle: s.aiStyle || "melee",
+      aiSpeedMult: Number(s.aiSpeedMult) || 1,
+      isRanged: !!s.isRanged,
+      rangedRange: Number(s.rangedRange) || 0,
+      jumpTimer: Number(s.jumpTimer) || 0,
+      bossSpecialTimer: Number(s.bossSpecialTimer) || 0,
+      hitFlash: 0, anim: Math.random() * 6, dead: false,
+      attackTimer: Number(s.attackTimer) || 0,
+      attackAnim: 0, attackWindup: 0
+    };
+    game.enemies.push(enemy);
+    pinCharToGround(enemy);
+  });
+  if (Number.isFinite(data.enemyId)) enemyId = Math.max(enemyId, data.enemyId);
+}
+
+function resumeRun(data) {
+  if (!data || !data.hero) {
+    startRun();
+    return;
+  }
+  unlockAudio();
+  hideUpgrades();
+  stopLoop();
+  resetRun();
+  game.classKey = normalizeClassKey(data.classKey || game.classKey);
+  selectClass(game.classKey);
+  game.dungeonLevel = Math.max(1, Math.floor(Number(data.dungeonLevel) || 1));
+  game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
+  game.runXp = Math.max(0, Math.floor(Number(data.runXp) || 0));
+  game.playerLevel = Math.max(1, Math.floor(Number(data.playerLevel) || 1));
+  game.monstersDefeated = Math.max(0, Math.floor(Number(data.monstersDefeated) || 0));
+  game.waveCooldown = Math.max(0, Number(data.waveCooldown) || 0);
+  game.specialTimer = Math.max(0, Number(data.specialTimer) || 0);
+  game.abilityCastLock = Math.max(0, Number(data.abilityCastLock) || 0);
+  game.waveNumber = Math.max(0, Math.floor(Number(data.waveNumber) || 0));
+  game.combatReady = data.combatReady !== false;
+  game.waveIntro = !!data.waveIntro;
+  game.bestLoot = data.bestLoot || null;
+  if (game.bestLoot && $("loot-display")) {
+    $("loot-display").classList.remove("hidden");
+    if ($("best-loot-text")) {
+      const bl = game.bestLoot;
+      const eff = LOOT_EFFECTS.find((e) => e.key === bl.effect);
+      const effLabel = eff ? eff.label : bl.effect;
+      $("best-loot-text").textContent = (bl.rarity || "") + " " + (bl.name || "Loot") +
+        (effLabel ? " (+" + effLabel + " " + (bl.value || 0) + ")" : "");
+      $("best-loot-text").className = "loot-item " + (bl.css || "");
+    }
+  }
+  try {
+    restoreHeroFromSave(data);
+    restoreEnemiesFromSave(data);
+  } catch (err) {
+    console.error("resumeRun failed:", err);
+    clearActiveRun();
+    startRun();
+    return;
+  }
+  initWorldBackground();
+  game.isRunning = true; game.isPaused = false; game.isDead = false;
+  upgradePause = false;
+  $("gameover-panel").classList.add("hidden");
+  $("game-frame").classList.remove("hidden");
+  $("btn-start-run").disabled = true;
+  $("btn-pause").disabled = false;
+  $("btn-restart").disabled = false;
+  $("btn-pause").textContent = "Pause (P)";
+  if (countAliveEnemies() === 0 && game.waveCooldown <= 0) {
+    game.waveCooldown = 0.8;
+  }
+  playWorldMusic(getWorld());
+  addLog("Spielstand geladen – Dungeon " + game.dungeonLevel + ", weiter geht's!", "heal");
+  updateClassHint();
+  updateHUD();
+  updateStatus();
+  updateRunButtons();
+  markRunSaveDirty();
+  saveActiveRun(true);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      beginRunLoop();
+      if (canvas) canvas.focus();
+    });
+  });
+}
+
+function updateRunButtons() {
+  const startBtn = $("btn-start-run");
+  if (!startBtn) return;
+  const run = game.playerName ? loadActiveRunFor(game.playerName) : peekActiveRun();
+  if (game.isRunning && !game.isDead) {
+    startBtn.textContent = "Run läuft";
+    startBtn.disabled = true;
+  } else if (run && (!game.playerName || playerStorageKey(run.playerName) === playerStorageKey(game.playerName))) {
+    startBtn.textContent = "Weiter spielen";
+    startBtn.disabled = false;
+  } else {
+    startBtn.textContent = "Run starten";
+    startBtn.disabled = false;
+  }
 }
 
 function applyPlayerSave(data) {
@@ -1999,11 +2341,13 @@ function showLeaderboardSection() {
   if (sec) sec.classList.remove("hidden");
 }
 
-async function loadPlayer() {
+async function loadPlayer(opts) {
   const name = $("player-name").value.trim();
   if (!name) { $("load-hint").textContent = "Bitte Namen eingeben."; return; }
   game.playerName = name;
   game.playerId = null;
+  const forceNew = !!(opts && opts.forceNew);
+  if (forceNew) clearActiveRun();
 
   const saved = loadLocalPlayer(name);
   if (saved) {
@@ -2012,7 +2356,11 @@ async function loadPlayer() {
     syncUnlockedAbilities();
     showLeaderboardSection();
     loadLeaderboard();
-    enterGame("Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)");
+    const run = forceNew ? null : loadActiveRunFor(name);
+    const msg = run
+      ? "Willkommen zurück, " + name + "! Spielstand Dungeon " + run.dungeonLevel + " wird fortgesetzt."
+      : "Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)";
+    enterGame(msg, { forceNew });
     await tryLoadCloudPlayer(name);
     return;
   }
@@ -2024,8 +2372,14 @@ async function loadPlayer() {
   syncUnlockedAbilities();
   showLeaderboardSection();
   loadLeaderboard();
-  enterGame("Neuer Abenteurer: " + name + "! Fortschritt wird lokal gespeichert.");
+  enterGame("Neuer Abenteurer: " + name + "! Fortschritt wird lokal gespeichert.", { forceNew });
   await tryLoadCloudPlayer(name);
+}
+
+async function startNewGameFromSetup() {
+  unlockAudio();
+  if (!confirm("Aktiven Run verwerfen und neu starten? Gold & Upgrades bleiben erhalten.")) return;
+  await loadPlayer({ forceNew: true });
 }
 
 /** Optional: Cloud-Save laden wenn Supabase konfiguriert ist */
@@ -2060,7 +2414,7 @@ async function tryLoadCloudPlayer(name) {
   } catch (_) { /* offline */ }
 }
 
-function enterGame(msg) {
+function enterGame(msg, opts) {
   stopHeroCardLoop();
   $("game-section").classList.remove("hidden");
   hideUpgrades();
@@ -2070,8 +2424,14 @@ function enterGame(msg) {
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   renderSetupAbilityHint();
   $("load-hint").textContent = msg;
+  updateRunButtons();
   $("game-section").scrollIntoView({ behavior: "smooth" });
-  requestAnimationFrame(() => startRun());
+  const forceNew = !!(opts && opts.forceNew);
+  const savedRun = forceNew ? null : loadActiveRunFor(game.playerName);
+  requestAnimationFrame(() => {
+    if (savedRun) resumeRun(savedRun);
+    else startRun();
+  });
 }
 
 function emptyUpgrades() { const u = {}; UPGRADES.forEach((x) => u[x.key] = 0); return u; }
@@ -2335,6 +2695,7 @@ function startRun() {
     if (countAliveEnemies() === 0) safeSpawnWave();
     return;
   }
+  clearActiveRun();
   hideUpgrades();
   stopLoop();
   resetRun();
@@ -2358,12 +2719,29 @@ function startRun() {
   playWorldMusic(getWorld());
   addLog("Run gestartet – Level 1. Stirbst du? Upgrades kaufen!");
   updateClassHint();
+  updateRunButtons();
+  markRunSaveDirty();
+  saveActiveRun(true);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       beginRunLoop();
       if (canvas) canvas.focus();
     });
   });
+}
+
+function continueOrStartRun() {
+  unlockAudio();
+  if (game.isRunning && !game.isDead) {
+    ensureGameLoop();
+    return;
+  }
+  const existing = game.playerName ? loadActiveRunFor(game.playerName) : null;
+  if (existing) {
+    resumeRun(existing);
+    return;
+  }
+  startRun();
 }
 
 function resetRun() {
@@ -2383,12 +2761,15 @@ function resetRun() {
 
 function restartRun() {
   stopLoop();
+  clearActiveRun();
   game.isRunning = false; game.isPaused = false; game.isDead = false;
   resetRun();
+  game.hero = null;
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.add("hidden");
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true; $("btn-restart").disabled = true;
+  updateRunButtons();
   addLog("Run zurückgesetzt.");
 }
 
@@ -2452,7 +2833,13 @@ function togglePause() {
   if (!game.isRunning || game.isDead) return;
   game.isPaused = !game.isPaused;
   $("btn-pause").textContent = game.isPaused ? "Weiter (P)" : "Pause (P)";
-  if (game.isPaused) stopLoop(); else startLoop();
+  if (game.isPaused) {
+    saveActiveRun(true);
+    if (game.playerName) saveLocalPlayer();
+    stopLoop();
+  } else {
+    startLoop();
+  }
 }
 
 // ============================================
@@ -3358,6 +3745,13 @@ function updateFrame(dt) {
   // Tote Gegner aufräumen
   game.enemies = game.enemies.filter((e) => (e.hp > 0 && !e.dead) || e.hitFlash > 0);
 
+  // Periodischer Spielstand (alle ~2.5s bei Änderungen)
+  runSaveTimer += dt;
+  if (runSaveTimer >= 2.5) {
+    runSaveTimer = 0;
+    if (runSaveDirty) saveActiveRun(false);
+  }
+
   updateHUD();
   updateStatus();
 }
@@ -3391,11 +3785,13 @@ function onEnemyKill(e) {
     addLog("Level Up! Held " + game.playerLevel, "heal");
   }
   if (Math.random() < BALANCE.lootChance) generateLoot();
+  markRunSaveDirty();
 }
 
 function onDeath() {
   game.isDead = true;
   stopMusic();
+  clearActiveRun();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + Math.floor(Number(game.runGold) || 0));
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
@@ -3430,6 +3826,7 @@ function showGameOver() {
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   renderSetupAbilityHint();
+  updateRunButtons();
   tryMenuMusic();
 }
 
@@ -3863,6 +4260,7 @@ async function buyUpgrade(k) {
   }
   await savePlayer(); updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   updateClassHint();
+  if (game.isRunning && !game.isDead) { markRunSaveDirty(); saveActiveRun(true); }
 }
 
 function updateTotalGold() {
