@@ -4,7 +4,13 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "fix-menu-v123";
+const BUILD_ID = "visual-repair-v124";
+
+/** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
+const DEBUG_HITBOXES = false;
+
+/** Partikel-Obergrenze – verhindert unbegrenztes Ansammeln */
+const MAX_PARTICLES = 220;
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -40,11 +46,11 @@ function pinCharToGround(entity) {
 const CAM_ZOOM = 1.12;
 const COMBAT_LAYOUT = {
   heroCombatX: 90,
-  /** Bewegungskorridor – links bleibt der Held vollständig sichtbar */
-  heroMoveMinX: 28,
-  heroMoveMaxX: 280,
-  /** Rechts darf max. 50 % der Körperbreite aus dem Bildschirm ragen */
-  heroEdgeOverflowRight: 0.5,
+  /** Voller Bildkorridor – Held kann die komplette Breite nutzen */
+  heroMoveMinX: 16,
+  heroMoveMaxX: 560,
+  /** Rechts bleibt der Held weitgehend sichtbar */
+  heroEdgeOverflowRight: 0.12,
   enemyRightMargin: 205,
   enemySpacing: 50,
   enemyMeleeReach: 52,
@@ -59,7 +65,7 @@ const COMBAT_LAYOUT = {
 };
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
-const CAMERA_FOLLOW_OFFSET_X = 145;
+const CAMERA_FOLLOW_OFFSET_X = 40;
 const CAMERA_LERP = 8.5;
 const visualCamera = { x: CAM_AX, y: CAM_AY, zoom: CAM_ZOOM, ready: false };
 let canvas, ctx;
@@ -73,7 +79,8 @@ function clamp(v, min, max) {
 function getCameraFocusX() {
   if (typeof game === "undefined" || !game.hero) return CAM_AX;
   const h = game.hero;
-  return clamp(h.x + CAMERA_FOLLOW_OFFSET_X, 215, 395);
+  // Kamera folgt dem Helden über die volle Breite, ohne ihn mittig einzusperren
+  return clamp(h.x + h.w * 0.5 + CAMERA_FOLLOW_OFFSET_X, 140, 500);
 }
 
 function updateVisualCamera(dt) {
@@ -1593,6 +1600,12 @@ function spawnImpactRing(x, y, radius, color, life) {
   });
 }
 
+function trimParticles() {
+  if (game.particles.length > MAX_PARTICLES) {
+    game.particles.splice(0, game.particles.length - MAX_PARTICLES);
+  }
+}
+
 function spawnBurst(x, y, color, count, speed) {
   const n = count || 5;
   const spd = speed || 4;
@@ -1603,6 +1616,7 @@ function spawnBurst(x, y, color, count, speed) {
       life: 14 + Math.random() * 8, color: color || "#f1c40f", size: 2 + Math.random() * 2
     });
   }
+  trimParticles();
 }
 
 function spawnExplosion(x, y, radius, playSound) {
@@ -2951,13 +2965,13 @@ function getCombatAim() {
 }
 
 function getHeroMinX(_h) {
-  return COMBAT_LAYOUT.heroMoveMinX ?? 24;
+  return COMBAT_LAYOUT.heroMoveMinX ?? 16;
 }
 
 function getHeroMaxX(h) {
-  const overflow = COMBAT_LAYOUT.heroEdgeOverflowRight ?? 0.5;
+  const overflow = COMBAT_LAYOUT.heroEdgeOverflowRight ?? 0.12;
   const edgeMax = CW - h.w * (1 - overflow);
-  const moveMax = COMBAT_LAYOUT.heroMoveMaxX ?? 300;
+  const moveMax = COMBAT_LAYOUT.heroMoveMaxX ?? (CW - 24);
   return Math.min(moveMax, edgeMax);
 }
 
@@ -4275,6 +4289,7 @@ function spawnDamage(x, y, val, arg4, arg5) {
 
 function render() {
   const world = getWorld();
+  if (ctx) ctx.imageSmoothingEnabled = false;
   const shakeX = game.screenShake ? (Math.random() - 0.5) * game.screenShake : 0;
   const shakeY = game.screenShake ? (Math.random() - 0.5) * game.screenShake * 0.6 : 0;
   const zoomBoost = 1 + (game.zoomPulse || 0);
@@ -4329,22 +4344,32 @@ function render() {
     drawPremiumSlashFx(ctx, s);
   });
 
-  // Gegner
+  // Gegner – Trefferfeedback am Sprite (kein Hitbox-Rechteck)
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = 0;
     const drawX = getEnemyDrawX(e);
     const vb = getEnemyVisualBounds(e, drawX);
+    const hitFlash = Math.max(0, e.hitFlash || 0);
     ctx.save();
-    if (e.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(e.hitFlash) * 0.3;
     if (e.attackWindup > 0) {
-      ctx.shadowColor = "#e74c3c";
-      ctx.shadowBlur = 6 + e.attackWindup * 10;
+      ctx.shadowColor = "rgba(231,76,60,0.45)";
+      ctx.shadowBlur = 3 + e.attackWindup * 6;
     }
-    drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
+    if (typeof VisualEnemies !== "undefined" && VisualEnemies.drawAtFeet) {
+      VisualEnemies.drawAtFeet(
+        ctx, e.sprite, drawX + e.w / 2, GROUND, true, world, bob, e.isBoss, e.w, e.h, hitFlash
+      );
+    } else {
+      drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
+    }
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
     ctx.restore();
+    if (DEBUG_HITBOXES) {
+      ctx.strokeStyle = "rgba(255,0,0,0.7)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(e.x, e.y, e.w, e.h);
+    }
     const barW = Math.min(vb.w, e.isBoss ? 96 : 56);
     const barX = vb.x + (vb.w - barW) / 2;
     const barY = vb.y - 7;
@@ -4383,8 +4408,13 @@ function render() {
   }
 
   ctx.save();
-  // Kein weißes/rotes Hitbox-Rechteck – Treffer-Feedback nur am Sprite (HR) + Hurt-Pose
+  // Kein Hitbox-Rechteck – Treffer-Feedback nur am Sprite (HR) + Hurt-Pose
   drawHero(ctx, h, 0, atkOff, hurtOff, world);
+  if (DEBUG_HITBOXES) {
+    ctx.strokeStyle = "rgba(0,255,0,0.7)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(h.x, h.y, h.w, h.h);
+  }
   ctx.restore();
 
   game.projectiles.forEach((p) => {
@@ -4446,6 +4476,16 @@ function render() {
   ctx.restore();
 
   renderWorldTransition(ctx);
+
+  // Kurze Treffer-Vignette am Bildschirmrand (kein rotes Rechteck auf dem Held)
+  if (game.hero && (game.hero.hitFlash || 0) > 6) {
+    const vig = Math.min(0.22, (game.hero.hitFlash - 6) * 0.025);
+    const g = ctx.createRadialGradient(CW / 2, CH / 2, CH * 0.28, CW / 2, CH / 2, CH * 0.75);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(120,20,20," + vig + ")");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, CW, CH);
+  }
 
   /** Kritischer Treffer – dezenter Bildschirmblitz */
   if (game.critFlash > 0) {

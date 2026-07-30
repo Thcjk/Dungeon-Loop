@@ -37,7 +37,41 @@ const VisualEnemies = {
     return { w: fallbackW || (isBoss ? 80 : 52), h: fallbackH || (isBoss ? 120 : 78) };
   },
 
-  drawAtFeet(c, spriteKey, footX, footY, flip, world, bob, big, boxW, boxH) {
+  _tintBuf: null,
+  _tintCtx: null,
+
+  tintBuffer(w, h) {
+    if (!this._tintBuf) {
+      this._tintBuf = document.createElement("canvas");
+      this._tintCtx = this._tintBuf.getContext("2d");
+    }
+    if (this._tintBuf.width !== w || this._tintBuf.height !== h) {
+      this._tintBuf.width = w;
+      this._tintBuf.height = h;
+    }
+    return this._tintCtx;
+  },
+
+  drawTinted(c, img, dx, y, flash) {
+    const w = img.width;
+    const h = img.height;
+    const a = Math.max(0.12, Math.min(0.48, 0.18 + flash * 0.04));
+    const tc = this.tintBuffer(w, h);
+    tc.imageSmoothingEnabled = false;
+    tc.clearRect(0, 0, w, h);
+    tc.globalCompositeOperation = "source-over";
+    tc.drawImage(img, 0, 0);
+    tc.globalCompositeOperation = "source-atop";
+    tc.fillStyle = "rgba(255, 236, 220, " + a + ")";
+    tc.fillRect(0, 0, w, h);
+    tc.globalCompositeOperation = "lighter";
+    tc.fillStyle = "rgba(255, 70, 50, " + (a * 0.3) + ")";
+    tc.fillRect(0, 0, w, h);
+    tc.globalCompositeOperation = "source-over";
+    c.drawImage(this._tintBuf, dx, y);
+  },
+
+  drawAtFeet(c, spriteKey, footX, footY, flip, world, bob, big, boxW, boxH, hitFlash) {
     const img = this.resolveImage(spriteKey, big);
     if (!img) return false;
     const w = img.width;
@@ -51,10 +85,15 @@ const VisualEnemies = {
     c.beginPath();
     c.ellipse(footX, footY + 1, Math.max(10, w * 0.28), 4, 0, 0, Math.PI * 2);
     c.fill();
+    const flash = Math.max(0, hitFlash || 0);
     if (flip) {
       c.translate(Math.round(footX * 2), 0);
       c.scale(-1, 1);
-      c.drawImage(img, Math.round(footX * 2 - x - w), y);
+      const dx = Math.round(footX * 2 - x - w);
+      if (flash > 0) this.drawTinted(c, img, dx, y, flash);
+      else c.drawImage(img, dx, y);
+    } else if (flash > 0) {
+      this.drawTinted(c, img, x, y, flash);
     } else {
       c.drawImage(img, x, y);
     }
