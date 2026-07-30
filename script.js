@@ -4,9 +4,26 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v2-132";
-const GAME_VERSION = 2;
-const WORLD_LAYOUT_VERSION = 2;
+const BUILD_ID = "sidescroller-v3-133";
+const GAME_VERSION = 3;
+const WORLD_LAYOUT_VERSION = 3;
+
+/* Einmaliger kompletter Neustart: alle alten lokalen Spielstaende und
+   Weltdaten werden geloescht, damit keine alte Darstellung zurueckkommt. */
+const DATA_WIPE_KEY = "dungeon_loop_wipe_version";
+const DATA_WIPE_VERSION = "3";
+(function wipeLegacyData() {
+  try {
+    if (localStorage.getItem(DATA_WIPE_KEY) === DATA_WIPE_VERSION) return;
+    const stale = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf("dungeon_loop") === 0) stale.push(key);
+    }
+    stale.forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem(DATA_WIPE_KEY, DATA_WIPE_VERSION);
+  } catch (_) {}
+})();
 
 /** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
 const DEBUG_HITBOXES = false;
@@ -710,7 +727,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 2;
+const RUN_SAVE_VERSION = 3;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
