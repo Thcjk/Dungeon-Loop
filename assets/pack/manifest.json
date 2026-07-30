@@ -1,0 +1,373 @@
+{
+  "heroes": {
+    "warrior": {
+      "idle": "assets/pack/heroes/warrior/idle.png",
+      "idle_card": "assets/pack/heroes/warrior/idle_card.png",
+      "walk": "assets/pack/heroes/warrior/walk.png",
+      "walk_card": "assets/pack/heroes/warrior/walk_card.png",
+      "run": "assets/pack/heroes/warrior/run.png",
+      "run_card": "assets/pack/heroes/warrior/run_card.png",
+      "attack": "assets/pack/heroes/warrior/attack.png",
+      "attack_card": "assets/pack/heroes/warrior/attack_card.png",
+      "cast": "assets/pack/heroes/warrior/cast.png",
+      "cast_card": "assets/pack/heroes/warrior/cast_card.png",
+      "hurt": "assets/pack/heroes/warrior/hurt.png",
+      "hurt_card": "assets/pack/heroes/warrior/hurt_card.png",
+      "death": "assets/pack/heroes/warrior/death.png",
+      "death_card": "assets/pack/heroes/warrior/death_card.png"
+    },
+    "ranger": {
+      "idle": "assets/pack/heroes/ranger/idle.png",
+      "idle_card": "assets/pack/heroes/ranger/idle_card.png",
+      "walk": "assets/pack/heroes/ranger/walk.png",
+      "walk_card": "assets/pack/heroes/ranger/walk_card.png",
+      "run": "assets/pack/heroes/ranger/run.png",
+      "run_card": "assets/pack/heroes/ranger/run_card.png",
+      "attack": "assets/pack/heroes/ranger/attack.png",
+      "attack_card": "assets/pack/heroes/ranger/attack_card.png",
+      "cast": "assets/pack/heroes/ranger/cast.png",
+      "cast_card": "assets/pack/heroes/ranger/cast_card.png",
+      "hurt": "assets/pack/heroes/ranger/hurt.png",
+      "hurt_card": "assets/pack/heroes/ranger/hurt_card.png",
+      "death": "assets/pack/heroes/ranger/death.png",
+      "death_card": "assets/pack/heroes/ranger/death_card.png"
+    },
+    "mage": {
+      "idle": "assets/pack/heroes/mage/idle.png",
+      "idle_card": "assets/pack/heroes/mage/idle_card.png",
+      "walk": "assets/pack/heroes/mage/walk.png",
+      "walk_card": "assets/pack/heroes/mage/walk_card.png",
+      "run": "assets/pack/heroes/mage/run.png",
+      "run_card": "assets/pack/heroes/mage/run_card.png",
+      "attack": "assets/pack/heroes/mage/attack.png",
+      "attack_card": "assets/pack/heroes/mage/attack_card.png",
+      "cast": "assets/pack/heroes/mage/cast.png",
+      "cast_card": "assets/pack/heroes/mage/cast_card.png",
+      "hurt": "assets/pack/heroes/mage/hurt.png",
+      "hurt_card": "assets/pack/heroes/mage/hurt_card.png",
+      "death": "assets/pack/heroes/mage/death.png",
+      "death_card": "assets/pack/heroes/mage/death_card.png"
+    }
+  },
+  "enemies": {
+    "forest": {
+      "forest_bandit": {
+        "path": "assets/pack/enemies/forest/forest_bandit.png",
+        "name": "Bandit",
+        "w": 65,
+        "h": 78
+      },
+      "forest_goblin": {
+        "path": "assets/pack/enemies/forest/forest_goblin.png",
+        "name": "Goblin",
+        "w": 66,
+        "h": 78
+      },
+      "forest_hornet": {
+        "path": "assets/pack/enemies/forest/forest_hornet.png",
+        "name": "Hornet",
+        "w": 61,
+        "h": 78
+      },
+      "forest_sapling": {
+        "path": "assets/pack/enemies/forest/forest_sapling.png",
+        "name": "Sapling",
+        "w": 58,
+        "h": 78
+      },
+      "forest_spider": {
+        "path": "assets/pack/enemies/forest/forest_spider.png",
+        "name": "Spider",
+        "w": 86,
+        "h": 78
+      },
+      "forest_vine_crawler": {
+        "path": "assets/pack/enemies/forest/forest_vine_crawler.png",
+        "name": "Vine Crawler",
+        "w": 107,
+        "h": 78
+      },
+      "forest_wraith": {
+        "path": "assets/pack/enemies/forest/forest_wraith.png",
+        "name": "Wraith",
+        "w": 49,
+        "h": 78
+      }
+    },
+    "swamp": {
+      "swamp_alligator": {
+        "path": "assets/pack/enemies/swamp/swamp_alligator.png",
+        "name": "Alligator",
+        "w": 171,
+        "h": 78
+      },
+      "swamp_hag": {
+        "path": "assets/pack/enemies/swamp/swamp_hag.png",
+        "name": "Hag",
+        "w": 51,
+        "h": 78
+      },
+      "swamp_leech": {
+        "path": "assets/pack/enemies/swamp/swamp_leech.png",
+        "name": "Leech",
+        "w": 104,
+        "h": 78
+      },
+      "swamp_mosquito_swarm": {
+        "path": "assets/pack/enemies/swamp/swamp_mosquito_swarm.png",
+        "name": "Mosquito Swarm",
+        "w": 54,
+        "h": 78
+      },
+      "swamp_mud_elemental": {
+        "path": "assets/pack/enemies/swamp/swamp_mud_elemental.png",
+        "name": "Mud Elemental",
+        "w": 51,
+        "h": 78
+      },
+      "swamp_toad": {
+        "path": "assets/pack/enemies/swamp/swamp_toad.png",
+        "name": "Toad",
+        "w": 101,
+        "h": 78
+      },
+      "swamp_zombie": {
+        "path": "assets/pack/enemies/swamp/swamp_zombie.png",
+        "name": "Zombie",
+        "w": 55,
+        "h": 78
+      }
+    },
+    "frost": {
+      "snow_frost_bat": {
+        "path": "assets/pack/enemies/frost/snow_frost_bat.png",
+        "name": "Frost Bat",
+        "w": 66,
+        "h": 78
+      },
+      "snow_frost_raider": {
+        "path": "assets/pack/enemies/frost/snow_frost_raider.png",
+        "name": "Frost Raider",
+        "w": 70,
+        "h": 78
+      },
+      "snow_ice_golem": {
+        "path": "assets/pack/enemies/frost/snow_ice_golem.png",
+        "name": "Ice Golem",
+        "w": 56,
+        "h": 78
+      },
+      "snow_ice_spider": {
+        "path": "assets/pack/enemies/frost/snow_ice_spider.png",
+        "name": "Ice Spider",
+        "w": 91,
+        "h": 78
+      },
+      "snow_ice_wraith": {
+        "path": "assets/pack/enemies/frost/snow_ice_wraith.png",
+        "name": "Ice Wraith",
+        "w": 50,
+        "h": 78
+      },
+      "snow_shaman": {
+        "path": "assets/pack/enemies/frost/snow_shaman.png",
+        "name": "Shaman",
+        "w": 52,
+        "h": 78
+      },
+      "snow_yeti": {
+        "path": "assets/pack/enemies/frost/snow_yeti.png",
+        "name": "Yeti",
+        "w": 69,
+        "h": 78
+      }
+    },
+    "fire": {
+      "volcano_ash_wraith": {
+        "path": "assets/pack/enemies/fire/volcano_ash_wraith.png",
+        "name": "Ash Wraith",
+        "w": 65,
+        "h": 78
+      },
+      "volcano_cultist": {
+        "path": "assets/pack/enemies/fire/volcano_cultist.png",
+        "name": "Cultist",
+        "w": 52,
+        "h": 78
+      },
+      "volcano_fire_imp": {
+        "path": "assets/pack/enemies/fire/volcano_fire_imp.png",
+        "name": "Fire Imp",
+        "w": 81,
+        "h": 78
+      },
+      "volcano_hellhound": {
+        "path": "assets/pack/enemies/fire/volcano_hellhound.png",
+        "name": "Hellhound",
+        "w": 109,
+        "h": 78
+      },
+      "volcano_magma_scorpion": {
+        "path": "assets/pack/enemies/fire/volcano_magma_scorpion.png",
+        "name": "Magma Scorpion",
+        "w": 73,
+        "h": 78
+      },
+      "volcano_obsidian_golem": {
+        "path": "assets/pack/enemies/fire/volcano_obsidian_golem.png",
+        "name": "Obsidian Golem",
+        "w": 59,
+        "h": 78
+      },
+      "volcano_salamander": {
+        "path": "assets/pack/enemies/fire/volcano_salamander.png",
+        "name": "Salamander",
+        "w": 96,
+        "h": 78
+      }
+    },
+    "ruins": {
+      "ruins_cursed_priest": {
+        "path": "assets/pack/enemies/ruins/ruins_cursed_priest.png",
+        "name": "Cursed Priest",
+        "w": 48,
+        "h": 78
+      },
+      "ruins_mummy_warrior": {
+        "path": "assets/pack/enemies/ruins/ruins_mummy_warrior.png",
+        "name": "Mummy Warrior",
+        "w": 47,
+        "h": 78
+      },
+      "ruins_sand_worm": {
+        "path": "assets/pack/enemies/ruins/ruins_sand_worm.png",
+        "name": "Sand Worm",
+        "w": 68,
+        "h": 78
+      },
+      "ruins_scarab_swarm": {
+        "path": "assets/pack/enemies/ruins/ruins_scarab_swarm.png",
+        "name": "Scarab Swarm",
+        "w": 64,
+        "h": 78
+      },
+      "ruins_skeleton_archer": {
+        "path": "assets/pack/enemies/ruins/ruins_skeleton_archer.png",
+        "name": "Skeleton Archer",
+        "w": 66,
+        "h": 78
+      },
+      "ruins_sphinx": {
+        "path": "assets/pack/enemies/ruins/ruins_sphinx.png",
+        "name": "Sphinx",
+        "w": 77,
+        "h": 78
+      },
+      "ruins_stone_guardian": {
+        "path": "assets/pack/enemies/ruins/ruins_stone_guardian.png",
+        "name": "Stone Guardian",
+        "w": 57,
+        "h": 78
+      }
+    }
+  },
+  "bosses": {
+    "forest": {
+      "path": "assets/pack/bosses/boss_forest.png",
+      "name": "Forest Boss",
+      "w": 79,
+      "h": 120
+    },
+    "ruins": {
+      "path": "assets/pack/bosses/boss_ruins.png",
+      "name": "Ruins Boss",
+      "w": 77,
+      "h": 120
+    },
+    "frost": {
+      "path": "assets/pack/bosses/boss_frost.png",
+      "name": "Snow Boss",
+      "w": 82,
+      "h": 120
+    },
+    "swamp": {
+      "path": "assets/pack/bosses/boss_swamp.png",
+      "name": "Swamp Boss",
+      "w": 88,
+      "h": 120
+    },
+    "fire": {
+      "path": "assets/pack/bosses/boss_fire.png",
+      "name": "Volcano Boss",
+      "w": 77,
+      "h": 120
+    }
+  },
+  "worlds": {
+    "forest": {
+      "preview": "assets/pack/worlds/forest/preview.png",
+      "midband": "assets/pack/worlds/forest/midband.png",
+      "ground": "assets/pack/worlds/forest/ground.png",
+      "previewW": 1290,
+      "previewH": 360,
+      "tileset": "assets/pack/worlds/forest/tileset.png",
+      "deco": "assets/pack/worlds/forest/deco.png"
+    },
+    "swamp": {
+      "preview": "assets/pack/worlds/swamp/preview.png",
+      "midband": "assets/pack/worlds/swamp/midband.png",
+      "ground": "assets/pack/worlds/swamp/ground.png",
+      "previewW": 1290,
+      "previewH": 360,
+      "deco": "assets/pack/worlds/swamp/deco.png",
+      "tileset": "assets/pack/worlds/swamp/tileset.png"
+    },
+    "frost": {
+      "preview": "assets/pack/worlds/frost/preview.png",
+      "midband": "assets/pack/worlds/frost/midband.png",
+      "ground": "assets/pack/worlds/frost/ground.png",
+      "previewW": 1290,
+      "previewH": 360,
+      "tileset": "assets/pack/worlds/frost/tileset.png",
+      "deco": "assets/pack/worlds/frost/deco.png"
+    },
+    "fire": {
+      "preview": "assets/pack/worlds/fire/preview.png",
+      "midband": "assets/pack/worlds/fire/midband.png",
+      "ground": "assets/pack/worlds/fire/ground.png",
+      "previewW": 1290,
+      "previewH": 360,
+      "tileset": "assets/pack/worlds/fire/tileset.png",
+      "deco": "assets/pack/worlds/fire/deco.png"
+    },
+    "ruins": {
+      "preview": "assets/pack/worlds/ruins/preview.png",
+      "midband": "assets/pack/worlds/ruins/midband.png",
+      "ground": "assets/pack/worlds/ruins/ground.png",
+      "previewW": 1290,
+      "previewH": 360,
+      "deco": "assets/pack/worlds/ruins/deco.png",
+      "tileset": "assets/pack/worlds/ruins/tileset.png"
+    }
+  },
+  "fx": {
+    "combat_magic_effects_sheet_2": "assets/pack/fx/combat_magic_effects_sheet_2.png",
+    "combat_magic_effects_sheet": "assets/pack/fx/combat_magic_effects_sheet.png",
+    "elemental_weather_effects_sheet_2": "assets/pack/fx/elemental_weather_effects_sheet_2.png",
+    "elemental_weather_effects_sheet": "assets/pack/fx/elemental_weather_effects_sheet.png",
+    "projectiles_sheet_2": "assets/pack/fx/projectiles_sheet_2.png",
+    "projectiles_sheet": "assets/pack/fx/projectiles_sheet.png"
+  },
+  "ui": {
+    "ui_panel_excerpt": "assets/pack/ui/ui_panel_excerpt.png",
+    "hud_elements_sheet_2": "assets/pack/ui/hud_elements_sheet_2.png",
+    "hud_elements_sheet": "assets/pack/ui/hud_elements_sheet.png",
+    "item_equipment_icons_sheet_2": "assets/pack/ui/item_equipment_icons_sheet_2.png",
+    "item_equipment_icons_sheet": "assets/pack/ui/item_equipment_icons_sheet.png",
+    "skill_icons_sheet_2": "assets/pack/ui/skill_icons_sheet_2.png",
+    "skill_icons_sheet": "assets/pack/ui/skill_icons_sheet.png",
+    "ui_frames_sheet_2": "assets/pack/ui/ui_frames_sheet_2.png",
+    "ui_frames_sheet": "assets/pack/ui/ui_frames_sheet.png"
+  },
+  "previews": {}
+}
