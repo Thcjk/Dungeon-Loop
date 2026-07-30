@@ -134,9 +134,10 @@ HR.draw = (ctx, opts) => {
   // Kein vertikales Bobbing: Füße bleiben sichtbar auf der Mauer.
   const bob = 0;
   const gaitLean = moving ? Math.sin(h.gaitPhase || 0) * 0.028 * facing : 0;
-  // Der vorhandene Angriffssprite zeigt die Waffe/Bogenpose; der kurze Lean
-  // gibt der Bogen-Spannung bzw. dem Hieb einen klaren Ablauf.
-  const attackLean = state === "attack" ? -facing * Math.sin((h.attackAnim || 0) * 18) * 0.055 : 0;
+  // attack.png = volle Bogenspannung / Waffenpose. Leichter Lean verstärkt den Zug.
+  const attackLean = state === "attack"
+    ? -facing * Math.sin(Math.min(1, h.attackAnim || 0) * Math.PI) * (classKey === "ranger" ? 0.04 : 0.055)
+    : 0;
   const baseX = (opts.x != null ? opts.x : h.x) || 0;
   const cx = baseX + (h.w || HR.W) / 2 + (opts.hurtOff || 0) + (opts.atkOff || 0);
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
