@@ -53,10 +53,77 @@ body {
 
 .setup-card.collapsed { padding: 0.5rem 1rem; }
 .setup-card.collapsed h2, .setup-card.collapsed .label, .setup-card.collapsed .input,
-.setup-card.collapsed .setup-layout, .setup-card.collapsed #btn-load-player { display: none; }
+.setup-card.collapsed .setup-layout, .setup-card.collapsed .menu-panel,
+.setup-card.collapsed #btn-load-player { display: none; }
 .setup-card.collapsed .ability-section { margin-top: 0; padding-top: 0.5rem; }
 .setup-card.collapsed .ability-heading { font-size: 0.65rem; margin-bottom: 0.4rem; }
 .setup-card.collapsed #load-hint { margin: 0; color: #2ecc71; }
+
+.menu-panel { display: block; }
+.menu-lead { color: var(--muted); font-size: 0.85rem; margin: 0 0 1rem; }
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 360px;
+  margin: 0.5rem 0 1rem;
+}
+.menu-actions--row {
+  flex-direction: row;
+  align-items: center;
+  max-width: none;
+  flex-wrap: wrap;
+}
+.menu-actions--row .btn-large { flex: 1; min-width: 160px; }
+
+.save-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.4rem 0 1rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.save-slot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.save-slot:hover { border-color: var(--gold); background: #1a222c; }
+.save-slot.warrior { border-left: 4px solid var(--warrior); }
+.save-slot.ranger { border-left: 4px solid var(--ranger); }
+.save-slot.mage { border-left: 4px solid var(--mage); }
+.save-slot-main { display: flex; flex-direction: column; gap: 0.15rem; grid-column: 1; }
+.save-slot-name { font-size: 1rem; letter-spacing: 0.04em; }
+.save-slot-class { font-size: 0.75rem; color: var(--muted); }
+.save-slot-meta {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.save-slot-date { opacity: 0.8; }
+.save-slot-action {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--gold);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 
 .label { font-size: 0.75rem; color: var(--muted); margin: 0.4rem 0 0.2rem; display: block; }
 .input { width: 100%; padding: 0.6rem; font-family: inherit; font-size: 0.9rem; background: var(--bg); border: 2px solid var(--border); color: var(--text); outline: none; }

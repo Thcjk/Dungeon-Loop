@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=115">
+  <link rel="stylesheet" href="style.css?v=119">
 </head>
 <body>
 
@@ -22,73 +22,105 @@
   <main class="container">
 
     <section class="card setup-card" id="setup-section">
-      <h2>Held erstellen</h2>
-      <div class="setup-layout">
-        <div class="setup-main">
-          <label class="label" for="player-name">Spielername</label>
-          <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
 
-          <p class="label">Klasse wählen</p>
-          <div class="class-select class-tabs" id="class-select">
-            <button type="button" class="class-btn warrior selected" data-class="warrior">
-              <span class="class-name">Krieger</span>
-              <span class="class-desc">Schild &amp; Schwert</span>
-            </button>
-            <button type="button" class="class-btn ranger" data-class="ranger">
-              <span class="class-name">Waldläufer</span>
-              <span class="class-desc">Kapuze &amp; Bogen</span>
-            </button>
-            <button type="button" class="class-btn mage" data-class="mage">
-              <span class="class-name">Magier</span>
-              <span class="class-desc">Robe &amp; Stab</span>
-            </button>
-          </div>
-
-          <div class="ability-section ability-section--setup" id="ability-section">
-            <h3 class="ability-heading">Spezialfähigkeiten</h3>
-            <div id="ability-setup-hint" class="ability-setup-hint"></div>
-          </div>
-
-      <button type="button" class="btn btn-primary btn-large" id="btn-load-player">Spiel starten</button>
-      <button type="button" class="btn btn-secondary btn-large hidden" id="btn-new-game">Neuer Spielstand</button>
-      <p class="hint" id="load-hint">Name eingeben, Klasse wählen, dann starten. Fortschritt und aktiver Run werden <strong>lokal</strong> gespeichert – kein Internet nötig.</p>
+      <!-- Startmenü -->
+      <div id="menu-home" class="menu-panel">
+        <h2>Hauptmenü</h2>
+        <p class="menu-lead">Wähle, wie du starten möchtest.</p>
+        <div class="menu-actions">
+          <button type="button" class="btn btn-primary btn-large" id="btn-menu-new">Neues Spiel</button>
+          <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
         </div>
-
-        <aside class="hero-card warrior" id="hero-card">
-          <div class="hero-card-frame">
-            <h3 class="hero-card-title" id="hero-card-class">KRIEGER</h3>
-            <div class="hero-card-portrait">
-              <canvas id="hero-card-canvas" width="260" height="300"></canvas>
-            </div>
-            <div class="hero-card-stats">
-              <div class="hero-stat">
-                <span class="hero-stat-icon">❤️</span>
-                <span class="hero-stat-label">HP</span>
-                <strong id="hero-stat-hp">115</strong>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-icon">⚔</span>
-                <span class="hero-stat-label">Angriff</span>
-                <strong id="hero-stat-atk">19</strong>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-icon">🛡</span>
-                <span class="hero-stat-label">Rüstung</span>
-                <strong id="hero-stat-def">5</strong>
-              </div>
-              <div class="hero-stat">
-                <span class="hero-stat-icon">⭐</span>
-                <span class="hero-stat-label">Seltenheit</span>
-                <strong id="hero-stat-rarity">Gewöhnlich</strong>
-              </div>
-            </div>
-            <div class="hero-card-weapon">
-              <span class="hero-weapon-label">Aktuelle Waffe</span>
-              <strong id="hero-weapon-name">Eisenschwert + Schild</strong>
-            </div>
-          </div>
-        </aside>
+        <p class="hint" id="menu-home-hint">Fortschritt wird lokal gespeichert – kein Internet nötig.</p>
       </div>
+
+      <!-- Neues Spiel -->
+      <div id="menu-new" class="menu-panel hidden">
+        <h2>Neues Spiel</h2>
+        <div class="setup-layout">
+          <div class="setup-main">
+            <label class="label" for="player-name">Spielername</label>
+            <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
+
+            <p class="label">Klasse wählen</p>
+            <div class="class-select class-tabs" id="class-select">
+              <button type="button" class="class-btn warrior selected" data-class="warrior">
+                <span class="class-name">Krieger</span>
+                <span class="class-desc">Schild &amp; Schwert</span>
+              </button>
+              <button type="button" class="class-btn ranger" data-class="ranger">
+                <span class="class-name">Waldläufer</span>
+                <span class="class-desc">Kapuze &amp; Bogen</span>
+              </button>
+              <button type="button" class="class-btn mage" data-class="mage">
+                <span class="class-name">Magier</span>
+                <span class="class-desc">Robe &amp; Stab</span>
+              </button>
+            </div>
+
+            <div class="ability-section ability-section--setup" id="ability-section">
+              <h3 class="ability-heading">Spezialfähigkeiten</h3>
+              <div id="ability-setup-hint" class="ability-setup-hint"></div>
+            </div>
+
+            <div class="menu-actions menu-actions--row">
+              <button type="button" class="btn btn-secondary" id="btn-new-back">Zurück</button>
+              <button type="button" class="btn btn-primary btn-large" id="btn-start-new">Spiel starten</button>
+            </div>
+            <p class="hint" id="load-hint">Name eingeben, Klasse wählen – du spielst genau die gewählte Klasse.</p>
+          </div>
+
+          <aside class="hero-card warrior" id="hero-card">
+            <div class="hero-card-frame">
+              <h3 class="hero-card-title" id="hero-card-class">KRIEGER</h3>
+              <div class="hero-card-portrait">
+                <canvas id="hero-card-canvas" width="260" height="300"></canvas>
+              </div>
+              <div class="hero-card-stats">
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">❤️</span>
+                  <span class="hero-stat-label">HP</span>
+                  <strong id="hero-stat-hp">115</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">⚔</span>
+                  <span class="hero-stat-label">Angriff</span>
+                  <strong id="hero-stat-atk">19</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">🛡</span>
+                  <span class="hero-stat-label">Rüstung</span>
+                  <strong id="hero-stat-def">5</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">⭐</span>
+                  <span class="hero-stat-label">Seltenheit</span>
+                  <strong id="hero-stat-rarity">Gewöhnlich</strong>
+                </div>
+              </div>
+              <div class="hero-card-weapon">
+                <span class="hero-weapon-label">Aktuelle Waffe</span>
+                <strong id="hero-weapon-name">Eisenschwert + Schild</strong>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- Spielstände laden -->
+      <div id="menu-load" class="menu-panel hidden">
+        <h2>Spielstand laden</h2>
+        <p class="menu-lead">Wähle einen gespeicherten Held.</p>
+        <div id="save-slot-list" class="save-slot-list"></div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-load-back">Zurück</button>
+        </div>
+        <p class="hint" id="load-slots-hint">Noch keine Spielstände.</p>
+      </div>
+
+      <!-- Legacy-IDs für bestehende JS-Hooks (versteckt) -->
+      <button type="button" class="hidden" id="btn-load-player" tabindex="-1" aria-hidden="true">Spiel starten</button>
+      <button type="button" class="hidden" id="btn-new-game" tabindex="-1" aria-hidden="true">Neuer Spielstand</button>
     </section>
 
     <section class="card game-card hidden" id="game-section">
@@ -179,6 +211,7 @@
             <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
             <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades &amp; Fähigkeiten (U)</button>
             <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
+            <button type="button" class="btn btn-secondary" id="btn-to-menu">Hauptmenü</button>
           </div>
 
           <div class="sidebar-log combat-log-card">
@@ -215,14 +248,14 @@
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">visual-v115</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=115"></script>
-  <script src="world-render.js?v=115"></script>
-  <script src="visual-enemies.js?v=115"></script>
-  <script src="visual-fx.js?v=115"></script>
-  <script src="visual-sprites.js?v=115"></script>
-  <script src="hero-render.js?v=115"></script>
-  <script src="abilities.js?v=115"></script>
-  <script src="script.js?v=115"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">unique-bg-v119</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=119"></script>
+  <script src="world-render.js?v=119"></script>
+  <script src="visual-enemies.js?v=119"></script>
+  <script src="visual-fx.js?v=119"></script>
+  <script src="visual-sprites.js?v=119"></script>
+  <script src="hero-render.js?v=119"></script>
+  <script src="abilities.js?v=119"></script>
+  <script src="script.js?v=119"></script>
 </body>
 </html>

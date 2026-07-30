@@ -9,7 +9,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "115",
+    version: "119",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -61,10 +61,17 @@
     async loadRest() {
       await this.fetchManifest();
       const paths = new Set();
-      ["enemies", "bosses", "worlds", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
+      ["enemies", "bosses", "fx", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
+      // Welten: nur flache deco-BG + Boden (kein midband/preview mit Helden)
+      const worlds = this.manifest.worlds || {};
+      Object.keys(worlds).forEach((theme) => {
+        const w = worlds[theme] || {};
+        ["bg", "ground"].forEach((key) => {
+          if (typeof w[key] === "string") paths.add(w[key]);
+        });
+      });
       await Promise.all([...paths].map((p) => this.loadImage(p)));
       this.ready = true;
-      // invalidate world prop layouts once images arrive
       if (typeof invalidateParallaxCache === "function") invalidateParallaxCache();
       return this.manifest;
     },

@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "visual-v115";
+const BUILD_ID = "unique-bg-v119";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -1723,7 +1723,13 @@ function bindEvents() {
     });
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
-  bind("btn-load-player", () => { unlockAudio(); loadPlayer(); });
+  bind("btn-menu-new", () => { unlockAudio(); showMenuPanel("new"); });
+  bind("btn-menu-load", () => { unlockAudio(); showMenuPanel("load"); });
+  bind("btn-new-back", () => showMenuPanel("home"));
+  bind("btn-load-back", () => showMenuPanel("home"));
+  bind("btn-start-new", () => { startNewGameFromMenu(); });
+  bind("btn-to-menu", () => { returnToMainMenu(); });
+  bind("btn-load-player", () => { unlockAudio(); startNewGameFromMenu(); });
   bind("btn-new-game", () => { startNewGameFromSetup(); });
   bind("btn-start-run", continueOrStartRun);
   bind("btn-pause", togglePause);
@@ -2061,26 +2067,143 @@ function getLastPlayerName() {
   try { return (localStorage.getItem(LAST_PLAYER_KEY) || "").trim(); } catch (_) { return ""; }
 }
 
+function listSavedPlayers() {
+  const store = loadPlayersStore();
+  return Object.keys(store).map((key) => {
+    const p = store[key];
+    if (!p || !p.name) return null;
+    const run = loadActiveRunFor(p.name);
+    return {
+      key,
+      name: p.name,
+      classKey: normalizeClassKey(p.classKey),
+      totalGold: Math.max(0, Math.floor(Number(p.totalGold) || 0)),
+      savedAt: p.savedAt || 0,
+      run
+    };
+  }).filter(Boolean).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+}
+
+function formatSaveDate(ts) {
+  if (!ts) return "–";
+  try {
+    return new Date(ts).toLocaleString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  } catch (_) {
+    return "–";
+  }
+}
+
+function showMenuPanel(which) {
+  const panels = ["menu-home", "menu-new", "menu-load"];
+  panels.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.classList.toggle("hidden", id !== which);
+  });
+  if (which === "load") renderSaveSlotList();
+  if (which === "new") {
+    updateHeroCardUI();
+    renderSetupAbilityHint();
+  }
+}
+
+function renderSaveSlotList() {
+  const list = $("save-slot-list");
+  const hint = $("load-slots-hint");
+  if (!list) return;
+  const slots = listSavedPlayers();
+  list.innerHTML = "";
+  if (!slots.length) {
+    if (hint) hint.textContent = "Noch keine Spielstände. Starte ein neues Spiel.";
+    return;
+  }
+  if (hint) hint.textContent = slots.length + " Spielstand" + (slots.length === 1 ? "" : "e") + " gefunden.";
+  slots.forEach((slot) => {
+    const cls = CLASSES[slot.classKey] || CLASSES.warrior;
+    const run = slot.run;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "save-slot " + slot.classKey;
+    btn.innerHTML =
+      "<div class=\"save-slot-main\">" +
+        "<strong class=\"save-slot-name\">" + escapeHtml(slot.name) + "</strong>" +
+        "<span class=\"save-slot-class\">" + escapeHtml(cls.name) + "</span>" +
+      "</div>" +
+      "<div class=\"save-slot-meta\">" +
+        "<span>🪙 " + slot.totalGold + "</span>" +
+        (run
+          ? "<span>Dungeon " + run.dungeonLevel + " · Held-Lv " + run.playerLevel + "</span>"
+          : "<span>Kein aktiver Run</span>") +
+        "<span class=\"save-slot-date\">" + formatSaveDate(run?.savedAt || slot.savedAt) + "</span>" +
+      "</div>" +
+      "<span class=\"save-slot-action\">" + (run ? "Weiter spielen" : "Laden") + "</span>";
+    btn.addEventListener("click", () => {
+      unlockAudio();
+      loadPlayerSlot(slot.name, { forceNew: false });
+    });
+    list.appendChild(btn);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getSelectedClassFromUI() {
+  const sel = document.querySelector(".class-btn.selected");
+  return normalizeClassKey((sel && sel.dataset.class) || game.classKey || "warrior");
+}
+
 function restoreSetupFromSave() {
   const last = getLastPlayerName();
   const nameInput = $("player-name");
   if (last && nameInput && !nameInput.value) nameInput.value = last;
+  const slots = listSavedPlayers();
+  const homeHint = $("menu-home-hint");
   const run = peekActiveRun();
-  const btn = $("btn-load-player");
-  const newBtn = $("btn-new-game");
-  const hint = $("load-hint");
-  if (run && last && playerStorageKey(run.playerName) === playerStorageKey(last)) {
-    if (btn) btn.textContent = "Weiter spielen";
-    if (newBtn) newBtn.classList.remove("hidden");
-    if (hint) {
-      hint.textContent = "Spielstand gefunden: Dungeon " + run.dungeonLevel +
-        " · Held-Lv " + run.playerLevel + " · " + run.monstersDefeated +
-        " Monster – „Weiter spielen“ setzt fort.";
+  if (homeHint) {
+    if (run) {
+      homeHint.textContent = "Aktiver Run: " + run.playerName + " · Dungeon " + run.dungeonLevel +
+        " – unter „Spielstand laden“ fortsetzen.";
+    } else if (slots.length) {
+      homeHint.textContent = slots.length + " Spielstand" + (slots.length === 1 ? "" : "e") +
+        " gespeichert. Oder starte ein neues Spiel.";
+    } else {
+      homeHint.textContent = "Fortschritt wird lokal gespeichert – kein Internet nötig.";
     }
-  } else if (hint) {
-    hint.textContent = "Name eingeben, Klasse wählen, dann starten. Fortschritt und aktiver Run werden lokal gespeichert – kein Internet nötig.";
   }
+  showMenuPanel("home");
   updateRunButtons();
+}
+
+function returnToMainMenu() {
+  if (game.isRunning && !game.isDead) {
+    saveActiveRun(true);
+    saveLocalPlayer();
+  }
+  stopLoop();
+  game.isRunning = false;
+  game.isPaused = false;
+  game.isDead = false;
+  game.hero = null;
+  hideUpgrades();
+  $("gameover-panel")?.classList.add("hidden");
+  $("game-frame")?.classList.add("hidden");
+  $("game-section")?.classList.add("hidden");
+  const setup = $("setup-section");
+  if (setup) {
+    setup.classList.remove("collapsed");
+    setup.classList.remove("hidden");
+  }
+  restoreSetupFromSave();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function loadRunStore() {
@@ -2135,11 +2258,6 @@ function clearActiveRun(name) {
     }
   } catch (_) {}
   updateRunButtons();
-  const newBtn = $("btn-new-game");
-  if (newBtn && !game.isRunning) {
-    const still = peekActiveRun();
-    if (!still) newBtn.classList.add("hidden");
-  }
 }
 
 function markRunSaveDirty() {
@@ -2394,16 +2512,26 @@ function showLeaderboardSection() {
 }
 
 async function loadPlayer(opts) {
-  const name = $("player-name").value.trim();
-  if (!name) { $("load-hint").textContent = "Bitte Namen eingeben."; return; }
+  const name = (opts && opts.name) || $("player-name").value.trim();
+  if (!name) {
+    const hint = $("load-hint");
+    if (hint) hint.textContent = "Bitte Namen eingeben.";
+    return;
+  }
   game.playerName = name;
   game.playerId = null;
   const forceNew = !!(opts && opts.forceNew);
-  if (forceNew) clearActiveRun();
+  const forceClass = opts && opts.forceClass ? normalizeClassKey(opts.forceClass) : null;
+  if (forceNew) clearActiveRun(name);
 
   const saved = loadLocalPlayer(name);
   if (saved) {
     applyPlayerSave(saved);
+    // Neues Spiel: gewählte Klasse hat Vorrang vor altem Speicherstand
+    if (forceClass) {
+      game.classKey = forceClass;
+      saveLocalPlayer();
+    }
     selectClass(game.classKey);
     syncUnlockedAbilities();
     showLeaderboardSection();
@@ -2411,27 +2539,57 @@ async function loadPlayer(opts) {
     const run = forceNew ? null : loadActiveRunFor(name);
     const msg = run
       ? "Willkommen zurück, " + name + "! Spielstand Dungeon " + run.dungeonLevel + " wird fortgesetzt."
-      : "Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)";
+      : forceNew
+        ? "Neues Spiel als " + (CLASSES[game.classKey]?.name || game.classKey) + " – " + name + "!"
+        : "Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)";
     enterGame(msg, { forceNew });
-    await tryLoadCloudPlayer(name);
+    if (!forceNew) await tryLoadCloudPlayer(name);
     return;
   }
 
   game.totalGold = 0;
   game.upgrades = emptyUpgrades();
-  game.classKey = normalizeClassKey(game.classKey);
+  game.classKey = forceClass || normalizeClassKey(game.classKey);
   saveLocalPlayer();
+  selectClass(game.classKey);
   syncUnlockedAbilities();
   showLeaderboardSection();
   loadLeaderboard();
-  enterGame("Neuer Abenteurer: " + name + "! Fortschritt wird lokal gespeichert.", { forceNew });
-  await tryLoadCloudPlayer(name);
+  enterGame("Neuer Abenteurer: " + name + " (" + (CLASSES[game.classKey]?.name || "") + ")!", { forceNew: true });
+  // Kein Cloud-Overwrite der frisch gewählten Klasse
+}
+
+async function loadPlayerSlot(name, opts) {
+  await loadPlayer({ ...(opts || {}), name, forceNew: !!(opts && opts.forceNew) });
+}
+
+async function startNewGameFromMenu() {
+  unlockAudio();
+  const name = $("player-name").value.trim();
+  if (!name) {
+    const hint = $("load-hint");
+    if (hint) hint.textContent = "Bitte einen Namen eingeben.";
+    return;
+  }
+  const classKey = getSelectedClassFromUI();
+  game.classKey = classKey;
+  selectClass(classKey);
+  const existing = loadLocalPlayer(name);
+  const run = loadActiveRunFor(name);
+  if (existing || run) {
+    const ok = confirm(
+      "Für „" + name + "“ gibt es bereits einen Spielstand" +
+      (run ? " (Dungeon " + run.dungeonLevel + ")" : "") +
+      ".\n\nNeues Spiel starten?\nAktiver Run wird verworfen. Gold & Upgrades bleiben – Klasse wird auf " +
+      (CLASSES[classKey]?.name || classKey) + " gesetzt."
+    );
+    if (!ok) return;
+  }
+  await loadPlayer({ forceNew: true, forceClass: classKey, name });
 }
 
 async function startNewGameFromSetup() {
-  unlockAudio();
-  if (!confirm("Aktiven Run verwerfen und neu starten? Gold & Upgrades bleiben erhalten.")) return;
-  await loadPlayer({ forceNew: true });
+  await startNewGameFromMenu();
 }
 
 /** Optional: Cloud-Save laden wenn Supabase konfiguriert ist */
