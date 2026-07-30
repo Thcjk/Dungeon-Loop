@@ -312,7 +312,9 @@
       "previewH": 360,
       "tileset": "assets/pack/worlds/forest/tileset.png",
       "deco": "assets/pack/worlds/forest/deco.png",
-      "bg": "assets/pack/worlds/forest/bg.png"
+      "bg": "assets/pack/worlds/forest/bg.png",
+      "scene": "assets/pack/worlds/forest/scene.png",
+      "mid_clean": "assets/pack/worlds/forest/mid_clean.png"
     },
     "swamp": {
       "preview": "assets/pack/worlds/swamp/preview.png",
@@ -322,7 +324,9 @@
       "previewH": 360,
       "deco": "assets/pack/worlds/swamp/deco.png",
       "tileset": "assets/pack/worlds/swamp/tileset.png",
-      "bg": "assets/pack/worlds/swamp/bg.png"
+      "bg": "assets/pack/worlds/swamp/bg.png",
+      "scene": "assets/pack/worlds/swamp/scene.png",
+      "mid_clean": "assets/pack/worlds/swamp/mid_clean.png"
     },
     "frost": {
       "preview": "assets/pack/worlds/frost/preview.png",
@@ -332,7 +336,9 @@
       "previewH": 360,
       "tileset": "assets/pack/worlds/frost/tileset.png",
       "deco": "assets/pack/worlds/frost/deco.png",
-      "bg": "assets/pack/worlds/frost/bg.png"
+      "bg": "assets/pack/worlds/frost/bg.png",
+      "scene": "assets/pack/worlds/frost/scene.png",
+      "mid_clean": "assets/pack/worlds/frost/mid_clean.png"
     },
     "fire": {
       "preview": "assets/pack/worlds/fire/preview.png",
@@ -342,7 +348,9 @@
       "previewH": 360,
       "tileset": "assets/pack/worlds/fire/tileset.png",
       "deco": "assets/pack/worlds/fire/deco.png",
-      "bg": "assets/pack/worlds/fire/bg.png"
+      "bg": "assets/pack/worlds/fire/bg.png",
+      "scene": "assets/pack/worlds/fire/scene.png",
+      "mid_clean": "assets/pack/worlds/fire/mid_clean.png"
     },
     "ruins": {
       "preview": "assets/pack/worlds/ruins/preview.png",
@@ -352,7 +360,9 @@
       "previewH": 360,
       "deco": "assets/pack/worlds/ruins/deco.png",
       "tileset": "assets/pack/worlds/ruins/tileset.png",
-      "bg": "assets/pack/worlds/ruins/bg.png"
+      "bg": "assets/pack/worlds/ruins/bg.png",
+      "scene": "assets/pack/worlds/ruins/scene.png",
+      "mid_clean": "assets/pack/worlds/ruins/mid_clean.png"
     }
   },
   "fx": {

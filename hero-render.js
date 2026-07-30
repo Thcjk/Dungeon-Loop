@@ -61,17 +61,39 @@ function hrShadow(ctx, cx, groundY, scale) {
   ctx.restore();
 }
 
-/** Treffer-Flash nur auf Sprite-Pixel (kein Rechteck / keine weiße Box) */
-function hrDrawHitTint(ctx, dx, y, w, h, strength) {
-  const a = Math.max(0.15, Math.min(0.55, strength));
-  ctx.save();
-  ctx.globalCompositeOperation = "source-atop";
-  ctx.fillStyle = "rgba(220, 40, 40, " + a + ")";
-  ctx.fillRect(dx, y, w, h);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.fillStyle = "rgba(255, 80, 60, " + (a * 0.35) + ")";
-  ctx.fillRect(dx, y, w, h);
-  ctx.restore();
+/** Offscreen-Canvas für Sprite-Tint (nur Figur-Pixel, nie Hintergrund-Rechteck) */
+let _hrTintCanvas = null;
+let _hrTintCtx = null;
+function hrTintBuffer(w, h) {
+  if (!_hrTintCanvas) {
+    _hrTintCanvas = document.createElement("canvas");
+    _hrTintCtx = _hrTintCanvas.getContext("2d");
+  }
+  if (_hrTintCanvas.width !== w || _hrTintCanvas.height !== h) {
+    _hrTintCanvas.width = w;
+    _hrTintCanvas.height = h;
+  }
+  return _hrTintCtx;
+}
+
+/** Treffer-Flash nur auf Sprite-Pixel (kurz, hell/weiß-rot – nie Hitbox-Fläche) */
+function hrDrawTintedSprite(ctx, img, dx, y, flashStrength) {
+  const w = img.width;
+  const h = img.height;
+  const a = Math.max(0.12, Math.min(0.5, flashStrength));
+  const tc = hrTintBuffer(w, h);
+  tc.imageSmoothingEnabled = false;
+  tc.clearRect(0, 0, w, h);
+  tc.globalCompositeOperation = "source-over";
+  tc.drawImage(img, 0, 0);
+  tc.globalCompositeOperation = "source-atop";
+  tc.fillStyle = "rgba(255, 240, 230, " + a + ")";
+  tc.fillRect(0, 0, w, h);
+  tc.globalCompositeOperation = "lighter";
+  tc.fillStyle = "rgba(255, 70, 55, " + (a * 0.35) + ")";
+  tc.fillRect(0, 0, w, h);
+  tc.globalCompositeOperation = "source-over";
+  ctx.drawImage(_hrTintCanvas, dx, y);
 }
 
 function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength) {
@@ -87,9 +109,10 @@ function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength) {
     ctx.scale(-1, 1);
   }
   const dx = facing < 0 ? Math.round(cx * 2 - x - w) : x;
-  ctx.drawImage(img, dx, y);
   if (flashStrength > 0) {
-    hrDrawHitTint(ctx, dx, y, w, h, flashStrength);
+    hrDrawTintedSprite(ctx, img, dx, y, flashStrength);
+  } else {
+    ctx.drawImage(img, dx, y);
   }
   ctx.restore();
   return true;
@@ -121,10 +144,11 @@ HR.draw = (ctx, opts) => {
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
   const img = HR.resolveMoveFrame(classKey, state, h.animFrame, pack);
 
-  // Flash-Stärke aus hitFlash (kein Rechteck drumherum)
+  // Flash-Stärke aus hitFlash – kurz und klar, kein Dauer-Rot
   let flash = 0;
   if ((h.hitFlash || 0) > 0) {
-    flash = 0.25 + 0.35 * Math.abs(Math.sin(h.hitFlash * 1.2));
+    const t = Math.min(1, h.hitFlash / 10);
+    flash = (0.18 + 0.32 * t) * (0.65 + 0.35 * Math.abs(Math.sin(h.hitFlash * 1.4)));
   }
 
   hrShadow(ctx, cx, groundY, 1);
