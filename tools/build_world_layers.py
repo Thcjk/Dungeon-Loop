@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
-"""Baut die 2-Ebenen-Welt (Hintergrund + Weg) nach dem Pack-Beispiel.
+"""Baut die 2-Ebenen-Welt (Hintergrund + Steinmauer-Weg) aus dem Asset-Pack.
 
-Die Preview-Bilder des Packs sind die verbindliche Vorlage, enthalten aber
-eingebrannte Beispiel-Figuren und HUD-Ecken. Deshalb wird die Welt aus den
-figurfreien Quellen nachgebaut:
+Die Preview-Bilder des Packs sind die Vorlage, enthalten aber eingebrannte
+Beispiel-Figuren und HUD-Ecken. Deshalb wird die Welt aus den figurfreien
+Quellen nachgebaut:
 
   Ebene 1 (scene.png, 1290x268):
     - bg.png in nativer Groesse (kein Verzerren)
-    - darunter ein texturiertes Wiesen-/Bodenband
-    - Deko-Objekte aus props/ (Baeume, Felsen, Stuempfe ...) am hinteren
-      Wegrand, wie im Beispielbild - rein visuell, keine Kollision
+    - darunter ein ruhiges texturiertes Bodenband bis zur Mauer
 
-  Ebene 2 (lane.png, 1290x92):
-    - durchgehender texturierter Boden
-    - Pflasterweg (path.png)
-    - Wegrand-Bewuchs (foreground.png) an der Unterkante
+  Ebene 2 (lane.png, 1290x92) - der Weg als Steinmauer im Vordergrund:
+    - oben die begehbare Wegoberflaeche (path.png der jeweiligen Welt)
+    - darunter eine Mauerfront aus versetzten Steinreihen derselben Textur
+    - klare Vorderkante; die Mauer muss nicht mit dem Hintergrund
+      verschwimmen, sie ist bewusst als Vordergrund lesbar
+
+Die Fusslinie der Figuren (GROUND = 308) liegt exakt auf der Unterkante der
+Wegoberflaeche: Lane beginnt bei y=268, Oberflaeche 284-308, Mauer darunter.
 """
 from __future__ import annotations
 
-import random
 from pathlib import Path
 
 import numpy as np
@@ -29,30 +30,33 @@ WORLDS = ("forest", "swamp", "frost", "fire", "ruins")
 CANVAS_W = 1290
 SCENE_H = 268
 LANE_H = 92
-BG_H = 200          # native Hoehe von bg.png
-VERGE_H = SCENE_H - BG_H  # 68px Mittelband zwischen Panorama und Weg
+BG_H = 200               # native Hoehe von bg.png
+VERGE_H = SCENE_H - BG_H # 68px Bodenband zwischen Panorama und Mauer
 
-# Figurfreie, organisch geformte Deko pro Welt (Index in props/<welt>/).
-# Bewusst keine quadratischen Tile-Bloecke und kein frost/prop_02
-# (enthaelt einen gefallenen Ritter).
-SCENERY = {
-    "forest": (1, 2, 3, 5, 6, 11, 14),
-    "swamp": (3, 7, 11, 13, 14, 17, 19, 20, 21),
-    "frost": (3, 5, 6, 10, 13, 14),
-    "fire": (3, 6, 11, 12, 13, 17, 20),
-    "ruins": (3, 5, 6, 8, 11, 15, 21),
-}
-SCENERY_MAX_H = 96  # groessere Objekte wirken wie Spielobjekte auf dem Weg
+SURFACE_TOP = 16         # Wegoberflaeche 284-308 -> Fusslinie 308
+WALL_TOP = SURFACE_TOP + 24
 
-# Bodenhelligkeit (Mittelband, Kampfweg) pro Welt: Schnee bleibt hell,
-# Glutboden warm, Wald/Sumpf schattig.
-GROUND_LIGHT = {
-    "forest": (0.55, 0.8),
-    "swamp": (0.55, 0.8),
-    "frost": (0.82, 1.0),
-    "fire": (1.15, 1.45),
-    "ruins": (0.62, 0.88),
+# Bodenhelligkeit des Mittelbands pro Welt: Schnee bleibt hell, Glut warm.
+VERGE_LIGHT = {
+    "forest": 0.55,
+    "swamp": 0.55,
+    "frost": 0.82,
+    "fire": 1.15,
+    "ruins": 0.62,
 }
+
+# Helligkeit von Wegoberflaeche und Mauersteinen (Feuerwelt-Textur ist im
+# Pack sehr dunkel und braucht eine Anhebung, sonst wirkt die Mauer schwarz).
+PATH_LIGHT = {
+    "forest": 1.0,
+    "swamp": 1.0,
+    "frost": 1.05,
+    "fire": 2.0,
+    "ruins": 1.0,
+}
+
+BRICK_W = 43
+BRICK_H = 12
 
 
 def load(path: Path) -> Image.Image | None:
@@ -74,12 +78,7 @@ def darken(img: Image.Image, factor: float) -> Image.Image:
 
 
 def soft_ground(strip: Image.Image, height: int, brightness: float, seed: str) -> Image.Image:
-    """Weiches Bodenfeld aus den Farben der Pack-Textur.
-
-    Direktes vertikales Kacheln der schmalen Streifen erzeugte sichtbare
-    Wiederholungsbaender. Stattdessen: Farben stark weichzeichnen und mit
-    feinem Rauschen beleben - wirkt wie Erde/Bewuchs statt wie Kacheln.
-    """
+    """Weiches Bodenfeld aus den Farben der Pack-Textur (keine Kachelbaender)."""
     base = opaque(strip).resize((CANVAS_W, height), Image.Resampling.BILINEAR)
     base = base.filter(ImageFilter.GaussianBlur(12))
     base = darken(base, brightness)
@@ -92,8 +91,7 @@ def soft_ground(strip: Image.Image, height: int, brightness: float, seed: str) -
 
 
 def blend_rows(top: Image.Image, bottom: Image.Image, overlap: int) -> None:
-    """Weicher vertikaler Uebergang: letzte overlap-Zeilen von top werden in
-    die ersten Zeilen von bottom eingeblendet (in-place auf bottom)."""
+    """Weicher vertikaler Uebergang von top in die ersten Zeilen von bottom."""
     ta = np.asarray(top, dtype=np.float32)
     ba = np.asarray(bottom).copy()
     for i in range(overlap):
@@ -103,24 +101,94 @@ def blend_rows(top: Image.Image, bottom: Image.Image, overlap: int) -> None:
     bottom.paste(Image.fromarray(ba, "RGBA"), (0, 0))
 
 
-def place_scenery(scene: Image.Image, theme: str) -> None:
-    """Setzt Deko aus dem Pack an den hinteren Wegrand (nur Hintergrund)."""
-    rng = random.Random(theme)
-    props_dir = ROOT / "assets" / "pack" / "props" / theme
-    indices = SCENERY.get(theme, ())
-    if not indices:
-        return
-    x = rng.randint(30, 110)
-    while x < CANVAS_W - 140:
-        idx = rng.choice(indices)
-        prop = load(props_dir / f"prop_{idx:02d}.png")
-        if prop and prop.height <= SCENERY_MAX_H:
-            deco = darken(prop, 0.82)
-            if rng.random() < 0.5:
-                deco = deco.transpose(Image.FLIP_LEFT_RIGHT)
-            foot = SCENE_H - rng.randint(0, 6)
-            scene.alpha_composite(deco, (x, foot - deco.height))
-        x += rng.randint(170, 330)
+def brick_wall(path_strip: Image.Image, width: int, height: int, seed: str) -> np.ndarray:
+    """Mauerfront aus versetztem Ziegelraster.
+
+    Jeder Stein erhaelt seine Flaeche aus einem zufaellig gewaehlten Ausschnitt
+    der Weg-Textur der jeweiligen Welt (mittlere Zeilen ohne Grasrand), dazu
+    Fugen, Kantenlicht und leichte Helligkeitsstreuung pro Stein. So passt
+    die Mauer farblich automatisch zu jeder Welt und wirkt wie Mauerwerk,
+    nicht wie gekachelte Bildstreifen.
+    """
+    src = np.asarray(opaque(path_strip))
+    src_mid = src[5:19]  # Steinflaeche ohne Grasueberhang
+    rng = np.random.default_rng(abs(hash(seed)) % (2**32))
+    wall = np.zeros((height, width, 4), dtype=np.uint8)
+    wall[:, :, 3] = 255
+    # Ziel-Helligkeit: einheitliche Steine (kein Schachbrett aus hellen und
+    # dunklen Ziegeln), Mindesthelligkeit gegen komplett schwarze Mauern
+    target_lum = max(float(src_mid[:, :, :3].mean()), 58.0)
+
+    rows = -(-height // BRICK_H)
+    for row in range(rows):
+        y0 = row * BRICK_H
+        offset = (row % 2) * (BRICK_W // 2)
+        x0 = -offset
+        while x0 < width:
+            bw = min(BRICK_W, width - x0) if x0 >= 0 else BRICK_W + x0
+            bx = max(0, x0)
+            bh = min(BRICK_H, height - y0)
+            if bw <= 0 or bh <= 0:
+                x0 += BRICK_W
+                continue
+            # Ruhigste Steinflaeche aus mehreren Kandidaten waehlen, damit
+            # keine Wurzeln/Kristalle/Objekte in den Ziegeln landen
+            best = None
+            best_var = None
+            for _ in range(10):
+                sx = int(rng.integers(0, src.shape[1] - BRICK_W))
+                sy = int(rng.integers(0, max(1, src_mid.shape[0] - bh + 1)))
+                cand = src_mid[sy:sy + bh, sx:sx + bw, :3].astype(np.float32)
+                var = float(cand.var())
+                if best_var is None or var < best_var:
+                    best, best_var = cand, var
+            patch = best
+            # Helligkeit auf Zielwert normalisieren + leichte Streuung
+            mean = max(1.0, float(patch.mean()))
+            patch = patch * (target_lum / mean) * float(rng.uniform(0.88, 1.04))
+            wall[y0:y0 + bh, bx:bx + bw, :3] = np.clip(patch, 0, 255).astype(np.uint8)
+            # Kantenlicht oben, Schatten unten im Stein
+            wall[y0, bx:bx + bw, :3] = np.clip(wall[y0, bx:bx + bw, :3].astype(np.int16) + 16, 0, 255).astype(np.uint8)
+            if y0 + bh - 1 < height:
+                wall[y0 + bh - 1, bx:bx + bw, :3] = (wall[y0 + bh - 1, bx:bx + bw, :3] * 0.72).astype(np.uint8)
+            # senkrechte Fuge
+            if bx + bw < width:
+                wall[y0:y0 + bh, bx + bw - 1, :3] = (wall[y0:y0 + bh, bx + bw - 1, :3] * 0.62).astype(np.uint8)
+            x0 += BRICK_W
+        # waagerechte Fuge
+        if y0 + BRICK_H - 1 < height:
+            wall[y0 + BRICK_H - 1, :, :3] = (wall[y0 + BRICK_H - 1, :, :3] * 0.6).astype(np.uint8)
+
+    # Mauer wird nach unten dunkler (Bodenschatten)
+    for y in range(height):
+        t = y / max(1, height - 1)
+        wall[y, :, :3] = (wall[y, :, :3] * (1.0 - 0.38 * t)).astype(np.uint8)
+    return wall
+
+
+def build_wall_lane(path_strip: Image.Image, scene: Image.Image, theme: str) -> Image.Image:
+    """Der Weg als Steinmauer: Oberflaeche oben, Mauerwerk darunter."""
+    path_strip = darken(path_strip, PATH_LIGHT.get(theme, 1.0))
+    lane = np.zeros((LANE_H, CANVAS_W, 4), dtype=np.uint8)
+    lane[:, :, 3] = 255
+
+    # Sanfte Schattenfuge hinter der Mauerkrone (kein schwarzer Streifen)
+    back = np.asarray(scene)[SCENE_H - 1, :, :3].astype(np.float32)
+    for y in range(SURFACE_TOP):
+        t = y / max(1, SURFACE_TOP - 1)
+        lane[y, :, :3] = (back * (0.85 - 0.35 * t)).astype(np.uint8)
+
+    # Begehbare Wegoberflaeche (Original-Wegtextur der Welt)
+    surface = np.asarray(opaque(path_strip))[:24]
+    lane[SURFACE_TOP:WALL_TOP, :, :] = surface
+
+    # Mauerfront
+    wall_h = LANE_H - WALL_TOP
+    lane[WALL_TOP:, :, :] = brick_wall(path_strip, CANVAS_W, wall_h, theme + "-wall")
+
+    # Mauerkrone: helle Vorderkante unter der Oberflaeche
+    lane[WALL_TOP, :, :3] = np.clip(lane[WALL_TOP, :, :3].astype(np.int16) + 30, 0, 255).astype(np.uint8)
+    return Image.fromarray(lane, "RGBA")
 
 
 def build_world_layers(world_dir: Path) -> tuple[Image.Image, Image.Image]:
@@ -132,22 +200,17 @@ def build_world_layers(world_dir: Path) -> tuple[Image.Image, Image.Image]:
         raise FileNotFoundError(f"saubere Weltquellen fehlen in {src}")
 
     # ---- Ebene 1: Hintergrund ------------------------------------------
-    # Wiesen-/Bodenband aus der ruhigen Weg-Textur (die Randtextur enthaelt
-    # markante Objekte und wuerde beim Fuellen sichtbare Streifen bilden).
-    verge_light, lane_light = GROUND_LIGHT.get(world_dir.name, (0.55, 0.8))
     scene = Image.new("RGBA", (CANVAS_W, SCENE_H))
     scene.paste(opaque(bg), (0, 0))
-    verge = soft_ground(foreground, VERGE_H, verge_light, world_dir.name + "-verge")
-    blend_rows(opaque(bg), verge, 20)
+    verge = soft_ground(foreground, VERGE_H, VERGE_LIGHT.get(world_dir.name, 0.6), world_dir.name)
+    # Uebergangsquelle horizontal weichzeichnen, sonst ziehen sich die
+    # Baumstamm-Spalten des Panoramas als senkrechte Streifen ins Bodenband
+    blur_bg = opaque(bg).filter(ImageFilter.GaussianBlur(6))
+    blend_rows(blur_bg, verge, 20)
     scene.paste(verge, (0, BG_H))
-    place_scenery(scene, world_dir.name)
 
-    # ---- Ebene 2: Weg / Kampfebene -------------------------------------
-    lane = soft_ground(foreground, LANE_H, lane_light, world_dir.name + "-lane")
-    blend_rows(scene, lane, 10)
-    lane.alpha_composite(path, (0, 20))
-    lane.alpha_composite(foreground, (0, LANE_H - foreground.height))
-    lane = opaque(lane)
+    # ---- Ebene 2: Weg als Steinmauer ------------------------------------
+    lane = build_wall_lane(path, scene, world_dir.name)
     return scene, lane
 
 
