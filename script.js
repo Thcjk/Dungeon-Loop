@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-138";
+const BUILD_ID = "sidescroller-v3-139";
 const GAME_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
@@ -697,6 +697,8 @@ const game = {
   meta: null,
   /** Boss-Einblendung { name, hp, maxHp, timer } */
   bossIntro: null,
+  /** Sichtbare Spielmeldungen: Weltwechsel / Fähigkeit bereit */
+  announcement: null,
   /** Dezente Bildschirm-Effekte */
   critFlash: 0, zoomPulse: 0,
   /** Fähigkeiten-Cast-Sperre (keine gleichzeitigen Spezialfähigkeiten) */
@@ -3228,7 +3230,7 @@ function resetRun() {
   game.waveNumber = 0; game.currentWave = null;
   game.waveIntro = false; game.combatReady = true;
   game.worldParticles = [];
-  game.bossIntro = null; game.abilityCastLock = 0;
+  game.bossIntro = null; game.announcement = null; game.abilityCastLock = 0;
   game.critFlash = 0; game.zoomPulse = 0;
   $("loot-display").classList.add("hidden");
   initWorldBackground();
@@ -3727,7 +3729,7 @@ function startBossIntro(bossEnemy) {
     name: bossEnemy.name,
     hp: bossEnemy.hp,
     maxHp: bossEnemy.maxHp,
-    timer: 2.8
+    timer: 3.2
   };
   game.screenShake = Math.max(game.screenShake, 6);
   game.zoomPulse = 0.08;
@@ -3738,6 +3740,22 @@ function updateBossIntro(dt) {
   if (!game.bossIntro) return;
   game.bossIntro.timer -= dt;
   if (game.bossIntro.timer <= 0) game.bossIntro = null;
+}
+
+function showAnnouncement(kind, title, subtitle, duration) {
+  game.announcement = {
+    kind,
+    title,
+    subtitle: subtitle || "",
+    timer: duration || 2.4,
+    duration: duration || 2.4
+  };
+}
+
+function updateAnnouncement(dt) {
+  if (!game.announcement) return;
+  game.announcement.timer -= dt;
+  if (game.announcement.timer <= 0) game.announcement = null;
 }
 
 function getPrimaryTarget(range) {
@@ -3991,6 +4009,25 @@ function updateAbilityState(dt, h) {
   if (game.abilityCastLock > 0) game.abilityCastLock -= dt;
   if (h.warriorBuff > 0) h.warriorBuff -= dt;
   Object.keys(h.abilityCds).forEach((k) => { h.abilityCds[k] += dt; });
+
+  // Sichtbare Rückmeldung nur beim Übergang Cooldown → bereit.
+  // Initial bereite Fähigkeiten werden nicht als Popup gespammt.
+  h.abilityReadyState = h.abilityReadyState || {};
+  [0, 1].forEach((slotIdx) => {
+    const ab = getEquippedAbilityAtSlot(slotIdx);
+    if (!ab) return;
+    const ready = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
+    const previous = h.abilityReadyState[ab.id];
+    if (previous === false && ready) {
+      showAnnouncement(
+        "ability",
+        "ULT BEREIT",
+        getAbilityKeyLabel(slotIdx) + " · " + ab.name,
+        1.8
+      );
+    }
+    h.abilityReadyState[ab.id] = ready;
+  });
 }
 
 function useEquippedAbility(slotIdx) {
@@ -4002,7 +4039,11 @@ function useEquippedAbility(slotIdx) {
   const cd = getEffectiveAbilityCd(ab);
   if ((h.abilityCds[ab.id] || 0) < cd) return;
   if (!canCastAbility(ab, h, st)) return;
-  if (castAbility(ab, h, st)) h.abilityCds[ab.id] = 0;
+  if (castAbility(ab, h, st)) {
+    h.abilityCds[ab.id] = 0;
+    h.abilityReadyState = h.abilityReadyState || {};
+    h.abilityReadyState[ab.id] = false;
+  }
 }
 
 function useSpecial() { useEquippedAbility(0); }
@@ -4051,6 +4092,7 @@ function updateFrame(dt) {
   if (game.critFlash > 0) game.critFlash = Math.max(0, game.critFlash - dt * 2.5);
   if (game.zoomPulse > 0) game.zoomPulse = Math.max(0, game.zoomPulse - dt * 0.06);
   updateBossIntro(dt);
+  updateAnnouncement(dt);
 
   const moveLeft = keys.a || keys.arrowleft;
   const moveRight = keys.d || keys.arrowright;
@@ -4268,6 +4310,7 @@ function onEnemyKill(e) {
     initWorldBackground();
     startWorldTransition(newWorld);
     addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, aber machbar!", "boss");
+    showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
     playWorldMusic(newWorld);
     emitCombatEvent("world_change");
   }
@@ -4581,6 +4624,46 @@ function render() {
     ctx.fillStyle = "rgba(200,200,200," + alpha + ")";
     ctx.fillText("Spezialangriffe – Vorsicht!", CW / 2, by + 28);
     ctx.textAlign = "left";
+  }
+
+  /** Spielereignisse: Weltwechsel und Fähigkeit bereit – UI, nie Welt-Layer */
+  if (game.announcement) {
+    const a = game.announcement;
+    const fadeIn = Math.min(1, (a.duration - a.timer) / 0.18);
+    const fadeOut = Math.min(1, a.timer / 0.35);
+    const alpha = fadeIn * fadeOut;
+    const isWorld = a.kind === "world";
+    const col = isWorld ? "#f1c40f" : "#71d99b";
+    const y = isWorld ? 82 : 104;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center";
+    ctx.font = "bold " + (isWorld ? 17 : 15) + "px Courier New";
+    const titleW = ctx.measureText(a.title).width;
+    const subFont = "bold 11px Courier New";
+    ctx.font = subFont;
+    const subW = ctx.measureText(a.subtitle).width;
+    const boxW = Math.max(titleW, subW) + 34;
+    const boxH = a.subtitle ? 36 : 25;
+    const boxX = (CW - boxW) / 2;
+    const boxY = y - 20;
+
+    ctx.fillStyle = "rgba(5,8,10,0.78)";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = isWorld ? "rgba(241,196,15,0.72)" : "rgba(113,217,155,0.72)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+
+    ctx.font = "bold " + (isWorld ? 17 : 15) + "px Courier New";
+    ctx.fillStyle = col;
+    ctx.fillText(a.title, CW / 2, y);
+    if (a.subtitle) {
+      ctx.font = subFont;
+      ctx.fillStyle = "#f3ead0";
+      ctx.fillText(a.subtitle, CW / 2, y + 14);
+    }
+    ctx.restore();
   }
 
   if (game.isRunning && !game.isPaused && mouse.onCanvas) {

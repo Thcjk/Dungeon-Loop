@@ -51,6 +51,16 @@ WALL_TONE = {
 # warm und wuerde sonst faelschlich Glut-Akzente bekommen.
 GLOW_WORLDS = ("fire",)
 
+# Sichtbare Mauerkrone pro Welt – nur ein schmaler Akzent auf der Oberkante,
+# damit das Material lesbar bleibt und nie eine weitere Spielebene entsteht.
+WALL_CAP = {
+    "forest": (104, 128, 74),  # Moos
+    "swamp":  (86, 104, 66),   # nasses Moos
+    "frost":  (196, 220, 236), # Schnee/Eis
+    "fire":   (205, 84, 38),   # Glut
+    "ruins":  (192, 158, 104), # sonnenwarmer Sandstein
+}
+
 
 def load(path: Path) -> Image.Image | None:
     return Image.open(path).convert("RGBA") if path.exists() else None
@@ -184,9 +194,10 @@ def brick_wall(theme: str, width: int, height: int) -> np.ndarray:
     for y in range(height):
         wall[y, :, :3] = (wall[y, :, :3] * (1.0 - 0.24 * (y / max(1, height - 1)))).astype(np.uint8)
 
-    # Deckplatte: helle Mauerkrone = sichtbare Laufkante der Figuren
-    wall[0, :, :3] = np.clip(wall[0, :, :3].astype(np.int16) + 38, 0, 255).astype(np.uint8)
-    wall[1, :, :3] = np.clip(wall[1, :, :3].astype(np.int16) + 18, 0, 255).astype(np.uint8)
+    # Deckplatte: sichtbare, weltpassende Laufkante der Figuren
+    cap = np.asarray(WALL_CAP[theme], dtype=np.float32)
+    wall[0, :, :3] = np.clip(wall[0, :, :3] * 0.35 + cap * 0.65, 0, 255).astype(np.uint8)
+    wall[1, :, :3] = np.clip(wall[1, :, :3] * 0.65 + cap * 0.35, 0, 255).astype(np.uint8)
     return wall
 
 
