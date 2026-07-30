@@ -951,5 +951,117 @@
         "h": 110
       }
     ]
+  },
+  "fxSprites": {
+    "arrow": {
+      "path": "assets/pack/fx/sprites/arrow.png",
+      "w": 72,
+      "h": 15
+    },
+    "fireball": {
+      "path": "assets/pack/fx/sprites/fireball.png",
+      "w": 72,
+      "h": 24
+    },
+    "icebolt": {
+      "path": "assets/pack/fx/sprites/icebolt.png",
+      "w": 72,
+      "h": 24
+    },
+    "poison": {
+      "path": "assets/pack/fx/sprites/poison.png",
+      "w": 72,
+      "h": 17
+    },
+    "dagger": {
+      "path": "assets/pack/fx/sprites/dagger.png",
+      "w": 72,
+      "h": 22
+    },
+    "slash": {
+      "path": "assets/pack/fx/sprites/slash.png",
+      "w": 96,
+      "h": 64
+    },
+    "explosion": {
+      "path": "assets/pack/fx/sprites/explosion.png",
+      "w": 96,
+      "h": 74
+    },
+    "magic_circle": {
+      "path": "assets/pack/fx/sprites/magic_circle.png",
+      "w": 96,
+      "h": 77
+    },
+    "spark_a": {
+      "path": "assets/pack/fx/sprites/spark_a.png",
+      "w": 64,
+      "h": 57
+    },
+    "spark_b": {
+      "path": "assets/pack/fx/sprites/spark_b.png",
+      "w": 64,
+      "h": 67
+    },
+    "light_beam": {
+      "path": "assets/pack/fx/sprites/light_beam.png",
+      "w": 96,
+      "h": 95
+    },
+    "arrow_b": {
+      "path": "assets/pack/fx/sprites/arrow_b.png",
+      "w": 72,
+      "h": 30
+    },
+    "fireball_b": {
+      "path": "assets/pack/fx/sprites/fireball_b.png",
+      "w": 72,
+      "h": 35
+    },
+    "icebolt_b": {
+      "path": "assets/pack/fx/sprites/icebolt_b.png",
+      "w": 72,
+      "h": 30
+    },
+    "poison_b": {
+      "path": "assets/pack/fx/sprites/poison_b.png",
+      "w": 72,
+      "h": 41
+    },
+    "dagger_b": {
+      "path": "assets/pack/fx/sprites/dagger_b.png",
+      "w": 72,
+      "h": 42
+    },
+    "slash_b": {
+      "path": "assets/pack/fx/sprites/slash_b.png",
+      "w": 96,
+      "h": 136
+    },
+    "explosion_b": {
+      "path": "assets/pack/fx/sprites/explosion_b.png",
+      "w": 96,
+      "h": 82
+    },
+    "magic_circle_b": {
+      "path": "assets/pack/fx/sprites/magic_circle_b.png",
+      "w": 96,
+      "h": 62
+    },
+    "spark_c": {
+      "path": "assets/pack/fx/sprites/spark_c.png",
+      "w": 64,
+      "h": 70
+    },
+    "spark_d": {
+      "path": "assets/pack/fx/sprites/spark_d.png",
+      "w": 64,
+      "h": 60
+    },
+    "light_beam_b": {
+      "path": "assets/pack/fx/sprites/light_beam_b.png",
+      "w": 96,
+      "h": 99
+    }
   }
 }
