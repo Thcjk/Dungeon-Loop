@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-140";
+const BUILD_ID = "sidescroller-v3-141";
 const GAME_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
@@ -4478,7 +4478,18 @@ function render() {
   game.enemies.forEach((e) => {
     if (e.hp <= 0) return;
     const bob = 0;
-    const drawX = getEnemyDrawX(e);
+    // Eigene, rein visuelle Angriffsbewegung (Hitboxen/Kampfwerte bleiben
+    // unverändert): Nahkämpfer stoßen nach vorn, Fernkämpfer weichen beim
+    // Schuss zurück, Bosse machen einen schwereren Stampfer.
+    const attackMax = e.isBoss ? 0.55 : (e.isRanged ? 0.28 : 0.32);
+    const attackProgress = e.attackAnim > 0
+      ? Math.max(0, Math.min(1, 1 - e.attackAnim / attackMax))
+      : 0;
+    const strike = Math.sin(attackProgress * Math.PI);
+    const attackOffset = e.isRanged
+      ? strike * 4
+      : -strike * (e.isBoss ? 12 : (e.aiStyle === "jump" ? 10 : 7));
+    const drawX = getEnemyDrawX(e) + attackOffset;
     const vb = getEnemyVisualBounds(e, drawX);
     const hitFlash = Math.max(0, e.hitFlash || 0);
     ctx.save();
@@ -4490,8 +4501,12 @@ function render() {
       const gaitLean = e.isChasing && !(e.attackAnim > 0)
         ? Math.sin(e.gaitPhase || 0) * 0.024
         : 0;
+      const attackLean = e.attackAnim > 0
+        ? (e.isRanged ? -0.055 : 0.065) * strike
+        : 0;
       VisualEnemies.drawAtFeet(
-        ctx, e.sprite, drawX + e.w / 2, GROUND, true, world, bob, e.isBoss, e.w, e.h, hitFlash, gaitLean
+        ctx, e.sprite, drawX + e.w / 2, GROUND, true, world, bob, e.isBoss, e.w, e.h, hitFlash,
+        gaitLean + attackLean
       );
     } else {
       drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);
