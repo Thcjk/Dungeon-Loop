@@ -8,7 +8,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "125",
+    version: "126",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -60,11 +60,11 @@
       await this.fetchManifest();
       const paths = new Set();
       ["enemies", "bosses", "fx", "fxSprites", "ui", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // Welten: nur bg + foreground (kein preview/ground/midband/scene – Figuren eingebacken)
+      // Welten: bg + terrain (integrierter Boden/Weg, keine Figuren)
       const worlds = this.manifest.worlds || {};
       Object.keys(worlds).forEach((theme) => {
         const w = worlds[theme] || {};
-        ["bg", "foreground"].forEach((key) => {
+        ["bg", "terrain", "path"].forEach((key) => {
           if (typeof w[key] === "string") paths.add(w[key]);
         });
       });
