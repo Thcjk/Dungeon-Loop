@@ -4,14 +4,14 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-135";
+const BUILD_ID = "sidescroller-v3-137";
 const GAME_VERSION = 3;
-const WORLD_LAYOUT_VERSION = 3;
+const WORLD_LAYOUT_VERSION = 4;
 
 /* Einmaliger kompletter Neustart: alle alten lokalen Spielstaende und
    Weltdaten werden geloescht, damit keine alte Darstellung zurueckkommt. */
 const DATA_WIPE_KEY = "dungeon_loop_wipe_version";
-const DATA_WIPE_VERSION = "3";
+const DATA_WIPE_VERSION = "4";
 (function wipeLegacyData() {
   try {
     if (localStorage.getItem(DATA_WIPE_KEY) === DATA_WIPE_VERSION) return;
@@ -55,7 +55,7 @@ const WEAPON_PIXEL = 2;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
-const GROUND = 308;
+const GROUND = 288; // Maueroberkante – Held/Gegner laufen genau darauf
 
 /** Alle Charaktere: Unterkante der Hitbox = Bodenlinie */
 function pinCharToGround(entity) {
@@ -4471,25 +4471,6 @@ function render() {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const hurtOff = h.hurtAnim > 0 ? Math.sin(h.hurtAnim * 20) * 4 * h.hurtAnim : 0;
   const atkOff = h.attackAnim > 0 ? h.facing * 5 * h.attackAnim : 0;
-
-  // Reichweiten-Anzeige nur bei Ziel unter Maus
-  const hovered = getHoveredEnemy(CLASSES[game.classKey].range);
-  if (game.isRunning && !game.isPaused && hovered) {
-    const cls = CLASSES[game.classKey];
-    const vb = getEnemyVisualBounds(hovered);
-    const tx = vb.cx, ty = vb.y + vb.h / 2;
-    ctx.strokeStyle = cls.attackType === "melee" ? "rgba(241,196,15,0.55)" : "rgba(46,204,113,0.45)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(hx, hy);
-    ctx.lineTo(tx, ty);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(hx, hy, cls.range, 0, Math.PI * 2);
-    ctx.strokeStyle = cls.attackType === "melee" ? "rgba(231,76,60,0.25)" : "rgba(46,204,113,0.18)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
 
   ctx.save();
   // Kein Hitbox-Rechteck – Treffer-Feedback nur am Sprite (HR) + Hurt-Pose

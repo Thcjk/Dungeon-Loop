@@ -1,7 +1,7 @@
 /* ============================================
    Dungeon Loop – Premium Visual FX Layer
    Art Remake v2 – Atmosphere, Weather, Lighting
-   Canvas 640×360 · GROUND 308 · Self-contained
+   Canvas 640×360 · GROUND 288 · Self-contained
    ============================================ */
 
 const VisualFX = (function () {
@@ -10,7 +10,7 @@ const VisualFX = (function () {
   // Art Remake v2 – canvas constants (mirror game + WR)
   const CW = 640;
   const CH = 360;
-  const GROUND = 308;
+  const GROUND = 288;
 
   // Art Remake v2 – internal state
   let theme = "forest";
@@ -365,19 +365,8 @@ const VisualFX = (function () {
       ctx.fill();
     });
 
-    // Art Remake v2 – ground-hugging fog sheet
-    const groundFog = ctx.createLinearGradient(0, GROUND - 55, 0, GROUND + 15);
-    groundFog.addColorStop(0, "rgba(0,0,0,0)");
-    groundFog.addColorStop(0.45, pal.fog);
-    groundFog.addColorStop(1, pal.fog.replace(/[\d.]+\)$/, "0.45)"));
-    ctx.globalAlpha = t === "swamp" ? 0.85 : 0.65;
-    ctx.fillStyle = groundFog;
-    ctx.fillRect(0, GROUND - 55, CW, 65);
-
-    // Art Remake v2 – world tint overlay
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = pal.tint;
-    ctx.fillRect(0, 0, CW, CH);
+    // Kein Boden-Nebel / Tint mehr: der erzeugte dunkle Streifen zwischen
+    // Hintergrund und Mauer. Atmosphaere bleibt nur ueber leichte Partikel.
 
     ctx.restore();
   }

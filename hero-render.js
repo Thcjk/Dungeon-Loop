@@ -1,5 +1,6 @@
 /* Dungeon Loop – Hero Renderer (Asset-Pack Bitmaps)
-   Bewegung: Idle/Walk/Run-Posen als Zyklus. Treffer: Tint am Sprite, nie weiße Box. */
+   Keine Lauf-Animation: Bewegung nutzt die Idle-Pose.
+   Treffer: Tint am Sprite, nie weiße Box. */
 
 const HR = {
   W: 52,
@@ -9,9 +10,6 @@ const HR = {
   MENU_FILL: 0.9,
   ANIM: {
     idle: { n: 1, t: 0.35 },
-    /** Walk/Run nutzen 2 Posen (walk.png + run.png) als Zyklus */
-    walk: { n: 2, t: 0.14 },
-    run: { n: 2, t: 0.10 },
     attack: { n: 1, t: 0.1 },
     cast: { n: 1, t: 0.12 },
     hurt: { n: 1, t: 0.16 },
@@ -21,24 +19,19 @@ const HR = {
 
 HR.displayW = () => HR.W;
 HR.displayH = () => HR.H;
-HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
+HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 288);
 HR.getDrawY = () => HR.getGroundY() - HR.H;
 
-HR.getAnimState = (h, moving) => {
+HR.getAnimState = (h) => {
   if (typeof game !== "undefined" && (game.isDead || h.deathAnim)) return "death";
   if ((h.hurtAnim || 0) > 0.05) return "hurt";
   if (typeof game !== "undefined" && game.abilityCastLock > 0) return "cast";
   if ((h.attackAnim || 0) > 0.04) return "attack";
-  if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) {
-    const spd = Math.abs(h.vx || 0);
-    return spd > 100 ? "run" : "walk";
-  }
-  if (moving) return "walk";
   return "idle";
 };
 
-HR.updateAnim = (h, dt, moving) => {
-  const state = HR.getAnimState(h, moving);
+HR.updateAnim = (h, dt) => {
+  const state = HR.getAnimState(h);
   if (h.animState !== state) {
     h.animState = state;
     h.animFrame = 0;
@@ -121,11 +114,6 @@ function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength) {
 
 HR.resolveMoveFrame = (classKey, state, frame, pack) => {
   if (!pack) return null;
-  if (state === "walk" || state === "run") {
-    // 2-Posen-Zyklus aus walk/run – sichtbare Geh-Animation
-    const pose = ((frame || 0) % 2 === 0) ? "walk" : "run";
-    return pack.hero(classKey, pose) || pack.hero(classKey, state) || pack.hero(classKey, "idle");
-  }
   return pack.hero(classKey, state) || pack.hero(classKey, "idle");
 };
 
@@ -135,11 +123,7 @@ HR.draw = (ctx, opts) => {
   const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
   const facing = h.facing === -1 ? -1 : 1;
   const state = h.animState || "idle";
-  const bob = state === "idle"
-    ? Math.sin((h.animTime || 0) * 6) * 1.2
-    : (state === "run" || state === "walk"
-      ? Math.sin(((h.animFrame || 0) + (h.animTime || 0) / 0.12) * Math.PI) * 2.2
-      : 0);
+  const bob = state === "idle" ? Math.sin((h.animTime || 0) * 6) * 1.2 : 0;
   const baseX = (opts.x != null ? opts.x : h.x) || 0;
   const cx = baseX + (h.w || HR.W) / 2 + (opts.hurtOff || 0) + (opts.atkOff || 0);
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;

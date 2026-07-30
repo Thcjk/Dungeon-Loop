@@ -3,10 +3,6 @@
     "warrior": {
       "idle": "assets/pack/heroes/warrior/idle.png",
       "idle_card": "assets/pack/heroes/warrior/idle_card.png",
-      "walk": "assets/pack/heroes/warrior/walk.png",
-      "walk_card": "assets/pack/heroes/warrior/walk_card.png",
-      "run": "assets/pack/heroes/warrior/run.png",
-      "run_card": "assets/pack/heroes/warrior/run_card.png",
       "attack": "assets/pack/heroes/warrior/attack.png",
       "attack_card": "assets/pack/heroes/warrior/attack_card.png",
       "cast": "assets/pack/heroes/warrior/cast.png",
@@ -19,10 +15,6 @@
     "ranger": {
       "idle": "assets/pack/heroes/ranger/idle.png",
       "idle_card": "assets/pack/heroes/ranger/idle_card.png",
-      "walk": "assets/pack/heroes/ranger/walk.png",
-      "walk_card": "assets/pack/heroes/ranger/walk_card.png",
-      "run": "assets/pack/heroes/ranger/run.png",
-      "run_card": "assets/pack/heroes/ranger/run_card.png",
       "attack": "assets/pack/heroes/ranger/attack.png",
       "attack_card": "assets/pack/heroes/ranger/attack_card.png",
       "cast": "assets/pack/heroes/ranger/cast.png",
@@ -35,10 +27,6 @@
     "mage": {
       "idle": "assets/pack/heroes/mage/idle.png",
       "idle_card": "assets/pack/heroes/mage/idle_card.png",
-      "walk": "assets/pack/heroes/mage/walk.png",
-      "walk_card": "assets/pack/heroes/mage/walk_card.png",
-      "run": "assets/pack/heroes/mage/run.png",
-      "run_card": "assets/pack/heroes/mage/run_card.png",
       "attack": "assets/pack/heroes/mage/attack.png",
       "attack_card": "assets/pack/heroes/mage/attack_card.png",
       "cast": "assets/pack/heroes/mage/cast.png",
@@ -305,37 +293,22 @@
   },
   "worlds": {
     "forest": {
-      "preview": "assets/pack/worlds/forest/preview.png",
-      "previewW": 1290,
-      "previewH": 360,
       "scene": "assets/pack/worlds/forest/scene.png",
       "lane": "assets/pack/worlds/forest/lane.png"
     },
     "swamp": {
-      "preview": "assets/pack/worlds/swamp/preview.png",
-      "previewW": 1290,
-      "previewH": 360,
       "scene": "assets/pack/worlds/swamp/scene.png",
       "lane": "assets/pack/worlds/swamp/lane.png"
     },
     "frost": {
-      "preview": "assets/pack/worlds/frost/preview.png",
-      "previewW": 1290,
-      "previewH": 360,
       "scene": "assets/pack/worlds/frost/scene.png",
       "lane": "assets/pack/worlds/frost/lane.png"
     },
     "fire": {
-      "preview": "assets/pack/worlds/fire/preview.png",
-      "previewW": 1290,
-      "previewH": 360,
       "scene": "assets/pack/worlds/fire/scene.png",
       "lane": "assets/pack/worlds/fire/lane.png"
     },
     "ruins": {
-      "preview": "assets/pack/worlds/ruins/preview.png",
-      "previewW": 1290,
-      "previewH": 360,
       "scene": "assets/pack/worlds/ruins/scene.png",
       "lane": "assets/pack/worlds/ruins/lane.png"
     }
@@ -350,10 +323,6 @@
   },
   "ui": {
     "ui_panel_excerpt": "assets/pack/ui/ui_panel_excerpt.png",
-    "hud_hp_frame": "assets/pack/ui/cropped/hud_hp_frame.png",
-    "hud_mana_frame": "assets/pack/ui/cropped/hud_mana_frame.png",
-    "hud_xp_frame": "assets/pack/ui/cropped/hud_xp_frame.png",
-    "hud_panel_frame": "assets/pack/ui/cropped/hud_panel_frame.png",
     "hud_elements_sheet_2": "assets/pack/ui/hud_elements_sheet_2.png",
     "hud_elements_sheet": "assets/pack/ui/hud_elements_sheet.png",
     "item_equipment_icons_sheet_2": "assets/pack/ui/item_equipment_icons_sheet_2.png",
@@ -363,7 +332,6 @@
     "ui_frames_sheet_2": "assets/pack/ui/ui_frames_sheet_2.png",
     "ui_frames_sheet": "assets/pack/ui/ui_frames_sheet.png"
   },
-  "previews": {},
   "props": {
     "forest": [
       {

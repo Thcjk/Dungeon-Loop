@@ -356,42 +356,37 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* Klares HUD-Panel: die verzierten Pack-Rahmen wurden stark verzerrt und
+   haben Labels überdeckt. Funktion unverändert, nur lesbare Darstellung. */
 .hud-card {
-  background: url("assets/pack/ui/cropped/hud_panel_frame.png") no-repeat center / 100% 100%;
-  border: none;
-  border-radius: 0;
-  padding: 14px 16px 12px;
-  box-shadow: none;
-  backdrop-filter: none;
-  image-rendering: pixelated;
+  background: rgba(12, 14, 18, 0.72);
+  border: 1px solid rgba(198, 160, 90, 0.45);
+  border-radius: 3px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 .hud-bar {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+  grid-template-columns: 26px 1fr auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .hud-label { color: #c9b896; font-weight: bold; font-size: 0.62rem; text-shadow: 0 1px 2px #000; }
 .pack-bar-track {
   position: relative;
-  height: 22px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 100% 100%;
-  image-rendering: pixelated;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+  overflow: hidden;
 }
-.pack-bar-track.hp-track { background-image: url("assets/pack/ui/cropped/hud_hp_frame.png"); }
-.pack-bar-track.xp-track { background-image: url("assets/pack/ui/cropped/hud_xp_frame.png"); }
-.pack-bar-track.mana-track { background-image: url("assets/pack/ui/cropped/hud_mana_frame.png"); }
 .pack-bar-fill {
   position: absolute;
-  left: 12px;
-  top: 8px;
-  height: 8px;
-  max-width: calc(100% - 24px);
+  left: 0;
+  top: 0;
+  height: 100%;
   transition: width 0.25s ease-out;
-  border-radius: 1px;
 }
 .pack-bar-fill.hp   { background: linear-gradient(180deg, #ff6b5b, #b83228); box-shadow: 0 0 6px rgba(231,76,60,0.45); }
 .pack-bar-fill.xp   { background: linear-gradient(180deg, #f1d04a, #b8860b); box-shadow: 0 0 6px rgba(241,208,74,0.35); }
