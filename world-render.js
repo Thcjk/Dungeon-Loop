@@ -1,22 +1,17 @@
 /* Dungeon Loop – Kingdom-Classic Side-Scroller Renderer
-   Ebenen: Sky · Far BG · BG · Mid · Terrain/Path · Front Props · Atmosphäre
-   Keine Preview/Szenen mit eingebackenen Figuren. */
+   Ebenen: Sky · Backdrop (Deko eingebacken) · Lane/Weg · Atmosphäre
+   Keine Runtime-Props – Deko sitzt im backdrop.png, Weg in lane.png. */
 
 const WR = {
   CW: 640, CH: 360, GROUND: 308,
   SKY_H: Math.round(360 * 0.24),
   SPEEDS: {
     sky: 0,
-    far: 0.038,
-    back: 0.075,
-    mid: 0.13,
-    terrain: 0.36,
-    fore: 0.68,
-    propsMid: 0.15,
-    propsBack: 0.1,
-    propsFront: 0.72
+    backdropFar: 0.045,
+    backdrop: 0.11,
+    lane: 0.38
   },
-  cache: { theme: null, layout: null },
+  cache: { theme: null },
   ambient: [], transition: null, animTime: 0
 };
 
@@ -95,42 +90,6 @@ function getWorldVisualConfig(worldId) {
 
 function invalidateParallaxCache() {
   WR.cache.theme = null;
-  WR.cache.layout = null;
-}
-
-/** Kingdom-Style Deko: Weg in der Mitte frei, dichte Rahmen links/rechts */
-function buildPropLayout(theme) {
-  const count = (typeof PackAssets !== "undefined" && PackAssets.listPropCount)
-    ? PackAssets.listPropCount(theme) : 22;
-  if (!count) return [];
-  const layout = [];
-  const seed = theme.charCodeAt(0) * 17;
-  const bands = [
-    { layer: "mid", xs: [0.05, 0.14, 0.86, 0.95], sy: 0.56, count: 4 },
-    { layer: "back", xs: [0.08, 0.22, 0.35, 0.65, 0.78, 0.92], sy: 0.64, count: 6 },
-    { layer: "front", xs: [0.03, 0.09, 0.17, 0.83, 0.91, 0.97], sy: 0.9, count: 6 },
-    { layer: "front", xs: [0.24, 0.32, 0.68, 0.76], sy: 0.87, count: 4 }
-  ];
-  let n = 0;
-  bands.forEach((band) => {
-    band.xs.forEach((x, j) => {
-      layout.push({
-        i: (seed + n * 3 + j * 5) % count,
-        x,
-        layer: band.layer,
-        sy: band.sy + wrR(seed + n) * 0.035
-      });
-      n++;
-    });
-  });
-  return layout;
-}
-
-function getPropLayout(theme) {
-  if (WR.cache.layout && WR.cache.theme === theme) return WR.cache.layout;
-  WR.cache.layout = buildPropLayout(theme);
-  WR.cache.theme = theme;
-  return WR.cache.layout;
 }
 
 function spawnAmbient(theme) {
@@ -152,10 +111,7 @@ function spawnAmbient(theme) {
 
 function initParallaxBackground(world) {
   const t = wrTheme(world);
-  WR.cache.theme = null;
-  WR.cache.layout = null;
   WR.cache.theme = t;
-  getPropLayout(t);
   spawnAmbient(t);
   WR.animTime = 0;
 }
@@ -207,39 +163,31 @@ function drawSky(ctx, theme) {
   ctx.fillRect(0, 0, WR.CW, WR.SKY_H + 40);
 }
 
-/** bg.png als Parallax-Ebene – Cover, ganzzahlig, kein Smoothing */
-function drawBgParallax(ctx, bg, scroll, speed, opts) {
-  if (!bg || !bg.width) return;
-  const scale = opts.scale || 1;
-  const yOff = opts.yOff || 0;
-  const alpha = opts.alpha != null ? opts.alpha : 1;
-  const clipTop = opts.clipTop || 0;
-  const targetH = opts.height || WR.CH;
-
-  const dh = Math.round(targetH * scale);
-  const dw = Math.max(1, Math.round(bg.width * (dh / bg.height)));
+function drawTiledStrip(ctx, img, scroll, y, speed, opts) {
+  if (!img || !img.width) return;
+  const alpha = (opts && opts.alpha != null) ? opts.alpha : 1;
+  const h = img.height;
+  const dw = img.width;
   let x = -Math.floor((scroll * speed) % dw);
   if (x > 0) x -= dw;
-
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.imageSmoothingEnabled = false;
-  if (clipTop > 0) {
-    ctx.beginPath();
-    ctx.rect(0, clipTop, WR.CW, WR.CH - clipTop);
-    ctx.clip();
-  }
   while (x < WR.CW + dw) {
-    ctx.drawImage(bg, Math.round(x), Math.round(yOff), dw, dh);
+    ctx.drawImage(img, Math.round(x), Math.round(y), dw, h);
     x += dw;
   }
   ctx.restore();
 }
 
-function drawParallaxStack(ctx, theme, scroll) {
+/** Integrierter Hintergrund mit eingebackener Deko (backdrop.png) */
+function drawIntegratedBackdrop(ctx, theme, scroll) {
+  const backdrop = packImg(theme, "backdrop");
   const bg = packImg(theme, "bg");
   const pal = getWorldPal(theme);
-  if (!bg) {
+  const img = backdrop || bg;
+
+  if (!img) {
     const g = ctx.createLinearGradient(0, WR.SKY_H, 0, WR.CH);
     g.addColorStop(0, pal.sky[2]);
     g.addColorStop(1, pal.sky[3] || pal.sky[2]);
@@ -248,98 +196,55 @@ function drawParallaxStack(ctx, theme, scroll) {
     return;
   }
 
-  // Far background – langsam, leicht vergrößert
-  drawBgParallax(ctx, bg, scroll, WR.SPEEDS.far, {
-    scale: 1.14, yOff: -8, alpha: 0.72, clipTop: WR.SKY_H - 10, height: WR.CH
-  });
-  // Background
-  drawBgParallax(ctx, bg, scroll, WR.SPEEDS.back, {
-    scale: 1.0, yOff: 0, alpha: 0.92, clipTop: WR.SKY_H - 6, height: WR.CH
-  });
-  // Midground – unterer Crop für Tiefe
-  drawBgParallax(ctx, bg, scroll, WR.SPEEDS.mid, {
-    scale: 1.06, yOff: 24, alpha: 0.88, clipTop: WR.SKY_H + 20, height: WR.CH - 40
-  });
+  const lane = packImg(theme, "lane");
+  const laneH = lane ? lane.height : 92;
+  const y = WR.CH - laneH - img.height;
 
-  // Weicher Übergang BG → Boden (keine harte Kante)
-  const blendY = WR.GROUND - 96;
-  const blend = ctx.createLinearGradient(0, blendY, 0, WR.GROUND - 20);
+  if (backdrop) {
+    drawTiledStrip(ctx, backdrop, scroll, y, WR.SPEEDS.backdropFar, { alpha: 0.78 });
+    drawTiledStrip(ctx, backdrop, scroll, y, WR.SPEEDS.backdrop, { alpha: 1 });
+  } else {
+    drawTiledStrip(ctx, bg, scroll, y, WR.SPEEDS.backdrop, { alpha: 0.95 });
+  }
+
+  const blendY = y + img.height - 72;
+  const blend = ctx.createLinearGradient(0, blendY, 0, y + img.height);
   blend.addColorStop(0, "rgba(0,0,0,0)");
-  blend.addColorStop(0.45, pal.haze);
+  blend.addColorStop(0.55, pal.haze);
   blend.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = blend;
-  ctx.fillRect(0, blendY, WR.CW, WR.GROUND - blendY + 20);
+  ctx.fillRect(0, blendY, WR.CW, img.height);
 
   ctx.fillStyle = pal.fog;
-  ctx.globalAlpha = 0.55;
-  ctx.fillRect(0, WR.SKY_H, WR.CW, Math.floor((WR.GROUND - WR.SKY_H) * 0.42));
+  ctx.globalAlpha = 0.42;
+  ctx.fillRect(0, WR.SKY_H, WR.CW, Math.floor((WR.GROUND - WR.SKY_H) * 0.38));
   ctx.globalAlpha = 1;
 }
 
-function drawTiledStrip(ctx, img, scroll, y, speed) {
-  if (!img || !img.width) return;
-  const h = img.height;
-  const dw = img.width;
-  let x = -Math.floor((scroll * speed) % dw);
-  if (x > 0) x -= dw;
-  ctx.imageSmoothingEnabled = false;
-  while (x < WR.CW + dw) {
-    ctx.drawImage(img, Math.round(x), Math.round(y), dw, h);
-    x += dw;
-  }
-}
+/** Laufbahn für Held & Gegner (lane.png) – kein Sticker-Row */
+function drawWalkLane(ctx, theme, scroll) {
+  const lane = packImg(theme, "lane") || packImg(theme, "path") || packImg(theme, "terrain");
+  if (!lane) return;
+  const y = WR.CH - lane.height;
+  drawTiledStrip(ctx, lane, scroll, y, WR.SPEEDS.lane);
 
-/** Terrain = integrierter Boden/Weg (ohne Figuren) */
-function drawTerrain(ctx, theme, scroll) {
-  const terrain = packImg(theme, "terrain") || packImg(theme, "foreground");
-  if (!terrain) return;
-  const y = WR.CH - terrain.height;
-  drawTiledStrip(ctx, terrain, scroll, y, WR.SPEEDS.terrain);
-
-  // Weicher Rand: Weg geht in Landschaft über
   const pal = getWorldPal(theme);
   const side = ctx.createLinearGradient(0, 0, WR.CW, 0);
   side.addColorStop(0, pal.haze);
-  side.addColorStop(0.12, "rgba(0,0,0,0)");
-  side.addColorStop(0.88, "rgba(0,0,0,0)");
+  side.addColorStop(0.1, "rgba(0,0,0,0)");
+  side.addColorStop(0.9, "rgba(0,0,0,0)");
   side.addColorStop(1, pal.haze);
   ctx.fillStyle = side;
-  ctx.fillRect(0, y, WR.CW, terrain.height);
-}
-
-function drawWorldProps(ctx, theme, scrollX, layer) {
-  if (typeof PackAssets === "undefined" || !PackAssets.ready) return;
-  const layout = getPropLayout(theme);
-  const speedMap = { mid: WR.SPEEDS.propsMid, back: WR.SPEEDS.propsBack, front: WR.SPEEDS.propsFront };
-  const scroll = scrollX || 0;
-
-  layout.forEach((slot) => {
-    if (slot.layer !== layer) return;
-    const img = PackAssets.prop(theme, slot.i);
-    if (!img || !img.width) return;
-    const speed = speedMap[layer] || WR.SPEEDS.propsBack;
-    let px = slot.x * WR.CW - scroll * speed;
-    const wrap = WR.CW + 140;
-    px = ((px % wrap) + wrap) % wrap - 70;
-    const footY = Math.round(WR.GROUND - 4 + (slot.sy - 0.85) * 38);
-    const x = Math.round(px - img.width / 2);
-    const y = Math.round(footY - img.height);
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    if (layer === "mid") ctx.globalAlpha = 0.82;
-    else if (layer === "back") ctx.globalAlpha = 0.92;
-    ctx.drawImage(img, x, y);
-    ctx.restore();
-  });
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(0, y, WR.CW, lane.height);
+  ctx.globalAlpha = 1;
 }
 
 function drawSideScrollerBackdrop(ctx, theme, scrollX) {
   const scroll = scrollX || 0;
   drawSky(ctx, theme);
-  drawParallaxStack(ctx, theme, scroll);
-  drawWorldProps(ctx, theme, scroll, "mid");
-  drawWorldProps(ctx, theme, scroll, "back");
-  drawTerrain(ctx, theme, scroll);
+  drawIntegratedBackdrop(ctx, theme, scroll);
+  drawWalkLane(ctx, theme, scroll);
 }
 
 function drawAmbient(ctx, theme, layer) {
@@ -377,7 +282,6 @@ function drawAmbient(ctx, theme, layer) {
 
 function drawLighting(ctx, theme) {
   const pal = getWorldPal(theme);
-  // Sonnen-/Mondestreifen von oben links
   const sun = ctx.createLinearGradient(0, 0, WR.CW * 0.7, WR.GROUND);
   sun.addColorStop(0, pal.lighting);
   sun.addColorStop(0.55, "rgba(0,0,0,0)");
@@ -390,7 +294,6 @@ function drawLighting(ctx, theme) {
   ctx.fillStyle = warm;
   ctx.fillRect(0, 0, WR.CW, WR.CH);
 
-  // Boden-Vignette für Tiefe
   const vig = ctx.createLinearGradient(0, WR.GROUND - 50, 0, WR.CH);
   vig.addColorStop(0, "rgba(0,0,0,0)");
   vig.addColorStop(1, "rgba(0,0,0,0.35)");
@@ -409,8 +312,6 @@ function renderParallaxBackground(ctx, world, scrollX) {
 function renderWorldForeground(ctx, world, camera) {
   if (!ctx) return;
   const theme = wrTheme(world);
-  const scroll = (camera && camera.scrollX) || 0;
-  drawWorldProps(ctx, theme, scroll, "front");
   drawAmbient(ctx, theme, "front");
 }
 
