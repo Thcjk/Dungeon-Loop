@@ -46,15 +46,15 @@ const VisualEnemies = {
     const x = Math.round(footX - w / 2);
     const y = Math.round(footY - h + bobY);
     c.save();
-    // Soft contact shadow
+    c.imageSmoothingEnabled = false;
     c.fillStyle = "rgba(0,0,0,0.45)";
     c.beginPath();
     c.ellipse(footX, footY + 1, Math.max(10, w * 0.28), 4, 0, 0, Math.PI * 2);
     c.fill();
     if (flip) {
-      c.translate(footX * 2, 0);
+      c.translate(Math.round(footX * 2), 0);
       c.scale(-1, 1);
-      c.drawImage(img, footX * 2 - x - w, y);
+      c.drawImage(img, Math.round(footX * 2 - x - w), y);
     } else {
       c.drawImage(img, x, y);
     }

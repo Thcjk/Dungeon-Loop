@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "world-v114";
+const BUILD_ID = "visual-v115";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -1026,8 +1026,7 @@ function drawPreviews() {
 document.addEventListener("DOMContentLoaded", async () => {
   canvas = $("game-canvas");
   ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingEnabled = false;
   game.meta = loadMeta();
   loadAudioPrefs();
 
@@ -4082,7 +4081,8 @@ function render() {
   });
 
   /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste W / S) */
-  if (game.isRunning) {
+  // Ability status lives in sidebar loadout – no floating debug text over hero
+  if (false && game.isRunning) {
     ctx.font = "bold 8px Courier New";
     [0, 1].forEach((slotIdx) => {
       const ab = getEquippedAbilityAtSlot(slotIdx);
@@ -4096,6 +4096,7 @@ function render() {
 
   if (typeof renderWorldForeground === "function") {
     renderWorldForeground(ctx, world, {
+      x: game.scrollX,
       scrollX: game.scrollX,
       focusX: visualCamera.x,
       zoom: visualCamera.zoom

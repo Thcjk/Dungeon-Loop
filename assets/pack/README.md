@@ -1,11 +1,18 @@
 # Asset Pack (spielbereit)
 
-Vorverarbeitete Sprites aus `assets/incoming/` (Meshy AI Pack).
+Vorverarbeitete Assets aus `assets/incoming/` (Meshy Pixel-Art Pack).
 
-- Transparente PNGs (Checkerboard entfernt)
-- Auf Spielgröße skaliert (Helden ~96px, Gegner ~78px, Bosse ~120px)
-- Welten-Previews als Parallax-Hintergründe
+## Struktur
 
-`manifest.json` mappt alle Pfade. Runtime-Loader: `asset-pack.js`.
+| Pfad | Inhalt |
+|------|--------|
+| `heroes/` | Krieger / Waldläufer / Magier (Idle–Death) |
+| `enemies/` | Gegner pro Welt |
+| `bosses/` | Welt-Bosse |
+| `worlds/` | Preview, Ground, Midband, Tileset, Deco |
+| `props/` | Freigestellte Deko-Props (ohne Schachbrett) |
+| `fx/` | Effekt-/Projektil-Sheets |
+| `ui/` | HUD-/Frame-/Icon-Sheets |
+| `manifest.json` | Zentrale Pfad-Zuordnung |
 
-Quell-Sheets bleiben in `assets/incoming/` als Referenz.
+Runtime: `asset-pack.js` → `PackAssets`

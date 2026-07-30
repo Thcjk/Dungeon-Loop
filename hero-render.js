@@ -66,19 +66,20 @@ function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flash) {
   const x = Math.round(cx - w / 2);
   const y = Math.round(footY - h + (bobY || 0));
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   if (facing < 0) {
-    ctx.translate(cx * 2, 0);
+    ctx.translate(Math.round(cx * 2), 0);
     ctx.scale(-1, 1);
   }
+  const dx = facing < 0 ? Math.round(cx * 2 - x - w) : x;
   if (flash) {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.drawImage(img, facing < 0 ? (cx * 2 - x - w) : x, y);
+    ctx.drawImage(img, dx, y);
     ctx.globalCompositeOperation = "source-atop";
     ctx.fillStyle = "rgba(255,220,200,0.35)";
-    ctx.fillRect(facing < 0 ? (cx * 2 - x - w) : x, y, w, h);
+    ctx.fillRect(dx, y, w, h);
     ctx.globalCompositeOperation = "source-over";
   } else {
-    ctx.drawImage(img, facing < 0 ? (cx * 2 - x - w) : x, y);
+    ctx.drawImage(img, dx, y);
   }
   ctx.restore();
   return true;
@@ -125,12 +126,12 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame) => {
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
   const img = pack ? (pack.heroCard(classKey) || pack.hero(classKey, "idle")) : null;
   if (img && img.complete && img.naturalWidth > 0) {
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = false;
     const scale = Math.min((w * 0.78) / img.width, (h * 0.82) / img.height);
-    const dw = img.width * scale;
-    const dh = img.height * scale;
-    const bob = Math.sin((frame || 0) * 0.8) * 3;
-    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2 + bob - 6, dw, dh);
+    const dw = Math.round(img.width * scale);
+    const dh = Math.round(img.height * scale);
+    const bob = Math.sin((frame || 0) * 0.8) * 2;
+    ctx.drawImage(img, Math.round((w - dw) / 2), Math.round((h - dh) / 2 + bob - 6), dw, dh);
   } else {
     // Lade-Hinweis statt leerer Fläche
     ctx.fillStyle = "#8a7d6c";
