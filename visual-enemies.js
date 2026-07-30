@@ -72,14 +72,12 @@ const VisualEnemies = {
     c.drawImage(this._tintBuf, dx, y);
   },
 
-  drawAtFeet(c, spriteKey, footX, footY, flip, world, bob, big, boxW, boxH, hitFlash) {
+  drawAtFeet(c, spriteKey, footX, footY, flip, world, bob, big, boxW, boxH, hitFlash, gaitLean) {
     const img = this.resolveImage(spriteKey, big);
     if (!img) return false;
     const w = img.width;
     const h = img.height;
     const bobY = bob || 0;
-    const x = Math.round(footX - w / 2);
-    const y = Math.round(footY - h + bobY);
     c.save();
     c.imageSmoothingEnabled = false;
     c.fillStyle = "rgba(0,0,0,0.45)";
@@ -87,16 +85,16 @@ const VisualEnemies = {
     c.ellipse(footX, footY + 1, Math.max(10, w * 0.28), 4, 0, 0, Math.PI * 2);
     c.fill();
     const flash = Math.max(0, hitFlash || 0);
-    if (flip) {
-      c.translate(Math.round(footX * 2), 0);
-      c.scale(-1, 1);
-      const dx = Math.round(footX * 2 - x - w);
-      if (flash > 0) this.drawTinted(c, img, dx, y, flash);
-      else c.drawImage(img, dx, y);
-    } else if (flash > 0) {
-      this.drawTinted(c, img, x, y, flash);
+    // Wie beim Held: um die feste Fußlinie drehen, nie vertikal schweben.
+    c.translate(Math.round(footX), Math.round(footY));
+    c.rotate(gaitLean || 0);
+    c.scale(flip ? -1 : 1, 1);
+    const dx = -Math.round(w / 2);
+    const y = -h + Math.round(bobY);
+    if (flash > 0) {
+      this.drawTinted(c, img, dx, y, flash);
     } else {
-      c.drawImage(img, x, y);
+      c.drawImage(img, dx, y);
     }
     c.restore();
     return true;
