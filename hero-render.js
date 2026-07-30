@@ -21,7 +21,7 @@ const HR = {
 
 HR.displayW = () => HR.W;
 HR.displayH = () => HR.H;
-HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 308);
+HR.getGroundY = () => (typeof GROUND !== "undefined" ? GROUND : 288);
 HR.getDrawY = () => HR.getGroundY() - HR.H;
 
 HR.getAnimState = (h, moving) => {

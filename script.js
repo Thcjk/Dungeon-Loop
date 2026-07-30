@@ -4,14 +4,14 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-135";
+const BUILD_ID = "sidescroller-v3-136";
 const GAME_VERSION = 3;
-const WORLD_LAYOUT_VERSION = 3;
+const WORLD_LAYOUT_VERSION = 4;
 
 /* Einmaliger kompletter Neustart: alle alten lokalen Spielstaende und
    Weltdaten werden geloescht, damit keine alte Darstellung zurueckkommt. */
 const DATA_WIPE_KEY = "dungeon_loop_wipe_version";
-const DATA_WIPE_VERSION = "3";
+const DATA_WIPE_VERSION = "4";
 (function wipeLegacyData() {
   try {
     if (localStorage.getItem(DATA_WIPE_KEY) === DATA_WIPE_VERSION) return;
@@ -55,7 +55,7 @@ const WEAPON_PIXEL = 2;
 const DECOR_PIXEL = 5;
 const BG_PIXEL = 6;
 const CW = 640, CH = 360;
-const GROUND = 308;
+const GROUND = 288; // Maueroberkante – Held/Gegner laufen genau darauf
 
 /** Alle Charaktere: Unterkante der Hitbox = Bodenlinie */
 function pinCharToGround(entity) {

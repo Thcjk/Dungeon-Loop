@@ -4,7 +4,7 @@
 const WR = {
   CW: 640,
   CH: 360,
-  GROUND: 308,
+  GROUND: 288,
   transition: null,
   cache: { theme: null },
   particles: [],
