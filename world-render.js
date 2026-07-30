@@ -1,13 +1,13 @@
-/* Dungeon Loop – World Renderer (Redesign nach Design-Vorlage)
-   Einheitlicher, atmosphärischer Look: weiche, geschichtete Silhouetten mit
-   Tiefe, ruhiger dunkler Grund, freie Kampfbahn. Rein prozedural (keine Assets).
+/* Dungeon Loop – World Renderer (Asset-Pack)
+   Welten ausschließlich aus assets/pack/: Preview-Szenen, Tiles/Deco-Sheets, Atmosphäre.
    Öffentliche API bleibt kompatibel mit script.js. */
 
 const WR = {
-  CW: 640, CH: 360, GROUND: 308, STRIP_W: 2560,
-  SPEEDS: [0, 0.12, 0.22, 0.4, 0.6, 0.66],
+  CW: 640, CH: 360, GROUND: 308, STRIP_W: 1290,
+  SPEEDS: [0, 0.08, 0.18, 0.38, 0.72, 1.05],
   cache: { theme: null, layers: null },
-  ambient: [], transition: null, animTime: 0
+  ambient: [], transition: null, animTime: 0,
+  decoProps: Object.create(null)
 };
 
 const WORLD_VISUALS = {
@@ -22,87 +22,39 @@ WORLD_VISUALS.fire = WORLD_VISUALS.firelands;
 
 const WORLD_PAL = {
   forest: {
-    kind: "tree",
-    sky: ["#0a1712", "#0e2018", "#143627"],
-    horizon: "rgba(30,70,50,0.5)",
-    bands: [["#081a12", "#0b2318"], ["#0e2c1f", "#134028"], ["#164a33", "#215f41", "#2d7050"]],
-    ground: ["#13271b", "#0b1710", "#2d6a4f"],
-    fog: "rgba(30,70,50,0.34)", accent: "#8fe6a8",
-    lighting: "rgba(150,220,160,0.10)", moon: "rgba(150,220,180,0.16)",
-    weather: ["rain", "leaf", "firefly"]
+    sky: ["#0a1712", "#0e2018", "#143627"], fog: "rgba(20,50,35,0.28)", accent: "#8fe6a8",
+    lighting: "rgba(150,220,160,0.10)", weather: ["leaf", "firefly", "mist"]
   },
   swamp: {
-    kind: "dead",
-    sky: ["#0a120a", "#0f1a0d", "#182615"],
-    horizon: "rgba(60,80,40,0.5)",
-    bands: [["#0b1409", "#131c0e"], ["#182410", "#25341a"], ["#2a3a1c", "#3a4d26", "#4a6030"]],
-    ground: ["#141c10", "#0b1108", "#5a7a38"],
-    fog: "rgba(60,80,40,0.42)", accent: "#a6d46a",
-    lighting: "rgba(150,210,110,0.10)", moon: "rgba(150,190,90,0.14)",
-    weather: ["mist", "bubble", "firefly"]
+    sky: ["#0a120a", "#0f1a0d", "#182615"], fog: "rgba(50,70,35,0.36)", accent: "#a6d46a",
+    lighting: "rgba(150,210,110,0.10)", weather: ["mist", "bubble", "firefly"]
   },
   frost: {
-    kind: "pine",
-    sky: ["#0a1526", "#122340", "#2b4064"],
-    horizon: "rgba(190,215,240,0.4)",
-    bands: [["#15233a", "#20304c"], ["#263a58", "#33496b"], ["#3d587e", "#4e6c92", "#6f8cb0"]],
-    ground: ["#c4d2e2", "#9fb2c8", "#e6f0fa"],
-    fog: "rgba(190,215,240,0.3)", accent: "#dff0ff",
-    lighting: "rgba(180,215,255,0.14)", moon: "rgba(210,230,255,0.2)",
-    weather: ["snow", "snow", "wind"]
+    sky: ["#0a1526", "#122340", "#2b4064"], fog: "rgba(180,210,240,0.28)", accent: "#dff0ff",
+    lighting: "rgba(180,215,255,0.14)", weather: ["snow", "snow", "wind"]
   },
   fire: {
-    kind: "spike",
-    sky: ["#12060a", "#280a08", "#4a1608"],
-    horizon: "rgba(120,45,15,0.5)",
-    bands: [["#160806", "#240c07"], ["#2e0f08", "#42160c"], ["#4a1810", "#652012", "#8a2c14"]],
-    ground: ["#221410", "#140a07", "#e06a2a"],
-    fog: "rgba(90,35,15,0.36)", accent: "#ff9a3c",
-    lighting: "rgba(255,120,50,0.18)", moon: "rgba(255,140,60,0.22)",
-    weather: ["ash", "ember", "smoke"]
+    sky: ["#12060a", "#280a08", "#4a1608"], fog: "rgba(90,35,15,0.32)", accent: "#ff9a3c",
+    lighting: "rgba(255,120,50,0.18)", weather: ["ash", "ember", "smoke"]
   },
   ruins: {
-    kind: "pillar",
-    sky: ["#0a0c1a", "#141830", "#262c4c"],
-    horizon: "rgba(70,60,110,0.5)",
-    bands: [["#11152a", "#1b2140"], ["#232a48", "#2f375a"], ["#3a4468", "#4a5580", "#5d6a98"]],
-    ground: ["#1a1e30", "#101425", "#6a74a0"],
-    fog: "rgba(60,50,90,0.36)", accent: "#8fd0ff",
-    lighting: "rgba(140,200,255,0.14)", moon: "rgba(160,200,255,0.2)",
-    weather: ["dust", "rune", "storm"]
+    sky: ["#0a0c1a", "#141830", "#262c4c"], fog: "rgba(50,45,80,0.32)", accent: "#8fd0ff",
+    lighting: "rgba(140,200,255,0.14)", weather: ["dust", "rune", "storm"]
   }
 };
 
 const WR_PALETTES = {};
 Object.keys(WORLD_PAL).forEach((k) => { WR_PALETTES[k] = { fog: WORLD_PAL[k].fog }; });
 
+function wrTheme(world) {
+  if (!world) return "forest";
+  if (typeof world === "string") return world;
+  return world.theme || "forest";
+}
+
 function wrR(n) {
   const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return v - Math.floor(v);
-}
-
-function wrCanvas(w, h) {
-  const cv = document.createElement("canvas");
-  cv.width = w; cv.height = h;
-  return cv;
-}
-
-function wrGradV(c, y0, y1, stops) {
-  const g = c.createLinearGradient(0, y0, 0, y1);
-  stops.forEach(([p, col]) => g.addColorStop(p, col));
-  return g;
-}
-
-function wrHex(h) {
-  h = h.replace("#", "");
-  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-  const n = parseInt(h, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-function wrRgba(hex, a) {
-  const [r, g, b] = wrHex(hex);
-  return `rgba(${r},${g},${b},${a})`;
 }
 
 function getWorldPal(theme) {
@@ -114,507 +66,277 @@ function getWorldVisualConfig(worldId) {
   return WORLD_VISUALS[key] || WORLD_VISUALS.forest;
 }
 
-/* ---------------- weiche Silhouetten-Zeichner ---------------- */
-
-function wrSoftBlob(c, x, y, r, color) {
-  c.fillStyle = color;
-  c.beginPath();
-  c.arc(x, y, r, 0, Math.PI * 2);
-  c.fill();
-}
-
-function pal_trunk() {
-  return ["#241810", "#3d2c1a"];
-}
-
-function wrTreeCluster(c, x, baseY, scale, tones) {
-  const dark = tones[0];
-  const base = tones[1] || tones[0];
-  const light = tones[2] || base;
-  const r = 12 * scale;
-  const trunkH = 12 * scale;
-  const trunkW = Math.max(2, 3 * scale);
-  const trunkCol = pal_trunk(tones);
-  // sichtbarer Stamm mit heller Kante + Wurzelansatz
-  c.fillStyle = trunkCol[0];
-  c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, trunkW | 0, (trunkH + 2) | 0);
-  c.fillStyle = trunkCol[1];
-  c.fillRect((x - trunkW / 2) | 0, (baseY - trunkH) | 0, Math.max(1, trunkW * 0.35) | 0, (trunkH + 2) | 0);
-  c.fillStyle = trunkCol[0];
-  c.fillRect((x - trunkW) | 0, (baseY - 1) | 0, (trunkW * 2) | 0, 2);
-  const cy = baseY - trunkH - r * 1.15;
-  // volle, hohe Krone (mehrlagig für dichten Wald)
-  wrSoftBlob(c, x - r * 0.85, cy + r * 0.35, r * 1.0, dark);
-  wrSoftBlob(c, x + r * 0.85, cy + r * 0.3, r * 1.05, dark);
-  wrSoftBlob(c, x, cy + r * 0.15, r * 1.2, base);
-  wrSoftBlob(c, x - r * 0.55, cy - r * 0.5, r * 0.95, base);
-  wrSoftBlob(c, x + r * 0.55, cy - r * 0.55, r * 0.9, base);
-  wrSoftBlob(c, x, cy - r * 1.05, r * 0.95, base);
-  wrSoftBlob(c, x - r * 0.15, cy - r * 1.15, r * 0.6, light);
-  wrSoftBlob(c, x + r * 0.4, cy - r * 0.6, r * 0.55, light);
-}
-
-function wrDeadTree(c, x, baseY, scale, tone) {
-  c.strokeStyle = tone;
-  c.lineWidth = Math.max(1, 2 * scale);
-  c.lineCap = "round";
-  const h = 30 * scale;
-  c.beginPath();
-  c.moveTo(x, baseY);
-  c.lineTo(x, baseY - h);
-  c.moveTo(x, baseY - h * 0.7);
-  c.lineTo(x - 7 * scale, baseY - h * 0.95);
-  c.moveTo(x, baseY - h * 0.55);
-  c.lineTo(x + 8 * scale, baseY - h * 0.8);
-  c.moveTo(x, baseY - h * 0.85);
-  c.lineTo(x + 5 * scale, baseY - h * 1.05);
-  c.stroke();
-}
-
-function wrPine(c, x, baseY, scale, tones, snow) {
-  const base = tones[1] || tones[0];
-  const dark = tones[0];
-  const h = 34 * scale;
-  const w = 13 * scale;
-  c.fillStyle = dark;
-  c.fillRect((x - 1) | 0, (baseY - 4) | 0, 2, 5);
-  for (let i = 0; i < 4; i++) {
-    const ty = baseY - 3 - i * (h / 4);
-    const tw = w * (1 - i * 0.19);
-    c.fillStyle = i % 2 ? base : dark;
-    c.beginPath();
-    c.moveTo(x - tw, ty);
-    c.lineTo(x, ty - h / 3.1);
-    c.lineTo(x + tw, ty);
-    c.closePath();
-    c.fill();
-    if (snow) {
-      c.fillStyle = snow;
-      c.beginPath();
-      c.moveTo(x - tw * 0.5, ty - h / 6);
-      c.lineTo(x, ty - h / 3.1);
-      c.lineTo(x + tw * 0.5, ty - h / 6);
-      c.closePath();
-      c.fill();
-    }
-  }
-}
-
-function wrSpike(c, x, baseY, scale, tones, ember) {
-  const base = tones[1] || tones[0];
-  const dark = tones[0];
-  const h = 30 * scale;
-  const w = 8 * scale;
-  c.fillStyle = dark;
-  c.beginPath();
-  c.moveTo(x - w, baseY);
-  c.lineTo(x - w * 0.3, baseY - h);
-  c.lineTo(x + w * 0.4, baseY - h * 0.7);
-  c.lineTo(x + w, baseY);
-  c.closePath();
-  c.fill();
-  c.fillStyle = base;
-  c.fillRect((x - w * 0.3) | 0, (baseY - h * 0.9) | 0, Math.max(1, 2 * scale), h * 0.9);
-  if (ember) {
-    c.fillStyle = ember;
-    c.globalAlpha = 0.6;
-    c.fillRect((x - w) | 0, (baseY - 3) | 0, (w * 2) | 0, 2);
-    c.globalAlpha = 1;
-  }
-}
-
-function wrPillar(c, x, baseY, scale, tones) {
-  const base = tones[1] || tones[0];
-  const dark = tones[0];
-  const light = tones[2] || base;
-  const h = (24 + wrR(x) * 20) * scale;
-  const w = 9 * scale;
-  c.fillStyle = base;
-  c.fillRect((x - w / 2) | 0, (baseY - h) | 0, w | 0, h | 0);
-  c.fillStyle = dark;
-  c.fillRect((x + w / 2 - 2 * scale) | 0, (baseY - h) | 0, Math.max(1, 2 * scale), h | 0);
-  c.fillStyle = light;
-  c.fillRect((x - w / 2) | 0, (baseY - h) | 0, Math.max(1, 2 * scale), h | 0);
-  c.fillStyle = dark;
-  c.fillRect((x - w / 2 - 2 * scale) | 0, (baseY - h) | 0, (w + 4 * scale) | 0, 3 * scale);
-}
-
-function wrDrawBandUnit(c, kind, x, baseY, scale, tones, pal) {
-  if (kind === "tree") wrTreeCluster(c, x, baseY, scale, tones);
-  else if (kind === "dead") { wrDeadTree(c, x, baseY, scale, tones[1] || tones[0]); }
-  else if (kind === "pine") wrPine(c, x, baseY, scale, tones, scale > 1.1 ? pal.ground[2] : null);
-  else if (kind === "spike") wrSpike(c, x, baseY, scale, tones, scale > 1.1 ? pal.accent : null);
-  else wrPillar(c, x, baseY, scale, tones);
-}
-
-/* ---------------- Layer-Strips bauen (pro Theme gecacht) ---------------- */
-
-function wrBuildBand(pal, bandIdx, scale, spacing, seedBase) {
-  const w = WR.STRIP_W, g = WR.GROUND;
-  const cv = wrCanvas(w, WR.CH);
-  const c = cv.getContext("2d");
-  const tones = pal.bands[bandIdx];
-  const count = Math.ceil(w / spacing) + 2;
-  for (let i = 0; i < count; i++) {
-    const x = i * spacing + wrR(seedBase + i * 3.1) * spacing * 0.7;
-    const s = scale * (0.85 + wrR(seedBase + i) * 0.4);
-    wrDrawBandUnit(c, pal.kind, x, g + 2, s, tones, pal);
-  }
-  return cv;
-}
-
-function wrBuildGround(pal) {
-  const w = WR.STRIP_W, g = WR.GROUND;
-  const cv = wrCanvas(w, WR.CH);
-  const c = cv.getContext("2d");
-  c.fillStyle = wrGradV(c, g, WR.CH, [[0, pal.ground[0]], [1, pal.ground[1]]]);
-  c.fillRect(0, g, w, WR.CH - g);
-  // Grasnarbe / obere Kante
-  c.fillStyle = pal.ground[2];
-  c.globalAlpha = 0.55;
-  c.fillRect(0, g, w, 2);
-  c.globalAlpha = 1;
-  // dezente Boden-Textur
-  for (let i = 0; i < w; i += 6) {
-    if (wrR(i) > 0.6) {
-      c.fillStyle = wrR(i * 2) > 0.5 ? pal.ground[1] : pal.ground[0];
-      c.globalAlpha = 0.4;
-      c.fillRect(i, g + 4 + (wrR(i * 3) * (WR.CH - g - 6) | 0), 3 + (wrR(i) * 4 | 0), 1);
-    }
-  }
-  c.globalAlpha = 1;
-  return cv;
-}
-
-function wrBuildDetail(pal) {
-  const w = WR.STRIP_W, g = WR.GROUND;
-  const cv = wrCanvas(w, WR.CH);
-  const c = cv.getContext("2d");
-  const grass = pal.ground[2];
-  for (let i = 0; i < w; i += 9) {
-    const r = wrR(i * 1.7);
-    if (pal.kind === "spike" || pal.kind === "pillar") {
-      if (r > 0.72) { wrSoftBlob(c, i, g + 3, 3 + r * 3, pal.bands[0][0]); }
-    } else if (pal.kind === "pine") {
-      if (r > 0.78) { c.fillStyle = grass; c.fillRect(i, g - 1, 4 + (r * 5 | 0), 2); }
-    } else {
-      const h = 3 + (r * 5 | 0);
-      c.strokeStyle = r > 0.5 ? grass : pal.bands[2][1];
-      c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(i, g + 3);
-      c.lineTo(i + (r - 0.5) * 3, g + 3 - h);
-      c.stroke();
-    }
-  }
-  return cv;
-}
-
-function wrBuildAllLayers(theme) {
-  const pal = getWorldPal(theme);
-  return {
-    far: wrBuildBand(pal, 0, 1.15, 30, 11),
-    mid: wrBuildBand(pal, 1, 1.75, 46, 53),
-    near: wrBuildBand(pal, 2, 2.45, 74, 97),
-    ground: wrBuildGround(pal),
-    detail: wrBuildDetail(pal)
-  };
-}
-
-function wrEnsureCache(theme) {
-  if (WR.cache.theme === theme && WR.cache.layers) return;
-  WR.cache.theme = theme;
-  WR.cache.layers = wrBuildAllLayers(theme);
-}
-
 function invalidateParallaxCache() {
   WR.cache.theme = null;
   WR.cache.layers = null;
 }
 
-function wrTile(ctx, layer, scroll) {
-  if (!layer) return;
-  const sw = layer.width, vw = WR.CW;
-  const sx = ((scroll % sw) + sw) % sw;
-  const w1 = Math.min(vw, sw - sx);
-  ctx.drawImage(layer, sx, 0, w1, layer.height, 0, 0, w1, layer.height);
-  if (w1 < vw) ctx.drawImage(layer, 0, 0, vw - w1, layer.height, w1, 0, vw - w1, layer.height);
+function buildDecoProps(theme) {
+  if (WR.decoProps[theme]) return WR.decoProps[theme];
+  const deco = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "deco") : null;
+  const tiles = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "tileset") : null;
+  const props = [];
+  const sheet = deco || tiles;
+  if (sheet) {
+    // Sample a grid of patches from the decoration/tileset sheet for mid/foreground props
+    const cols = 6, rows = 4;
+    const cw = Math.floor(sheet.width / cols);
+    const ch = Math.floor(sheet.height / rows);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (wrR(theme.length * 10 + r * 17 + c * 31) < 0.35) continue;
+        props.push({
+          sheet, sx: c * cw + 4, sy: r * ch + 4,
+          sw: cw - 8, sh: ch - 8,
+          scale: 0.55 + wrR(r * 9 + c * 5) * 0.55
+        });
+      }
+    }
+  }
+  WR.decoProps[theme] = props;
+  return props;
 }
 
-/* ---------------- Himmel / Wetter / Licht ---------------- */
-
-function wrDrawSky(ctx, pal, time) {
-  ctx.fillStyle = wrGradV(ctx, 0, WR.GROUND, [
-    [0, pal.sky[0]], [0.5, pal.sky[1]], [1, pal.sky[2]]
-  ]);
-  ctx.fillRect(0, 0, WR.CW, WR.GROUND);
-  // Mond / diffuses Leuchten
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  const mx = WR.CW * 0.74, my = WR.GROUND * 0.3;
-  const moon = ctx.createRadialGradient(mx, my, 2, mx, my, 120);
-  moon.addColorStop(0, pal.moon);
-  moon.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = moon;
-  ctx.fillRect(0, 0, WR.CW, WR.GROUND);
-  ctx.globalAlpha = 0.9;
-  wrSoftBlob(ctx, mx, my, 12, pal.moon.replace(/[\d.]+\)$/, "0.5)"));
-  ctx.restore();
-  // Horizont-Dunst
-  ctx.save();
-  const haze = ctx.createLinearGradient(0, WR.GROUND - 90, 0, WR.GROUND);
-  haze.addColorStop(0, "rgba(0,0,0,0)");
-  haze.addColorStop(1, pal.horizon);
-  ctx.fillStyle = haze;
-  ctx.fillRect(0, WR.GROUND - 90, WR.CW, 90);
-  ctx.restore();
-}
-
-function wrDepthHaze(ctx, pal, topY, alpha) {
-  const grd = ctx.createLinearGradient(0, topY, 0, WR.GROUND + 4);
-  grd.addColorStop(0, wrRgba(pal.sky[2], alpha));
-  grd.addColorStop(1, wrRgba(pal.sky[2], 0));
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, topY, WR.CW, WR.GROUND - topY + 4);
-}
-
-function wrGodRays(ctx, pal, time) {
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  const cols = [WR.CW * 0.28, WR.CW * 0.55, WR.CW * 0.78];
-  cols.forEach((cx, i) => {
-    const sway = Math.sin(time * 0.18 + i * 1.3) * 12;
-    const a = 0.05 + (Math.sin(time * 0.25 + i) * 0.5 + 0.5) * 0.05;
-    const grd = ctx.createLinearGradient(0, 0, 0, WR.GROUND);
-    grd.addColorStop(0, wrRgba(pal.accent, a));
-    grd.addColorStop(1, wrRgba(pal.accent, 0));
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.moveTo(cx - 16 + sway, -10);
-    ctx.lineTo(cx + 16 + sway, -10);
-    ctx.lineTo(cx + 46 + sway, WR.GROUND);
-    ctx.lineTo(cx - 6 + sway, WR.GROUND);
-    ctx.closePath();
-    ctx.fill();
-  });
-  ctx.restore();
-}
-
-function initWorldAmbient(world) {
+function spawnAmbient(theme) {
+  const pal = getWorldPal(theme);
+  const kinds = pal.weather || ["mist"];
   WR.ambient = [];
-  const pal = getWorldPal(world?.theme || "forest");
-  const types = pal.weather;
-  const n = 60;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < 42; i++) {
+    const kind = kinds[Math.floor(wrR(i * 3.1) * kinds.length)];
     WR.ambient.push({
-      x: Math.random() * WR.CW,
-      y: Math.random() * WR.GROUND,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.3 + Math.random() * 1.2,
-      size: 1 + Math.random() * 2,
-      vx: -20 - Math.random() * 40,
-      vy: 40 + Math.random() * 80,
-      type: types[i % types.length]
+      kind,
+      x: wrR(i * 7.7) * WR.CW * 1.4,
+      y: wrR(i * 11.3) * WR.CH,
+      s: 0.4 + wrR(i * 5.5) * 1.8,
+      v: 8 + wrR(i * 2.2) * 28,
+      a: 0.15 + wrR(i * 4.4) * 0.45
     });
   }
 }
 
 function initParallaxBackground(world) {
-  wrEnsureCache(world?.theme || "forest");
-  initWorldAmbient(world);
+  const theme = wrTheme(world);
+  WR.cache.theme = theme;
+  WR.cache.layers = true;
+  buildDecoProps(theme);
+  spawnAmbient(theme);
+  WR.animTime = 0;
 }
 
 function updateWorldAmbient(dt) {
   WR.animTime += dt;
   WR.ambient.forEach((p) => {
-    p.phase += dt * p.speed;
-    if (p.type === "rain") { p.x += p.vx * dt * 0.3; p.y += p.vy * dt * 4; }
-    else if (p.type === "snow") { p.x += Math.sin(p.phase) * 12 * dt; p.y += p.vy * dt * 0.5; }
-    else if (p.type === "ash" || p.type === "ember" || p.type === "firefly") { p.x += Math.sin(p.phase) * 8 * dt; p.y -= p.vy * dt * 0.25; }
-    else if (p.type === "bubble") { p.y -= p.vy * dt * 0.3; }
-    else { p.x += Math.sin(p.phase) * 10 * dt; p.y += Math.cos(p.phase * 0.7) * 4 * dt; }
-    if (p.y > WR.GROUND) { p.y = -5; p.x = Math.random() * WR.CW; }
-    if (p.y < -8) { p.y = WR.GROUND - 4; p.x = Math.random() * WR.CW; }
-    if (p.x < -12) p.x = WR.CW + 12;
-    if (p.x > WR.CW + 12) p.x = -12;
-  });
-}
-
-function wrRenderAmbient(ctx, pal) {
-  const t = WR.animTime;
-  ctx.save();
-  WR.ambient.forEach((p) => {
-    const fx = p.x, fy = p.y;
-    if (p.type === "rain") {
-      ctx.strokeStyle = "rgba(150,190,200,0.35)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(fx - 1, fy + 7);
-      ctx.stroke();
-    } else if (p.type === "snow") {
-      ctx.globalAlpha = 0.8;
-      ctx.fillStyle = "#eef6ff";
-      ctx.fillRect(fx | 0, fy | 0, p.size, p.size);
-    } else if (p.type === "ember" || p.type === "firefly") {
-      ctx.globalAlpha = 0.4 + Math.sin(p.phase) * 0.35;
-      ctx.fillStyle = pal.accent;
-      ctx.shadowColor = pal.accent;
-      ctx.shadowBlur = 5;
-      ctx.fillRect(fx | 0, fy | 0, p.size, p.size);
-      ctx.shadowBlur = 0;
-    } else if (p.type === "ash" || p.type === "smoke" || p.type === "dust" || p.type === "mist") {
-      ctx.globalAlpha = 0.14 + Math.sin(p.phase) * 0.08;
-      ctx.fillStyle = pal.fog;
-      ctx.beginPath();
-      ctx.arc(fx, fy, p.size + 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (p.type === "rune") {
-      ctx.globalAlpha = 0.3 + Math.sin(p.phase) * 0.25;
-      ctx.fillStyle = pal.accent;
-      ctx.fillRect(fx - p.size, fy, p.size * 2, 1);
-      ctx.fillRect(fx, fy - p.size, 1, p.size * 2);
+    if (p.kind === "snow" || p.kind === "ash" || p.kind === "leaf") {
+      p.y += p.v * dt * 0.35;
+      p.x += Math.sin(WR.animTime * 1.2 + p.y * 0.02) * p.s * 8 * dt;
+    } else if (p.kind === "ember") {
+      p.y -= p.v * dt * 0.25;
+      p.x += Math.sin(WR.animTime * 2 + p.y) * 10 * dt;
+    } else if (p.kind === "bubble") {
+      p.y -= p.v * dt * 0.15;
     } else {
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = pal.accent;
-      ctx.fillRect(fx | 0, fy | 0, p.size, p.size);
+      p.x += p.v * dt * 0.08;
     }
-    ctx.globalAlpha = 1;
+    if (p.y > WR.CH + 10) p.y = -10;
+    if (p.y < -20) p.y = WR.CH + 5;
+    if (p.x > WR.CW + 40) p.x = -20;
+    if (p.x < -40) p.x = WR.CW + 20;
   });
-  ctx.restore();
-  // tief liegende Nebelbänke
-  ctx.save();
-  for (let i = 0; i < 4; i++) {
-    ctx.globalAlpha = 0.06 + i * 0.03;
-    ctx.fillStyle = pal.fog;
-    ctx.beginPath();
-    ctx.ellipse((t * 14 + i * 150) % (WR.CW + 240) - 60, WR.GROUND - 20 - i * 8 + Math.sin(t * 0.3 + i) * 4, 120 + i * 20, 12 + i * 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-function wrDrawLighting(ctx, pal) {
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  const light = ctx.createLinearGradient(0, 0, 0, WR.GROUND);
-  light.addColorStop(0, pal.lighting);
-  light.addColorStop(0.6, "rgba(0,0,0,0)");
-  ctx.fillStyle = light;
-  ctx.fillRect(0, 0, WR.CW, WR.GROUND);
-  // weiches Bodenlicht-Pool auf der Kampfbahn (Stimmung + Fokus)
-  const pool = ctx.createRadialGradient(WR.CW / 2, WR.GROUND - 6, 8, WR.CW / 2, WR.GROUND - 6, 240);
-  pool.addColorStop(0, wrRgba(pal.accent, 0.12));
-  pool.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = pool;
-  ctx.fillRect(0, WR.GROUND - 90, WR.CW, 130);
-  ctx.restore();
-  // sanfte Vignette für Fokus auf die Kampfbahn
-  ctx.save();
-  const vig = ctx.createRadialGradient(WR.CW / 2, WR.GROUND - 40, 80, WR.CW / 2, WR.GROUND - 40, 360);
-  vig.addColorStop(0, "rgba(0,0,0,0)");
-  vig.addColorStop(1, "rgba(0,0,0,0.4)");
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, WR.CW, WR.CH);
-  ctx.restore();
-}
-
-/* ---------------- Hauptrender ---------------- */
-
-function wrScroll(camera, idx) {
-  return (camera?.scrollX || 0) * (WR.SPEEDS[idx] != null ? WR.SPEEDS[idx] : 0.3);
-}
-
-function renderWorld(ctx, worldId, camera, time) {
-  const theme = typeof worldId === "string" ? worldId : (worldId?.theme || "forest");
-  const pal = getWorldPal(theme);
-  const cam = camera || { scrollX: 0 };
-  wrEnsureCache(theme);
-  const L = WR.cache.layers;
-
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  wrDrawSky(ctx, pal, time);
-  wrTile(ctx, L.far, wrScroll(cam, 1));
-  wrDepthHaze(ctx, pal, WR.GROUND - 150, 0.45);
-  wrTile(ctx, L.mid, wrScroll(cam, 2));
-  wrDepthHaze(ctx, pal, WR.GROUND - 120, 0.24);
-  wrTile(ctx, L.near, wrScroll(cam, 3));
-  wrTile(ctx, L.ground, wrScroll(cam, 4));
-  wrTile(ctx, L.detail, wrScroll(cam, 5));
-  wrGodRays(ctx, pal, time);
-  wrRenderAmbient(ctx, pal);
-  wrDrawLighting(ctx, pal);
-  ctx.restore();
-}
-
-function renderParallaxBackground(ctx, world, scrollX) {
-  renderWorld(ctx, world, { scrollX }, WR.animTime);
-}
-
-/* Vordergrund – dezente, weiche Büschel an der Bodenlinie (Kampfbahn bleibt frei) */
-function renderWorldForeground(ctx, worldId, camera, time) {
-  const theme = typeof worldId === "string" ? worldId : (worldId?.theme || "forest");
-  const pal = getWorldPal(theme);
-  const zoom = camera?.zoom || 1.38;
-  const viewW = WR.CW / zoom;
-  const cx = camera?.focusX || WR.CW / 2;
-  const left = cx - viewW / 2;
-  const g = WR.GROUND;
-  const dark = pal.bands[0][0];
-  const grass = pal.ground[2];
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  for (let i = 0; i < 7; i++) {
-    const x = left + (i / 6) * viewW + Math.sin(time * 0.6 + i) * 3;
-    ctx.globalAlpha = 0.5;
-    wrSoftBlob(ctx, x, g + 5, 5 + (i % 3) * 2, dark);
-    ctx.globalAlpha = 0.35;
-    ctx.strokeStyle = grass;
-    ctx.lineWidth = 1;
-    for (let b = 0; b < 3; b++) {
-      ctx.beginPath();
-      ctx.moveTo(x - 3 + b * 3, g + 5);
-      ctx.lineTo(x - 4 + b * 3, g - 2);
-      ctx.stroke();
-    }
-  }
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-/* ---------------- Welt-Übergang ---------------- */
-
-function startWorldTransition(world) {
-  WR.transition = { timer: 0, duration: 2.8, title: "Welt " + (world.danger || ""), subtitle: world.name };
-}
-
-function renderWorldTransition(ctx) {
-  const tr = WR.transition;
-  if (!tr) return;
-  const p = tr.timer / tr.duration;
-  if (p >= 1) { WR.transition = null; return; }
-  const alpha = p < 0.25 ? p / 0.25 : p > 0.75 ? (1 - p) / 0.25 : 1;
-  ctx.save();
-  ctx.fillStyle = `rgba(0,0,0,${alpha * 0.78})`;
-  ctx.fillRect(0, 0, WR.CW, WR.CH);
-  ctx.globalAlpha = alpha;
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#f1c40f";
-  ctx.font = "bold 11px Courier New";
-  ctx.fillText(tr.title, WR.CW / 2, WR.CH / 2 - 18);
-  ctx.fillStyle = "#ecf0f1";
-  ctx.font = "bold 18px Courier New";
-  ctx.fillText(tr.subtitle, WR.CW / 2, WR.CH / 2 + 6);
-  ctx.restore();
 }
 
 function updateWorldTransition(dt) {
-  if (WR.transition) WR.transition.timer += dt;
+  if (!WR.transition) return;
+  WR.transition.t += dt;
+  if (WR.transition.t >= WR.transition.dur) WR.transition = null;
+}
+
+function startWorldTransition(world) {
+  WR.transition = { t: 0, dur: 1.1, theme: wrTheme(world) };
+  initParallaxBackground(world);
+}
+
+function drawTiled(ctx, img, scroll, y, h, speed) {
+  if (!img) return;
+  const dw = img.width * (h / img.height);
+  let x = -((scroll * speed) % dw);
+  if (x > 0) x -= dw;
+  while (x < WR.CW + dw) {
+    ctx.drawImage(img, x, y, dw, h);
+    x += dw - 1;
+  }
+}
+
+function drawPreviewBackdrop(ctx, theme, scrollX) {
+  const preview = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "preview") : null;
+  const mid = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "midband") : null;
+  const ground = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "ground") : null;
+  const tiles = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "tileset") : null;
+  const pal = getWorldPal(theme);
+
+  const g = ctx.createLinearGradient(0, 0, 0, WR.CH);
+  g.addColorStop(0, pal.sky[0]);
+  g.addColorStop(0.45, pal.sky[1]);
+  g.addColorStop(1, pal.sky[2]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, WR.CW, WR.CH);
+
+  if (preview) {
+    const ph = WR.CH;
+    const pw = preview.width * (ph / preview.height);
+    const sx = -((scrollX * WR.SPEEDS[1]) % pw);
+    ctx.drawImage(preview, sx, 0, pw, ph);
+    ctx.drawImage(preview, sx + pw - 1, 0, pw, ph);
+
+    // Kampfbahn freimachen: eingezeichnete Preview-Charaktere überdecken
+    const laneTop = WR.GROUND - 118;
+    const laneH = 130;
+    const cover = ctx.createLinearGradient(0, laneTop, 0, laneTop + laneH);
+    cover.addColorStop(0, "rgba(8,10,12,0)");
+    cover.addColorStop(0.18, "rgba(10,12,14,0.55)");
+    cover.addColorStop(0.45, "rgba(12,14,12,0.82)");
+    cover.addColorStop(1, "rgba(10,12,10,0.9)");
+    ctx.fillStyle = cover;
+    ctx.fillRect(0, laneTop, WR.CW, laneH);
+  }
+
+  if (mid) {
+    ctx.globalAlpha = 0.55;
+    drawTiled(ctx, mid, scrollX, WR.GROUND - 210, 160, WR.SPEEDS[2]);
+    ctx.globalAlpha = 1;
+  }
+
+  // Boden / Pfad aus Ground-Band oder Tileset-Ausschnitt
+  if (ground) {
+    drawTiled(ctx, ground, scrollX, WR.GROUND - 22, 78, WR.SPEEDS[4]);
+  } else if (tiles) {
+    try {
+      const th = 70;
+      const tw = tiles.width * (th / 90);
+      let x = -((scrollX * WR.SPEEDS[4]) % tw);
+      while (x < WR.CW + tw) {
+        ctx.drawImage(tiles, 0, tiles.height * 0.78, tiles.width, tiles.height * 0.2, x, WR.GROUND - 16, tw, th);
+        x += tw - 1;
+      }
+    } catch (_) {}
+  } else {
+    ctx.fillStyle = "#1a1510";
+    ctx.fillRect(0, WR.GROUND - 8, WR.CW, WR.CH - WR.GROUND + 8);
+  }
+
+  // weicher Boden-Kontaktstreifen
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(0, WR.GROUND - 2, WR.CW, 6);
+
+  ctx.fillStyle = pal.fog;
+  ctx.fillRect(0, 0, WR.CW, WR.CH * 0.42);
+}
+
+function drawDecoLayer(ctx, theme, scrollX, yBase, speed, scaleMul, alpha) {
+  const props = buildDecoProps(theme);
+  if (!props.length) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const span = 920;
+  const offset = -((scrollX * speed) % span);
+  for (let lane = -1; lane < 3; lane++) {
+    const baseX = offset + lane * span;
+    props.forEach((p, i) => {
+      const px = baseX + wrR(i * 13.7 + theme.length) * span;
+      const sc = p.scale * scaleMul;
+      const dw = p.sw * sc;
+      const dh = p.sh * sc;
+      const py = yBase - dh + wrR(i * 3.3) * 10;
+      if (px + dw < -20 || px > WR.CW + 20) return;
+      try {
+        ctx.drawImage(p.sheet, p.sx, p.sy, p.sw, p.sh, px, py, dw, dh);
+      } catch (_) { /* out of bounds crop */ }
+    });
+  }
+  ctx.restore();
+}
+
+function drawAmbient(ctx, theme) {
+  const pal = getWorldPal(theme);
+  WR.ambient.forEach((p) => {
+    ctx.globalAlpha = p.a;
+    if (p.kind === "snow") {
+      ctx.fillStyle = "#e8f4ff";
+      ctx.fillRect(p.x, p.y, p.s, p.s);
+    } else if (p.kind === "ember" || p.kind === "ash") {
+      ctx.fillStyle = p.kind === "ember" ? "#ff9a3c" : "#888";
+      ctx.fillRect(p.x, p.y, p.s * 0.8, p.s * 0.8);
+    } else if (p.kind === "leaf") {
+      ctx.fillStyle = pal.accent;
+      ctx.fillRect(p.x, p.y, p.s * 1.4, p.s * 0.7);
+    } else if (p.kind === "firefly" || p.kind === "rune") {
+      ctx.fillStyle = pal.accent;
+      ctx.globalAlpha = p.a * (0.5 + 0.5 * Math.sin(WR.animTime * 4 + p.x));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.s * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.kind === "bubble") {
+      ctx.strokeStyle = "rgba(180,220,160,0.5)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "rgba(200,200,220,0.25)";
+      ctx.fillRect(p.x, p.y, p.s * 3, p.s);
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawLighting(ctx, theme) {
+  const pal = getWorldPal(theme);
+  const g = ctx.createRadialGradient(WR.CW * 0.35, WR.CH * 0.2, 20, WR.CW * 0.5, WR.CH * 0.55, 320);
+  g.addColorStop(0, pal.lighting);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, WR.CW, WR.CH);
+
+  // Vignette
+  const v = ctx.createRadialGradient(WR.CW / 2, WR.CH * 0.55, 80, WR.CW / 2, WR.CH * 0.5, 420);
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, WR.CW, WR.CH);
+}
+
+function renderParallaxBackground(ctx, world, scrollX) {
+  const theme = wrTheme(world);
+  if (WR.cache.theme !== theme) initParallaxBackground(world);
+  drawPreviewBackdrop(ctx, theme, scrollX || 0);
+  // Mid decoration (behind combatants)
+  drawDecoLayer(ctx, theme, scrollX || 0, WR.GROUND - 8, WR.SPEEDS[3], 0.85, 0.78);
+  drawAmbient(ctx, theme);
+  drawLighting(ctx, theme);
+}
+
+function renderWorldForeground(ctx, worldId, camera, time) {
+  const theme = wrTheme(worldId);
+  const scrollX = camera?.x != null ? camera.x : (typeof game !== "undefined" ? game.scrollX : 0);
+  // Near foreground props (partially over characters for depth)
+  drawDecoLayer(ctx, theme, scrollX, WR.GROUND + 18, WR.SPEEDS[5], 1.15, 0.55);
+  // Bottom grass fringe
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(0, WR.CH - 28, WR.CW, 28);
+}
+
+function renderWorld(ctx, worldId, camera, time) {
+  renderParallaxBackground(ctx, worldId, camera?.x || 0);
+}
+
+function renderWorldTransition(ctx) {
+  if (!WR.transition) return;
+  const t = WR.transition.t / WR.transition.dur;
+  const a = t < 0.4 ? t / 0.4 : (t > 0.7 ? (1 - t) / 0.3 : 1);
+  ctx.fillStyle = "rgba(0,0,0," + (a * 0.75) + ")";
+  ctx.fillRect(0, 0, WR.CW, WR.CH);
 }
 
 if (typeof window !== "undefined") {
+  window.WR = WR;
   window.WORLD_VISUALS = WORLD_VISUALS;
   window.WR_PALETTES = WR_PALETTES;
   window.renderWorld = renderWorld;
@@ -626,4 +348,5 @@ if (typeof window !== "undefined") {
   window.invalidateParallaxCache = invalidateParallaxCache;
   window.startWorldTransition = startWorldTransition;
   window.renderWorldTransition = renderWorldTransition;
+  window.getWorldVisualConfig = getWorldVisualConfig;
 }

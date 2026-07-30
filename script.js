@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "save-v111";
+const BUILD_ID = "pack-v112";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -37,12 +37,12 @@ function pinCharToGround(entity) {
   if (!entity || entity.h == null) return;
   entity.y = GROUND - entity.h;
 }
-const CAM_ZOOM = 1.38;
+const CAM_ZOOM = 1.12;
 const COMBAT_LAYOUT = {
-  heroCombatX: 78,
+  heroCombatX: 90,
   /** Bewegungskorridor – links bleibt der Held vollständig sichtbar */
-  heroMoveMinX: 24,
-  heroMoveMaxX: 300,
+  heroMoveMinX: 28,
+  heroMoveMaxX: 280,
   /** Rechts darf max. 50 % der Körperbreite aus dem Bildschirm ragen */
   heroEdgeOverflowRight: 0.5,
   enemyRightMargin: 205,
@@ -443,62 +443,72 @@ const BOSS_MONSTERS = ["Ork-Champion","Schattenritter","Feuerdämon","Drachenwä
 const WORLD_MONSTERS = {
   forest: {
     normal: [
-      { name: "Goblin", sprite: "goblin" },
-      { name: "Wolf", sprite: "wolf" },
-      { name: "Schleim", sprite: "schleim" },
-      { name: "Spinne", sprite: "spinne" }
+      { name: "Goblin", sprite: "forest_goblin" },
+      { name: "Bandit", sprite: "forest_bandit" },
+      { name: "Waldspinne", sprite: "forest_spider" },
+      { name: "Hornisse", sprite: "forest_hornet" },
+      { name: "Setzling", sprite: "forest_sapling" },
+      { name: "Rankenkriecher", sprite: "forest_vine_crawler" },
+      { name: "Waldgeist", sprite: "forest_wraith" }
     ],
     boss: [
-      { name: "Ork-Champion", sprite: "boss_ork" },
-      { name: "Waldwächter", sprite: "boss_schatten" }
+      { name: "Wald-Boss", sprite: "boss_forest" }
     ]
   },
   swamp: {
     normal: [
-      { name: "Zombie", sprite: "skelett" },
-      { name: "Hexe", sprite: "boss_nekro" },
-      { name: "Sumpfmonster", sprite: "schleim" },
-      { name: "Riesenfrosch", sprite: "schleim" }
+      { name: "Sumpfzombie", sprite: "swamp_zombie" },
+      { name: "Hexe", sprite: "swamp_hag" },
+      { name: "Alligator", sprite: "swamp_alligator" },
+      { name: "Riesenkröte", sprite: "swamp_toad" },
+      { name: "Blutegel", sprite: "swamp_leech" },
+      { name: "Mückenschwarm", sprite: "swamp_mosquito_swarm" },
+      { name: "Schlammelementar", sprite: "swamp_mud_elemental" }
     ],
     boss: [
-      { name: "Sumpfkönig", sprite: "boss_ork" },
-      { name: "Nekromant", sprite: "boss_nekro" }
+      { name: "Sumpf-Boss", sprite: "boss_swamp" }
     ]
   },
   frost: {
     normal: [
-      { name: "Eisgolem", sprite: "skelett" },
-      { name: "Frostwolf", sprite: "wolf" },
-      { name: "Yeti", sprite: "boss_ork" },
-      { name: "Frostmagier", sprite: "boss_schatten" }
+      { name: "Eisgolem", sprite: "snow_ice_golem" },
+      { name: "Frostfledermaus", sprite: "snow_frost_bat" },
+      { name: "Yeti", sprite: "snow_yeti" },
+      { name: "Frostschächer", sprite: "snow_frost_raider" },
+      { name: "Eisspinne", sprite: "snow_ice_spider" },
+      { name: "Eisgeist", sprite: "snow_ice_wraith" },
+      { name: "Schneeschamane", sprite: "snow_shaman" }
     ],
     boss: [
-      { name: "Eiswächter", sprite: "boss_drache" },
-      { name: "Schneesturm", sprite: "boss_feuer" }
+      { name: "Schnee-Boss", sprite: "boss_frost" }
     ]
   },
   fire: {
     normal: [
-      { name: "Dämon", sprite: "boss_feuer" },
-      { name: "Feuergeist", sprite: "boss_schatten" },
-      { name: "Lava-Golem", sprite: "boss_ork" },
-      { name: "Höllenhund", sprite: "wolf" }
+      { name: "Feuerimp", sprite: "volcano_fire_imp" },
+      { name: "Höllenhund", sprite: "volcano_hellhound" },
+      { name: "Obsidian-Golem", sprite: "volcano_obsidian_golem" },
+      { name: "Magma-Skorpion", sprite: "volcano_magma_scorpion" },
+      { name: "Salamander", sprite: "volcano_salamander" },
+      { name: "Aschengeist", sprite: "volcano_ash_wraith" },
+      { name: "Vulkan-Kultist", sprite: "volcano_cultist" }
     ],
     boss: [
-      { name: "Feuerdämon", sprite: "boss_feuer" },
-      { name: "Infernowächter", sprite: "boss_drache" }
+      { name: "Vulkan-Boss", sprite: "boss_fire" }
     ]
   },
   ruins: {
     normal: [
-      { name: "Ritter", sprite: "bandit" },
-      { name: "Geist", sprite: "boss_schatten" },
-      { name: "Gargoyle", sprite: "boss_ork" },
-      { name: "Wächter", sprite: "boss_drache" }
+      { name: "Mumienkrieger", sprite: "ruins_mummy_warrior" },
+      { name: "Skelettbogenschütze", sprite: "ruins_skeleton_archer" },
+      { name: "Steinhüter", sprite: "ruins_stone_guardian" },
+      { name: "Verfluchter Priester", sprite: "ruins_cursed_priest" },
+      { name: "Sandwurm", sprite: "ruins_sand_worm" },
+      { name: "Skarabäus-Schwarm", sprite: "ruins_scarab_swarm" },
+      { name: "Sphinx", sprite: "ruins_sphinx" }
     ],
     boss: [
-      { name: "Schattenritter", sprite: "boss_schatten" },
-      { name: "Drachenwächter", sprite: "boss_drache" }
+      { name: "Ruinen-Boss", sprite: "boss_ruins" }
     ]
   }
 };
@@ -696,21 +706,40 @@ let runSaveDirty = false;
 const ENEMY_AI = {
   _default:   { style: "melee",  speedMult: 1,    atkMult: 1,    intervalMult: 1 },
   Goblin:     { style: "fast",   speedMult: 1.38, atkMult: 0.88, intervalMult: 0.82 },
-  Wolf:       { style: "jump",   speedMult: 1.28, atkMult: 1.05, intervalMult: 0.9 },
-  Frostwolf:  { style: "jump",   speedMult: 1.22, atkMult: 1.1,  intervalMult: 0.88 },
-  "Höllenhund": { style: "jump", speedMult: 1.3,  atkMult: 1.15, intervalMult: 0.85 },
-  Skelett:    { style: "slow",   speedMult: 0.68, atkMult: 1.42, intervalMult: 1.25 },
-  Zombie:     { style: "slow",   speedMult: 0.62, atkMult: 1.38, intervalMult: 1.3 },
-  Eisgolem:   { style: "slow",   speedMult: 0.58, atkMult: 1.55, intervalMult: 1.35 },
-  "Lava-Golem": { style: "slow", speedMult: 0.55, atkMult: 1.6,  intervalMult: 1.4 },
-  Ritter:     { style: "slow",   speedMult: 0.72, atkMult: 1.35, intervalMult: 1.15 },
-  Hexe:       { style: "ranged", speedMult: 0.88, atkMult: 0.82, intervalMult: 1.1, range: 185 },
-  Frostmagier:{ style: "ranged", speedMult: 0.92, atkMult: 0.85, intervalMult: 1.05, range: 200 },
-  Feuergeist: { style: "ranged", speedMult: 1.05, atkMult: 0.9,  intervalMult: 0.95, range: 175 },
-  Geist:      { style: "ranged", speedMult: 0.95, atkMult: 0.88, intervalMult: 1.0,  range: 190 },
-  Spinne:     { style: "fast",   speedMult: 1.15, atkMult: 0.95, intervalMult: 0.88 },
   Bandit:     { style: "fast",   speedMult: 1.2,  atkMult: 1.0,  intervalMult: 0.92 },
-  Schleim:    { style: "melee",  speedMult: 0.85, atkMult: 0.75, intervalMult: 1.05 },
+  Waldspinne: { style: "fast",   speedMult: 1.18, atkMult: 0.95, intervalMult: 0.88 },
+  Hornisse:   { style: "fast",   speedMult: 1.35, atkMult: 0.9,  intervalMult: 0.8 },
+  Setzling:   { style: "melee",  speedMult: 0.9,  atkMult: 0.85, intervalMult: 1.05 },
+  Rankenkriecher: { style: "melee", speedMult: 0.95, atkMult: 1.05, intervalMult: 1.0 },
+  Waldgeist:  { style: "ranged", speedMult: 0.95, atkMult: 0.88, intervalMult: 1.0,  range: 190 },
+  Sumpfzombie:{ style: "slow",   speedMult: 0.62, atkMult: 1.38, intervalMult: 1.3 },
+  Hexe:       { style: "ranged", speedMult: 0.88, atkMult: 0.82, intervalMult: 1.1, range: 185 },
+  Alligator:  { style: "jump",   speedMult: 1.15, atkMult: 1.2,  intervalMult: 1.05 },
+  "Riesenkröte": { style: "melee", speedMult: 0.8, atkMult: 1.1, intervalMult: 1.15 },
+  Blutegel:   { style: "fast",   speedMult: 1.25, atkMult: 0.85, intervalMult: 0.9 },
+  Mückenschwarm: { style: "fast", speedMult: 1.4, atkMult: 0.75, intervalMult: 0.75 },
+  Schlammelementar: { style: "slow", speedMult: 0.7, atkMult: 1.35, intervalMult: 1.25 },
+  Eisgolem:   { style: "slow",   speedMult: 0.58, atkMult: 1.55, intervalMult: 1.35 },
+  Frostfledermaus: { style: "fast", speedMult: 1.32, atkMult: 0.9, intervalMult: 0.85 },
+  Yeti:       { style: "jump",   speedMult: 1.1,  atkMult: 1.25, intervalMult: 1.05 },
+  Frostschächer: { style: "melee", speedMult: 1.05, atkMult: 1.1, intervalMult: 0.95 },
+  Eisspinne:  { style: "fast",   speedMult: 1.2,  atkMult: 1.0,  intervalMult: 0.9 },
+  Eisgeist:   { style: "ranged", speedMult: 0.92, atkMult: 0.85, intervalMult: 1.05, range: 200 },
+  Schneeschamane: { style: "ranged", speedMult: 0.9, atkMult: 0.88, intervalMult: 1.1, range: 195 },
+  Feuerimp:   { style: "fast",   speedMult: 1.3,  atkMult: 0.95, intervalMult: 0.85 },
+  "Höllenhund": { style: "jump", speedMult: 1.3,  atkMult: 1.15, intervalMult: 0.85 },
+  "Obsidian-Golem": { style: "slow", speedMult: 0.55, atkMult: 1.6, intervalMult: 1.4 },
+  "Magma-Skorpion": { style: "melee", speedMult: 1.05, atkMult: 1.15, intervalMult: 0.95 },
+  Salamander: { style: "melee",  speedMult: 1.1,  atkMult: 1.1,  intervalMult: 1.0 },
+  Aschengeist:{ style: "ranged", speedMult: 1.0,  atkMult: 0.9,  intervalMult: 0.95, range: 175 },
+  "Vulkan-Kultist": { style: "ranged", speedMult: 0.92, atkMult: 0.88, intervalMult: 1.05, range: 180 },
+  Mumienkrieger: { style: "slow", speedMult: 0.72, atkMult: 1.35, intervalMult: 1.15 },
+  Skelettbogenschütze: { style: "ranged", speedMult: 0.95, atkMult: 0.9, intervalMult: 1.0, range: 200 },
+  Steinhüter: { style: "slow",   speedMult: 0.6,  atkMult: 1.5,  intervalMult: 1.3 },
+  "Verfluchter Priester": { style: "ranged", speedMult: 0.88, atkMult: 0.85, intervalMult: 1.1, range: 190 },
+  Sandwurm:   { style: "melee",  speedMult: 0.95, atkMult: 1.2,  intervalMult: 1.1 },
+  "Skarabäus-Schwarm": { style: "fast", speedMult: 1.35, atkMult: 0.8, intervalMult: 0.8 },
+  Sphinx:     { style: "melee",  speedMult: 1.0,  atkMult: 1.25, intervalMult: 1.05 },
   _boss:      { style: "boss",   speedMult: 0.95, atkMult: 1.2,  intervalMult: 0.88 }
 };
 
@@ -997,9 +1026,13 @@ function drawPreviews() {
 document.addEventListener("DOMContentLoaded", async () => {
   canvas = $("game-canvas");
   ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   game.meta = loadMeta();
   loadAudioPrefs();
+  if (typeof PackAssets !== "undefined") {
+    try { await PackAssets.load(); } catch (err) { console.warn("Asset-Pack laden fehlgeschlagen", err); }
+  }
   initParallaxBackground(getWorld());
   drawPreviews();
   startHeroCardLoop();
@@ -2207,8 +2240,13 @@ function restoreEnemiesFromSave(data) {
   game.enemies = [];
   const list = Array.isArray(data.enemies) ? data.enemies : [];
   list.forEach((s) => {
+    const packSize = (typeof VisualEnemies !== "undefined")
+      ? VisualEnemies.getSize(s.sprite, !!s.isBoss)
+      : null;
     const sp = SPRITES[s.sprite];
-    if (!sp) return;
+    if (!packSize && !sp) return;
+    const ew = packSize ? packSize.w : spriteCharW(sp);
+    const eh = packSize ? packSize.h : spriteCharH(sp);
     const enemy = {
       id: s.id || ++enemyId,
       name: s.name || "Gegner",
@@ -2217,9 +2255,9 @@ function restoreEnemiesFromSave(data) {
       index: s.index || 0,
       x: Number.isFinite(s.x) ? s.x : CW + 40,
       walkingIn: !!s.walkingIn,
-      y: GROUND - spriteCharH(sp),
-      w: spriteCharW(sp),
-      h: spriteCharH(sp),
+      y: GROUND - eh,
+      w: ew,
+      h: eh,
       maxHp: Math.max(1, Number(s.maxHp) || 1),
       hp: Math.max(1, Number(s.hp) || 1),
       attack: Math.max(1, Number(s.attack) || 1),
@@ -3026,22 +3064,26 @@ function spawnEnemy(isBoss, index) {
   const pick = list[Math.floor(Math.random() * list.length)];
   const name = pick.name;
   const spKey = pick.sprite;
+  const packSize = (typeof VisualEnemies !== "undefined")
+    ? VisualEnemies.getSize(spKey, isBoss)
+    : null;
   const sp = SPRITES[spKey];
-  if (!sp) {
+  if (!packSize && !sp) {
     console.error("Sprite fehlt für:", name, spKey);
     return null;
   }
   const stats = getEnemyStats(isBoss);
   const ai = getEnemyAI(name, isBoss);
   const idx = index || 0;
-  const ew = spriteCharW(sp);
+  const ew = packSize ? packSize.w : spriteCharW(sp);
+  const eh = packSize ? packSize.h : spriteCharH(sp);
 
   const enemy = {
     id: ++enemyId, name, sprite: spKey, isBoss, index: idx,
     x: CW + COMBAT_LAYOUT.introOffscreen + idx * 62 + Math.random() * 18,
     walkingIn: true,
-    y: GROUND - spriteCharH(sp),
-    w: ew, h: spriteCharH(sp),
+    y: GROUND - eh,
+    w: ew, h: eh,
     maxHp: stats.hp, hp: stats.hp,
     attack: Math.floor(stats.attack * (ai.atkMult || 1)),
     goldReward: stats.gold, xpReward: stats.xp,
