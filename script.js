@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-139";
+const BUILD_ID = "sidescroller-v3-140";
 const GAME_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
@@ -3094,6 +3094,7 @@ function separateEnemies(e, h, dt) {
 
 function updateEnemyMovement(e, h, dt) {
   if (e.dead || e.hp <= 0) return;
+  const startX = e.x;
 
   const heroEdge = h.x + h.w;
   const gap = getEnemyGap(e, h);
@@ -3126,6 +3127,7 @@ function updateEnemyMovement(e, h, dt) {
     if (e.x > targetX + 2) e.x -= speed * dt;
     else if (gap > reach) e.x -= speed * dt * 0.92;
     e.x = Math.max(h.x - e.w * 0.25, e.x);
+    e.gaitPhase = (e.gaitPhase || 0) + Math.abs(e.x - startX) * 0.12;
     return;
   }
 
@@ -3140,6 +3142,7 @@ function updateEnemyMovement(e, h, dt) {
 
   e.x = Math.max(h.x - e.w * 0.25, Math.min(CW + COMBAT_LAYOUT.introOffscreen + 20, e.x));
   separateEnemies(e, h, dt);
+  e.gaitPhase = (e.gaitPhase || 0) + Math.abs(e.x - startX) * 0.12;
 }
 
 function safeSpawnWave() {
@@ -4484,8 +4487,11 @@ function render() {
       ctx.shadowBlur = 3 + e.attackWindup * 6;
     }
     if (typeof VisualEnemies !== "undefined" && VisualEnemies.drawAtFeet) {
+      const gaitLean = e.isChasing && !(e.attackAnim > 0)
+        ? Math.sin(e.gaitPhase || 0) * 0.024
+        : 0;
       VisualEnemies.drawAtFeet(
-        ctx, e.sprite, drawX + e.w / 2, GROUND, true, world, bob, e.isBoss, e.w, e.h, hitFlash
+        ctx, e.sprite, drawX + e.w / 2, GROUND, true, world, bob, e.isBoss, e.w, e.h, hitFlash, gaitLean
       );
     } else {
       drawLivingChar(ctx, e.sprite, drawX, e.y, e.w, e.h, true, world, bob, e.isBoss);

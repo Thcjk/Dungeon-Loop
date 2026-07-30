@@ -30,7 +30,7 @@ HR.getAnimState = (h) => {
   return "idle";
 };
 
-HR.updateAnim = (h, dt) => {
+HR.updateAnim = (h, dt, moving) => {
   const state = HR.getAnimState(h);
   if (h.animState !== state) {
     h.animState = state;
@@ -42,6 +42,14 @@ HR.updateAnim = (h, dt) => {
   if (h.animTime >= cfg.t) {
     h.animTime -= cfg.t;
     h.animFrame = ((h.animFrame || 0) + 1) % cfg.n;
+  }
+
+  // Eigene Laufbewegung ohne die unpassenden Walk/Run-Assets:
+  // Die Figur kippt minimal um die feste Fußlinie statt nach oben zu hüpfen.
+  if (moving && state === "idle") {
+    h.gaitPhase = (h.gaitPhase || 0) + dt * 12;
+  } else {
+    h.gaitPhase = (h.gaitPhase || 0) + dt * 2;
   }
 };
 
@@ -90,19 +98,18 @@ function hrDrawTintedSprite(ctx, img, dx, y, flashStrength) {
   ctx.drawImage(_hrTintCanvas, dx, y);
 }
 
-function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength) {
+function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength, lean) {
   if (!img) return false;
   const w = img.width;
   const h = img.height;
-  const x = Math.round(cx - w / 2);
-  const y = Math.round(footY - h + (bobY || 0));
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (facing < 0) {
-    ctx.translate(Math.round(cx * 2), 0);
-    ctx.scale(-1, 1);
-  }
-  const dx = facing < 0 ? Math.round(cx * 2 - x - w) : x;
+  // Drehpunkt liegt auf der Mauerkrone: kein Schweben, keine Höhenänderung.
+  ctx.translate(Math.round(cx), Math.round(footY));
+  ctx.rotate(lean || 0);
+  ctx.scale(facing, 1);
+  const dx = -Math.round(w / 2);
+  const y = -h + Math.round(bobY || 0);
   if (flashStrength > 0) {
     hrDrawTintedSprite(ctx, img, dx, y, flashStrength);
   } else {
@@ -123,7 +130,13 @@ HR.draw = (ctx, opts) => {
   const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
   const facing = h.facing === -1 ? -1 : 1;
   const state = h.animState || "idle";
-  const bob = state === "idle" ? Math.sin((h.animTime || 0) * 6) * 1.2 : 0;
+  const moving = Math.abs(h.vx || 0) > 4 && state === "idle";
+  // Kein vertikales Bobbing: Füße bleiben sichtbar auf der Mauer.
+  const bob = 0;
+  const gaitLean = moving ? Math.sin(h.gaitPhase || 0) * 0.028 * facing : 0;
+  // Der vorhandene Angriffssprite zeigt die Waffe/Bogenpose; der kurze Lean
+  // gibt der Bogen-Spannung bzw. dem Hieb einen klaren Ablauf.
+  const attackLean = state === "attack" ? -facing * Math.sin((h.attackAnim || 0) * 18) * 0.055 : 0;
   const baseX = (opts.x != null ? opts.x : h.x) || 0;
   const cx = baseX + (h.w || HR.W) / 2 + (opts.hurtOff || 0) + (opts.atkOff || 0);
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
@@ -137,7 +150,7 @@ HR.draw = (ctx, opts) => {
   }
 
   hrShadow(ctx, cx, groundY, 1);
-  if (!hrDrawBitmap(ctx, img, cx, groundY, facing, bob, flash)) {
+  if (!hrDrawBitmap(ctx, img, cx, groundY, facing, bob, flash, gaitLean + attackLean)) {
     ctx.fillStyle = "#2a3038";
     ctx.fillRect(cx - 16, groundY - 70, 32, 70);
   }
