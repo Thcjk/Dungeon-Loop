@@ -4,7 +4,9 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "preview-clean-v130";
+const BUILD_ID = "sidescroller-v2-131";
+const GAME_VERSION = 2;
+const WORLD_LAYOUT_VERSION = 2;
 
 /** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
 const DEBUG_HITBOXES = false;
@@ -708,7 +710,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 1;
+const RUN_SAVE_VERSION = 2;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
@@ -2420,11 +2422,48 @@ function peekActiveRun() {
   return data;
 }
 
+function migrateRunData(data) {
+  if (!data || !data.hero) return null;
+  const needs =
+    data.version !== RUN_SAVE_VERSION ||
+    data.worldLayoutVersion !== WORLD_LAYOUT_VERSION ||
+    (data.buildId && data.buildId !== BUILD_ID);
+  if (!needs) return data;
+  const out = { ...data };
+  out.version = RUN_SAVE_VERSION;
+  out.worldLayoutVersion = WORLD_LAYOUT_VERSION;
+  out.buildId = BUILD_ID;
+  out.scrollX = 0;
+  if (out.hero) {
+    const minX = COMBAT_LAYOUT?.heroMoveMinX ?? 16;
+    const maxX = COMBAT_LAYOUT?.heroMoveMaxX ?? 560;
+    out.hero.x = Math.max(minX, Math.min(maxX, Number(out.hero.x) || 320));
+  }
+  if (Array.isArray(out.enemies)) {
+    out.enemies = out.enemies.map((e) => {
+      if (!e) return e;
+      const copy = { ...e };
+      delete copy.y;
+      return copy;
+    });
+  }
+  return out;
+}
+
 function loadActiveRunFor(name) {
   const key = playerStorageKey(name);
   if (!key) return null;
-  const data = loadRunStore()[key];
-  if (!data || data.version !== RUN_SAVE_VERSION || !data.hero) return null;
+  const raw = loadRunStore()[key];
+  if (!raw || !raw.hero) return null;
+  const data = migrateRunData(raw);
+  if (data !== raw) {
+    try {
+      const store = loadRunStore();
+      store[key] = data;
+      store[slotRunKey(data.slotIndex | 0)] = data;
+      localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+    } catch (_) {}
+  }
   return data;
 }
 
@@ -2486,6 +2525,8 @@ function saveActiveRun(force) {
   if (!force && !runSaveDirty) return false;
   const payload = {
     version: RUN_SAVE_VERSION,
+    worldLayoutVersion: WORLD_LAYOUT_VERSION,
+    gameVersion: GAME_VERSION,
     buildId: BUILD_ID,
     savedAt: Date.now(),
     playerName: game.playerName,
@@ -3517,17 +3558,7 @@ function renderUnifiedBackground(world) {
   renderParallaxBackground(ctx, world, game.scrollX);
 }
 
-function renderWorldAtmosphere(world) {
-  const pal = WR_PALETTES[world.theme];
-  if (!pal) return;
-  const fogCol = pal.fog || world.fog || "rgba(0,0,0,0.3)";
-  const fogGrad = ctx.createLinearGradient(0, GROUND - 30, 0, GROUND + 20);
-  fogGrad.addColorStop(0, "rgba(0,0,0,0)");
-  fogGrad.addColorStop(0.6, fogCol);
-  fogGrad.addColorStop(1, world.fog2 || fogCol);
-  ctx.fillStyle = fogGrad;
-  ctx.fillRect(0, GROUND - 30, CW, 50);
-}
+// renderWorldAtmosphere entfernt – kein Extra-Nebel über dem Weg
 
 // ============================================
 // KAMPF – KLASSEN-SPEZIFISCH
