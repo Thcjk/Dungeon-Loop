@@ -9,7 +9,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "113",
+    version: "114",
 
     loadImage(path) {
       return new Promise((resolve) => {
