@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build 2-layer world assets from preview.png (scene + lane, no baked characters)."""
+"""Rebuild 2-layer world assets purely from preview.png – no midband/path/ground stitch."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,15 +10,19 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 WORLDS = ("forest", "swamp", "frost", "fire", "ruins")
 CANVAS_W = 1290
+CANVAS_H = 360
 BG_H = 268
-LANE_H = 92
+LANE_H = CANVAS_H - BG_H  # 92
 
 
-def load_rgba(path: Path) -> Image.Image:
-    return Image.open(path).convert("RGBA")
-
-
-def patch_fill_center(arr: np.ndarray, x0: int, x1: int, src_x0: int, src_x1: int, y0: int = 0) -> np.ndarray:
+def patch_fill_center(
+    arr: np.ndarray,
+    x0: int,
+    x1: int,
+    src_x0: int,
+    src_x1: int,
+    y0: int = 0,
+) -> np.ndarray:
     out = arr.copy()
     h = out.shape[0]
     pw = src_x1 - src_x0
@@ -31,79 +35,51 @@ def patch_fill_center(arr: np.ndarray, x0: int, x1: int, src_x0: int, src_x1: in
     return out
 
 
-def overlay_path(lane_arr: np.ndarray, world_dir: Path) -> np.ndarray:
-    path_file = world_dir / "path.png"
-    if not path_file.exists():
-        return lane_arr
-    path = np.array(Image.open(path_file).convert("RGBA"))
-    if path.shape[0] > path.shape[1]:
-        path = np.rot90(path, k=-1)
-    ph, pw = path.shape[:2]
-    y_off = max(0, (LANE_H - ph) // 2 - 6)
-    for py in range(min(ph, LANE_H - y_off)):
-        ty = y_off + py
-        for x in range(CANVAS_W):
-            px = path[py, x % pw]
-            a = px[3] / 255.0
-            if a <= 0.02:
-                continue
-            out = lane_arr[ty, x].astype(float)
-            src = px[:3].astype(float)
-            lane_arr[ty, x, :3] = (out[:3] * (1 - a) + src * a).astype(np.uint8)
-            lane_arr[ty, x, 3] = 255
-    return lane_arr
+def clean_baked_hud(arr: np.ndarray) -> np.ndarray:
+    """Preview hat HP-Leisten in den Ecken – durch Wald ersetzen."""
+    h, w, _ = arr.shape
+    ref_y = 96
+    for y in range(0, 58):
+        for x in range(0, 220):
+            sx = 420 + (x % 140)
+            sy = min(h - 1, ref_y + y // 2)
+            arr[y, x] = arr[sy, sx]
+        for x in range(w - 220, w):
+            sx = 730 + (x % 140)
+            sy = min(h - 1, ref_y + y // 2)
+            arr[y, x] = arr[sy, sx]
+    return arr
 
 
-def build_scene_lane(preview: Image.Image, world_dir: Path) -> tuple[Image.Image, Image.Image]:
-    if preview.size != (CANVAS_W, 360):
-        preview = preview.resize((CANVAS_W, 360), Image.NEAREST)
+def build_from_preview(preview: Image.Image) -> tuple[Image.Image, Image.Image]:
+    if preview.size != (CANVAS_W, CANVAS_H):
+        preview = preview.resize((CANVAS_W, CANVAS_H), Image.NEAREST)
 
-    x0, x1 = int(CANVAS_W * 0.30), int(CANVAS_W * 0.70)
-    src0, src1 = 90, 360
-    top_h = 168
-    bottom_h = BG_H - top_h
+    px = np.array(preview)
+    x0, x1 = int(CANVAS_W * 0.22), int(CANVAS_W * 0.78)
+    src0, src1 = 55, 310
 
-    top_arr = np.array(preview.crop((0, 0, CANVAS_W, top_h)))
+    scene_arr = px[0:BG_H, :, :].copy()
+    scene_arr = clean_baked_hud(scene_arr)
+    scene_arr = patch_fill_center(scene_arr, x0, x1, src0, src1, int(BG_H * 0.62))
 
-    mid_path = world_dir / "midband.png"
-    if mid_path.exists():
-        mid = Image.open(mid_path).convert("RGBA")
-        mw, mh = mid.size
-        scale = CANVAS_W / mw
-        mid_scaled = mid.resize((CANVAS_W, max(bottom_h, int(mh * scale))), Image.NEAREST)
-        mid_arr = np.array(mid_scaled)
-        src_y = max(0, mid_arr.shape[0] - bottom_h)
-        bottom_arr = mid_arr[src_y:src_y + bottom_h, :, :]
-        if bottom_arr.shape[0] < bottom_h:
-            pad = np.zeros((bottom_h - bottom_arr.shape[0], CANVAS_W, 4), dtype=np.uint8)
-            bottom_arr = np.vstack([pad, bottom_arr])
-    else:
-        bottom_arr = np.array(preview.crop((0, top_h, CANVAS_W, BG_H)))
-        bottom_arr = patch_fill_center(bottom_arr, x0, x1, src0, src1, int(bottom_h * 0.35))
-
-    bg_arr = np.vstack([top_arr, bottom_arr[:, :, :4] if bottom_arr.shape[2] == 4 else bottom_arr])
-    scene = Image.fromarray(bg_arr.astype(np.uint8))
-
-    lane_arr = np.array(preview.crop((0, BG_H, CANVAS_W, BG_H + LANE_H)))
+    lane_arr = px[BG_H:CANVAS_H, :, :].copy()
     lane_arr = patch_fill_center(lane_arr, x0, x1, src0, src1, 0)
-    lane_arr = overlay_path(lane_arr, world_dir)
-    lane = Image.fromarray(lane_arr)
+    lane_arr[0] = scene_arr[-1]
 
-    return scene, lane
+    return Image.fromarray(scene_arr), Image.fromarray(lane_arr)
 
 
 def process_world(theme: str) -> None:
     world_dir = ROOT / "assets" / "pack" / "worlds" / theme
     preview_path = world_dir / "preview.png"
     if not preview_path.exists():
-        print("skip", theme, "- no preview")
+        print("skip", theme)
         return
-
-    preview = load_rgba(preview_path)
-    scene, lane = build_scene_lane(preview, world_dir)
+    scene, lane = build_from_preview(Image.open(preview_path).convert("RGBA"))
     scene.save(world_dir / "scene.png", optimize=True)
     lane.save(world_dir / "lane.png", optimize=True)
-    print(theme, "scene", scene.size, "lane", lane.size)
+    print(theme, scene.size, lane.size)
 
 
 def main() -> None:

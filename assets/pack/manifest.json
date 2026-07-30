@@ -306,83 +306,38 @@
   "worlds": {
     "forest": {
       "preview": "assets/pack/worlds/forest/preview.png",
-      "midband": "assets/pack/worlds/forest/midband.png",
-      "ground": "assets/pack/worlds/forest/ground.png",
       "previewW": 1290,
       "previewH": 360,
-      "tileset": "assets/pack/worlds/forest/tileset.png",
-      "deco": "assets/pack/worlds/forest/deco.png",
-      "bg": "assets/pack/worlds/forest/bg.png",
       "scene": "assets/pack/worlds/forest/scene.png",
-      "backdrop": "assets/pack/worlds/forest/backdrop.png",
-      "lane": "assets/pack/worlds/forest/lane.png",
-      "foreground": "assets/pack/worlds/forest/foreground.png",
-      "terrain": "assets/pack/worlds/forest/terrain.png",
-      "path": "assets/pack/worlds/forest/path.png"
+      "lane": "assets/pack/worlds/forest/lane.png"
     },
     "swamp": {
       "preview": "assets/pack/worlds/swamp/preview.png",
-      "midband": "assets/pack/worlds/swamp/midband.png",
-      "ground": "assets/pack/worlds/swamp/ground.png",
       "previewW": 1290,
       "previewH": 360,
-      "deco": "assets/pack/worlds/swamp/deco.png",
-      "tileset": "assets/pack/worlds/swamp/tileset.png",
-      "bg": "assets/pack/worlds/swamp/bg.png",
       "scene": "assets/pack/worlds/swamp/scene.png",
-      "backdrop": "assets/pack/worlds/swamp/backdrop.png",
-      "lane": "assets/pack/worlds/swamp/lane.png",
-      "foreground": "assets/pack/worlds/swamp/foreground.png",
-      "terrain": "assets/pack/worlds/swamp/terrain.png",
-      "path": "assets/pack/worlds/swamp/path.png"
+      "lane": "assets/pack/worlds/swamp/lane.png"
     },
     "frost": {
       "preview": "assets/pack/worlds/frost/preview.png",
-      "midband": "assets/pack/worlds/frost/midband.png",
-      "ground": "assets/pack/worlds/frost/ground.png",
       "previewW": 1290,
       "previewH": 360,
-      "tileset": "assets/pack/worlds/frost/tileset.png",
-      "deco": "assets/pack/worlds/frost/deco.png",
-      "bg": "assets/pack/worlds/frost/bg.png",
       "scene": "assets/pack/worlds/frost/scene.png",
-      "backdrop": "assets/pack/worlds/frost/backdrop.png",
-      "lane": "assets/pack/worlds/frost/lane.png",
-      "foreground": "assets/pack/worlds/frost/foreground.png",
-      "terrain": "assets/pack/worlds/frost/terrain.png",
-      "path": "assets/pack/worlds/frost/path.png"
+      "lane": "assets/pack/worlds/frost/lane.png"
     },
     "fire": {
       "preview": "assets/pack/worlds/fire/preview.png",
-      "midband": "assets/pack/worlds/fire/midband.png",
-      "ground": "assets/pack/worlds/fire/ground.png",
       "previewW": 1290,
       "previewH": 360,
-      "tileset": "assets/pack/worlds/fire/tileset.png",
-      "deco": "assets/pack/worlds/fire/deco.png",
-      "bg": "assets/pack/worlds/fire/bg.png",
       "scene": "assets/pack/worlds/fire/scene.png",
-      "backdrop": "assets/pack/worlds/fire/backdrop.png",
-      "lane": "assets/pack/worlds/fire/lane.png",
-      "foreground": "assets/pack/worlds/fire/foreground.png",
-      "terrain": "assets/pack/worlds/fire/terrain.png",
-      "path": "assets/pack/worlds/fire/path.png"
+      "lane": "assets/pack/worlds/fire/lane.png"
     },
     "ruins": {
       "preview": "assets/pack/worlds/ruins/preview.png",
-      "midband": "assets/pack/worlds/ruins/midband.png",
-      "ground": "assets/pack/worlds/ruins/ground.png",
       "previewW": 1290,
       "previewH": 360,
-      "deco": "assets/pack/worlds/ruins/deco.png",
-      "tileset": "assets/pack/worlds/ruins/tileset.png",
-      "bg": "assets/pack/worlds/ruins/bg.png",
       "scene": "assets/pack/worlds/ruins/scene.png",
-      "backdrop": "assets/pack/worlds/ruins/backdrop.png",
-      "lane": "assets/pack/worlds/ruins/lane.png",
-      "foreground": "assets/pack/worlds/ruins/foreground.png",
-      "terrain": "assets/pack/worlds/ruins/terrain.png",
-      "path": "assets/pack/worlds/ruins/path.png"
+      "lane": "assets/pack/worlds/ruins/lane.png"
     }
   },
   "fx": {
@@ -395,6 +350,10 @@
   },
   "ui": {
     "ui_panel_excerpt": "assets/pack/ui/ui_panel_excerpt.png",
+    "hud_hp_frame": "assets/pack/ui/cropped/hud_hp_frame.png",
+    "hud_mana_frame": "assets/pack/ui/cropped/hud_mana_frame.png",
+    "hud_xp_frame": "assets/pack/ui/cropped/hud_xp_frame.png",
+    "hud_panel_frame": "assets/pack/ui/cropped/hud_panel_frame.png",
     "hud_elements_sheet_2": "assets/pack/ui/hud_elements_sheet_2.png",
     "hud_elements_sheet": "assets/pack/ui/hud_elements_sheet.png",
     "item_equipment_icons_sheet_2": "assets/pack/ui/item_equipment_icons_sheet_2.png",

@@ -10,7 +10,7 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "129",
+    version: "130",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -52,7 +52,7 @@
     worldPaths(theme) {
       const paths = new Set();
       const w = this.manifest?.worlds?.[theme];
-      if (w) ["scene", "lane", "bg"].forEach((key) => { if (w[key]) paths.add(w[key]); });
+      if (w) ["scene", "lane"].forEach((key) => { if (w[key]) paths.add(w[key]); });
       const enemies = this.manifest?.enemies?.[theme] || {};
       Object.values(enemies).forEach((e) => { if (e?.path) paths.add(e.path); });
       const boss = this.manifest?.bosses?.[theme];
@@ -189,7 +189,12 @@
 
     fxMeta(key) {
       return this.manifest?.fxSprites?.[key] || null;
-    }
+    },
+
+    hudFrame(key) {
+      const path = this.manifest?.ui?.[key];
+      return path ? this.img(path) : null;
+    },
   };
 
   global.PackAssets = PackAssets;
