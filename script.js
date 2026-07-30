@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "assets-fx-v122";
+const BUILD_ID = "fix-menu-v123";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -2198,11 +2198,11 @@ function formatSaveDate(ts) {
 }
 
 function showMenuPanel(which) {
-  const panels = ["menu-home", "menu-new-slot", "menu-new", "menu-load"];
-  panels.forEach((id) => {
-    const el = $(id);
+  const panels = ["home", "new-slot", "new", "load"];
+  panels.forEach((key) => {
+    const el = $("menu-" + key);
     if (!el) return;
-    el.classList.toggle("hidden", id !== which);
+    el.classList.toggle("hidden", key !== which);
   });
   if (which === "home") renderHomeSlotPreview();
   if (which === "load") renderSaveSlotList();
