@@ -124,15 +124,19 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame) => {
 
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
   const img = pack ? (pack.heroCard(classKey) || pack.hero(classKey, "idle")) : null;
-  if (img) {
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = true;
     const scale = Math.min((w * 0.78) / img.width, (h * 0.82) / img.height);
     const dw = img.width * scale;
     const dh = img.height * scale;
     const bob = Math.sin((frame || 0) * 0.8) * 3;
     ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2 + bob - 6, dw, dh);
   } else {
-    ctx.fillStyle = "#666";
-    ctx.fillRect(w * 0.35, h * 0.25, w * 0.3, h * 0.5);
+    // Lade-Hinweis statt leerer Fläche
+    ctx.fillStyle = "#8a7d6c";
+    ctx.font = "14px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(pack && !pack.heroesReady ? "Held wird geladen…" : "Held", w / 2, h / 2);
   }
 };
 
