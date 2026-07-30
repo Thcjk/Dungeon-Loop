@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "visual-repair-v124";
+const BUILD_ID = "pack-rebuild-v125";
 
 /** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
 const DEBUG_HITBOXES = false;
@@ -43,7 +43,7 @@ function pinCharToGround(entity) {
   if (!entity || entity.h == null) return;
   entity.y = GROUND - entity.h;
 }
-const CAM_ZOOM = 1.12;
+const CAM_ZOOM = 1.0;
 const COMBAT_LAYOUT = {
   heroCombatX: 90,
   /** Voller Bildkorridor – Held kann die komplette Breite nutzen */
@@ -65,7 +65,7 @@ const COMBAT_LAYOUT = {
 };
 const CAM_AX = CW / 2;
 const CAM_AY = GROUND;
-const CAMERA_FOLLOW_OFFSET_X = 40;
+const CAMERA_FOLLOW_OFFSET_X = 72;
 const CAMERA_LERP = 8.5;
 const visualCamera = { x: CAM_AX, y: CAM_AY, zoom: CAM_ZOOM, ready: false };
 let canvas, ctx;
@@ -80,7 +80,7 @@ function getCameraFocusX() {
   if (typeof game === "undefined" || !game.hero) return CAM_AX;
   const h = game.hero;
   // Kamera folgt dem Helden über die volle Breite, ohne ihn mittig einzusperren
-  return clamp(h.x + h.w * 0.5 + CAMERA_FOLLOW_OFFSET_X, 140, 500);
+  return clamp(h.x + h.w * 0.5 + CAMERA_FOLLOW_OFFSET_X, 100, 540);
 }
 
 function updateVisualCamera(dt) {

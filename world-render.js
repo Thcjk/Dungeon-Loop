@@ -1,12 +1,11 @@
-/* Dungeon Loop – World Renderer
-   Klassischer Side-Scroller: volle Höhe, Parallax, keine grauen Kampfbahn-Flächen. */
+/* Dungeon Loop – World Renderer (Pack-only, keine Preview/Figuren im BG)
+   Ebenen: Himmel · bg.png · Props · Boden · Vordergrund · Atmosphäre */
 
 const WR = {
   CW: 640, CH: 360, GROUND: 308,
-  /** Parallax-Geschwindigkeiten: far / mid / ground / near */
-  SPEEDS: [0.06, 0.18, 0.55, 0.85],
-  LANE_TOP: 168,
-  cache: { theme: null },
+  SKY_H: 82,
+  SPEEDS: { far: 0.07, mid: 0.16, floor: 0.48, fore: 0.82, propsBack: 0.13, propsFront: 0.78 },
+  cache: { theme: null, props: null },
   ambient: [], transition: null, animTime: 0
 };
 
@@ -22,34 +21,68 @@ WORLD_VISUALS.fire = WORLD_VISUALS.firelands;
 
 const WORLD_PAL = {
   forest: {
-    sky: ["#07140f", "#0c1e16", "#143627"], fog: "rgba(24,55,38,0.18)", accent: "#8fe6a8",
-    lighting: "rgba(150,220,160,0.1)", weather: ["leaf", "firefly", "mist"],
-    groundTint: "#1a2a1c", laneFill: "#0e1410", laneEdge: "#162018"
+    sky: ["#040a08", "#081610", "#0e2218"], fog: "rgba(18,42,28,0.2)", accent: "#8fe6a8",
+    lighting: "rgba(150,220,160,0.12)", weather: ["leaf", "firefly", "mist"],
+    path: "rgba(38,32,24,0.28)", groundTint: "#1a2a1c"
   },
   swamp: {
-    sky: ["#080f08", "#101a0e", "#1a2614"], fog: "rgba(48,70,36,0.22)", accent: "#a6d46a",
+    sky: ["#050a06", "#0a1208", "#121a0c"], fog: "rgba(36,52,28,0.24)", accent: "#a6d46a",
     lighting: "rgba(150,210,110,0.1)", weather: ["mist", "bubble", "firefly"],
-    groundTint: "#1a2214", laneFill: "#0a100a", laneEdge: "#142018"
+    path: "rgba(28,32,18,0.32)", groundTint: "#1a2214"
   },
   frost: {
-    sky: ["#081422", "#122840", "#2a4060"], fog: "rgba(180,210,240,0.14)", accent: "#dff0ff",
-    lighting: "rgba(180,215,255,0.12)", weather: ["snow", "snow", "wind"],
-    groundTint: "#b8c8d8", laneFill: "#1c2838", laneEdge: "#2a3a50"
+    sky: ["#060e18", "#0c1828", "#1a2840"], fog: "rgba(160,190,220,0.16)", accent: "#dff0ff",
+    lighting: "rgba(180,215,255,0.14)", weather: ["snow", "snow", "wind"],
+    path: "rgba(120,140,160,0.22)", groundTint: "#b8c8d8"
   },
   fire: {
-    sky: ["#100508", "#240a08", "#4a1408"], fog: "rgba(90,35,15,0.2)", accent: "#ff9a3c",
-    lighting: "rgba(255,120,50,0.16)", weather: ["ash", "ember", "smoke"],
-    groundTint: "#2a120c", laneFill: "#140804", laneEdge: "#2a1008"
+    sky: ["#0a0406", "#180608", "#2a0c08"], fog: "rgba(70,28,12,0.22)", accent: "#ff9a3c",
+    lighting: "rgba(255,120,50,0.18)", weather: ["ash", "ember", "smoke"],
+    path: "rgba(40,16,8,0.35)", groundTint: "#2a120c"
   },
   ruins: {
-    sky: ["#090b18", "#141830", "#262c4c"], fog: "rgba(50,45,80,0.18)", accent: "#8fd0ff",
-    lighting: "rgba(140,200,255,0.12)", weather: ["dust", "rune", "storm"],
-    groundTint: "#222030", laneFill: "#0c0c14", laneEdge: "#1a1828"
+    sky: ["#060810", "#0c1018", "#181828"], fog: "rgba(42,38,58,0.2)", accent: "#8fd0ff",
+    lighting: "rgba(140,200,255,0.13)", weather: ["dust", "rune", "storm"],
+    path: "rgba(48,36,24,0.3)", groundTint: "#222030"
   }
 };
 
 const WR_PALETTES = {};
 Object.keys(WORLD_PAL).forEach((k) => { WR_PALETTES[k] = { fog: WORLD_PAL[k].fog }; });
+
+/** Prop-Platzierung pro Welt (nur Pack-Props, keine Figuren) */
+const WORLD_PROP_LAYOUT = {
+  forest: [
+    { i: 2, x: 0.06, layer: "back", sy: 0.72 }, { i: 8, x: 0.22, layer: "back", sy: 0.68 },
+    { i: 14, x: 0.78, layer: "back", sy: 0.7 }, { i: 5, x: 0.92, layer: "back", sy: 0.74 },
+    { i: 1, x: 0.12, layer: "front", sy: 0.88 }, { i: 3, x: 0.38, layer: "front", sy: 0.9 },
+    { i: 7, x: 0.62, layer: "front", sy: 0.89 }, { i: 11, x: 0.86, layer: "front", sy: 0.87 }
+  ],
+  swamp: [
+    { i: 1, x: 0.08, layer: "back", sy: 0.7 }, { i: 6, x: 0.35, layer: "back", sy: 0.72 },
+    { i: 12, x: 0.68, layer: "back", sy: 0.71 }, { i: 18, x: 0.9, layer: "back", sy: 0.73 },
+    { i: 0, x: 0.18, layer: "front", sy: 0.88 }, { i: 4, x: 0.48, layer: "front", sy: 0.9 },
+    { i: 9, x: 0.75, layer: "front", sy: 0.89 }
+  ],
+  frost: [
+    { i: 3, x: 0.1, layer: "back", sy: 0.7 }, { i: 9, x: 0.42, layer: "back", sy: 0.68 },
+    { i: 15, x: 0.74, layer: "back", sy: 0.71 }, { i: 20, x: 0.94, layer: "back", sy: 0.73 },
+    { i: 2, x: 0.2, layer: "front", sy: 0.88 }, { i: 6, x: 0.55, layer: "front", sy: 0.9 },
+    { i: 10, x: 0.82, layer: "front", sy: 0.87 }
+  ],
+  fire: [
+    { i: 0, x: 0.07, layer: "back", sy: 0.72 }, { i: 5, x: 0.28, layer: "back", sy: 0.7 },
+    { i: 11, x: 0.65, layer: "back", sy: 0.71 }, { i: 16, x: 0.88, layer: "back", sy: 0.74 },
+    { i: 2, x: 0.15, layer: "front", sy: 0.88 }, { i: 7, x: 0.45, layer: "front", sy: 0.9 },
+    { i: 13, x: 0.72, layer: "front", sy: 0.89 }, { i: 19, x: 0.93, layer: "front", sy: 0.86 }
+  ],
+  ruins: [
+    { i: 4, x: 0.05, layer: "back", sy: 0.7 }, { i: 10, x: 0.3, layer: "back", sy: 0.68 },
+    { i: 16, x: 0.62, layer: "back", sy: 0.71 }, { i: 21, x: 0.9, layer: "back", sy: 0.73 },
+    { i: 1, x: 0.14, layer: "front", sy: 0.88 }, { i: 8, x: 0.4, layer: "front", sy: 0.9 },
+    { i: 14, x: 0.68, layer: "front", sy: 0.89 }, { i: 20, x: 0.88, layer: "front", sy: 0.87 }
+  ]
+};
 
 function wrTheme(world) {
   if (!world) return "forest";
@@ -80,20 +113,21 @@ function getWorldVisualConfig(worldId) {
 
 function invalidateParallaxCache() {
   WR.cache.theme = null;
+  WR.cache.props = null;
 }
 
 function spawnAmbient(theme) {
   const pal = getWorldPal(theme);
   const kinds = pal.weather || ["mist"];
   WR.ambient = [];
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 32; i++) {
     WR.ambient.push({
       kind: kinds[Math.floor(wrR(i * 3.1) * kinds.length)],
       x: wrR(i * 7.7) * WR.CW * 1.4,
-      y: wrR(i * 11.3) * (WR.GROUND - 24),
+      y: WR.SKY_H + wrR(i * 11.3) * (WR.GROUND - WR.SKY_H - 20),
       s: 0.45 + wrR(i * 5.5) * 1.5,
       v: 8 + wrR(i * 2.2) * 22,
-      a: 0.12 + wrR(i * 4.4) * 0.32,
+      a: 0.1 + wrR(i * 4.4) * 0.28,
       layer: wrR(i * 9.1) > 0.55 ? "front" : "back"
     });
   }
@@ -118,8 +152,8 @@ function updateWorldAmbient(dt) {
     } else {
       p.x += p.v * dt * 0.06;
     }
-    if (p.y > WR.GROUND - 6) p.y = -8;
-    if (p.y < -20) p.y = WR.GROUND - 20;
+    if (p.y > WR.GROUND - 6) p.y = WR.SKY_H;
+    if (p.y < WR.SKY_H - 10) p.y = WR.GROUND - 20;
     if (p.x > WR.CW + 30) p.x = -20;
     if (p.x < -30) p.x = WR.CW + 10;
   });
@@ -136,98 +170,106 @@ function startWorldTransition(world) {
   initParallaxBackground(world);
 }
 
-/** Nahtloses Kacheln – ganzzahlige Pixel, kein Smoothing */
-function drawTiled(ctx, img, scroll, y, h, speed) {
-  if (!img || !img.width) return;
-  const dw = Math.max(1, Math.round(img.width * (h / img.height)));
-  let x = -Math.floor((scroll * speed) % dw);
-  if (x > 0) x -= dw;
-  while (x < WR.CW + dw) {
-    ctx.drawImage(img, Math.round(x), Math.round(y), dw, Math.round(h));
-    x += dw;
-  }
-}
-
-/** Volle Canvas-Höhe abdecken (Cover), seitlich kacheln */
-function drawTiledCover(ctx, img, scroll, speed) {
-  if (!img || !img.width) return;
-  const scale = WR.CH / img.height;
-  const dw = Math.max(1, Math.round(img.width * scale));
-  const dh = WR.CH;
-  let x = -Math.floor((scroll * speed) % dw);
-  if (x > 0) x -= dw;
-  while (x < WR.CW + dw) {
-    ctx.drawImage(img, Math.round(x), 0, dw, dh);
-    x += dw;
-  }
-}
-
-function resolveWorldImg(theme, keys) {
+function packImg(theme, key) {
   if (typeof PackAssets === "undefined") return null;
-  for (const key of keys) {
-    const img = PackAssets.worldImg(theme, key);
-    if (img && img.width) return img;
-  }
-  return null;
+  return PackAssets.worldImg(theme, key);
 }
 
-/**
- * Side-Scroller-Hintergrund für ALLE Welten:
- * 1) Himmel-Fallback  2) scene/bg volle Höhe  3) mid_clean  4) ground  5) Nebel
- * Keine solide graue Kampfbahn-Fläche.
- */
-function drawSideScrollerBackdrop(ctx, theme, scrollX) {
-  const t = wrTheme(theme);
-  const pal = getWorldPal(t);
+/** bg.png über volle Höhe – Cover, keine Preview/midband/ground mit Figuren */
+function drawFarBackdrop(ctx, theme, scrollX) {
+  const bg = packImg(theme, "bg");
+  const pal = getWorldPal(theme);
   const scroll = scrollX || 0;
-  ctx.imageSmoothingEnabled = false;
 
-  const sky = ctx.createLinearGradient(0, 0, 0, WR.CH);
+  const sky = ctx.createLinearGradient(0, 0, 0, WR.SKY_H);
   sky.addColorStop(0, pal.sky[0]);
-  sky.addColorStop(0.45, pal.sky[1]);
-  sky.addColorStop(1, pal.sky[2]);
+  sky.addColorStop(1, pal.sky[1]);
   ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, WR.CW, WR.CH);
+  ctx.fillRect(0, 0, WR.CW, WR.SKY_H);
 
-  const scene = resolveWorldImg(t, ["scene", "bg"]);
-  const mid = resolveWorldImg(t, ["mid_clean", "midband"]);
-  const ground = resolveWorldImg(t, ["ground"]);
-  const bgOnly = resolveWorldImg(t, ["bg"]);
-
-  // Weite Ebene – volle Höhe, keine Lücke
-  if (scene) {
-    drawTiledCover(ctx, scene, scroll, WR.SPEEDS[0]);
-  } else if (bgOnly) {
-    drawTiled(ctx, bgOnly, scroll, 0, WR.GROUND, WR.SPEEDS[0]);
-  }
-
-  // Mittelgrund (Bäume/Ruinen) – leicht schneller, fadet vor dem Boden
-  if (mid && mid !== scene) {
-    ctx.save();
-    ctx.globalAlpha = 0.55;
-    drawTiled(ctx, mid, scroll, 0, Math.floor(WR.GROUND * 0.72), WR.SPEEDS[1]);
-    ctx.restore();
-  }
-
-  // Bodenstreifen mit eigener Parallax-Geschwindigkeit
-  if (ground) {
-    drawTiled(ctx, ground, scroll, WR.GROUND - 28, 78, WR.SPEEDS[2]);
+  if (bg && bg.width > 0) {
+    const scale = WR.CH / bg.height;
+    const dw = Math.max(1, Math.round(bg.width * scale));
+    const dh = WR.CH;
+    let x = -Math.floor((scroll * WR.SPEEDS.far) % dw);
+    if (x > 0) x -= dw;
+    ctx.imageSmoothingEnabled = false;
+    while (x < WR.CW + dw) {
+      ctx.drawImage(bg, Math.round(x), 0, dw, dh);
+      x += dw;
+    }
   } else {
-    ctx.fillStyle = pal.groundTint;
-    ctx.fillRect(0, WR.GROUND - 8, WR.CW, WR.CH - WR.GROUND + 8);
+    const g = ctx.createLinearGradient(0, WR.SKY_H, 0, WR.CH);
+    g.addColorStop(0, pal.sky[1]);
+    g.addColorStop(1, pal.sky[2]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, WR.SKY_H, WR.CW, WR.CH - WR.SKY_H);
   }
 
-  // Leichter Bodennebel – Figuren bleiben lesbar
-  const fog = ctx.createLinearGradient(0, WR.GROUND - 40, 0, WR.CH);
-  fog.addColorStop(0, "rgba(0,0,0,0)");
-  fog.addColorStop(0.55, pal.fog);
-  fog.addColorStop(1, pal.fog);
-  ctx.fillStyle = fog;
-  ctx.fillRect(0, WR.GROUND - 40, WR.CW, WR.CH - (WR.GROUND - 40));
+  ctx.fillStyle = pal.fog;
+  ctx.fillRect(0, WR.SKY_H, WR.CW, Math.floor((WR.GROUND - WR.SKY_H) * 0.35));
+}
 
-  // Feine Bodenlinie (kein Debug-Kasten)
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.fillRect(0, WR.GROUND - 1, WR.CW, 2);
+function drawPathLane(ctx, theme) {
+  const pal = getWorldPal(theme);
+  const y = WR.GROUND - 14;
+  const g = ctx.createLinearGradient(0, y - 8, 0, y + 18);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(0.35, pal.path);
+  g.addColorStop(0.7, pal.path);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, y - 6, WR.CW, 28);
+}
+
+function drawTiledStrip(ctx, img, scroll, y, speed) {
+  if (!img || !img.width) return;
+  const h = img.height;
+  const dw = img.width;
+  let x = -Math.floor((scroll * speed) % dw);
+  if (x > 0) x -= dw;
+  ctx.imageSmoothingEnabled = false;
+  while (x < WR.CW + dw) {
+    ctx.drawImage(img, Math.round(x), Math.round(y), dw, h);
+    x += dw;
+  }
+}
+
+function drawWorldProps(ctx, theme, scrollX, layer) {
+  if (typeof PackAssets === "undefined" || !PackAssets.ready) return;
+  const layout = WORLD_PROP_LAYOUT[theme] || WORLD_PROP_LAYOUT.forest;
+  const speed = layer === "back" ? WR.SPEEDS.propsBack : WR.SPEEDS.propsFront;
+  const scroll = scrollX || 0;
+
+  layout.forEach((slot) => {
+    if (slot.layer !== layer) return;
+    const img = PackAssets.prop(theme, slot.i);
+    if (!img || !img.width) return;
+    let px = slot.x * WR.CW - scroll * speed;
+    const wrap = WR.CW + 120;
+    px = ((px % wrap) + wrap) % wrap - 60;
+    const footY = Math.round(WR.GROUND - 6 + (slot.sy - 0.85) * 36);
+    const x = Math.round(px - img.width / 2);
+    const y = Math.round(footY - img.height);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    if (layer === "back") ctx.globalAlpha = 0.9;
+    ctx.drawImage(img, x, y);
+    ctx.restore();
+  });
+}
+
+function drawSideScrollerBackdrop(ctx, theme, scrollX) {
+  const scroll = scrollX || 0;
+  drawFarBackdrop(ctx, theme, scroll);
+  drawPathLane(ctx, theme);
+  drawWorldProps(ctx, theme, scroll, "back");
+
+  const fg = packImg(theme, "foreground");
+  if (fg) {
+    const y = WR.GROUND - 22;
+    drawTiledStrip(ctx, fg, scroll, y, WR.SPEEDS.fore);
+  }
 }
 
 function drawAmbient(ctx, theme, layer) {
@@ -251,12 +293,12 @@ function drawAmbient(ctx, theme, layer) {
       ctx.globalAlpha = p.a * (0.4 + 0.6 * Math.sin(WR.animTime * 4 + p.x));
       ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
     } else if (p.kind === "bubble") {
-      ctx.strokeStyle = "rgba(180,220,160,0.4)";
+      ctx.strokeStyle = "rgba(180,220,160,0.35)";
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      ctx.fillStyle = "rgba(200,200,220,0.18)";
+      ctx.fillStyle = "rgba(200,200,220,0.15)";
       ctx.fillRect(Math.round(p.x), Math.round(p.y), 3, 1);
     }
   });
@@ -265,7 +307,7 @@ function drawAmbient(ctx, theme, layer) {
 
 function drawLighting(ctx, theme) {
   const pal = getWorldPal(theme);
-  const g = ctx.createRadialGradient(WR.CW * 0.4, WR.CH * 0.12, 12, WR.CW * 0.5, WR.CH * 0.5, 320);
+  const g = ctx.createRadialGradient(WR.CW * 0.45, WR.CH * 0.22, 20, WR.CW * 0.5, WR.GROUND, 340);
   g.addColorStop(0, pal.lighting);
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
@@ -280,10 +322,13 @@ function renderParallaxBackground(ctx, world, scrollX) {
   drawLighting(ctx, theme);
 }
 
-/** Dezente Vordergrund-Partikel – nie die ganze Figur verdecken */
-function renderWorldForeground(ctx, world) {
+/** Vordere Deko + Partikel – hinter UI, vor nichts Kritischem */
+function renderWorldForeground(ctx, world, camera) {
   if (!ctx) return;
-  drawAmbient(ctx, wrTheme(world), "front");
+  const theme = wrTheme(world);
+  const scroll = (camera && camera.scrollX) || 0;
+  drawWorldProps(ctx, theme, scroll, "front");
+  drawAmbient(ctx, theme, "front");
 }
 
 function renderWorld(ctx, worldId, camera) {

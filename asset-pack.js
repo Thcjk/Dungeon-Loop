@@ -1,6 +1,5 @@
 /* Dungeon Loop – Asset Pack Loader
-   Lädt vorverarbeitete Sprites aus assets/pack/.
-   Kritische Assets (Helden) zuerst – UI blockiert nicht auf dem vollen Pack. */
+   Lädt ausschließlich assets/pack/ – keine Preview/Szenen mit eingebackenen Figuren. */
 (function (global) {
   const PackAssets = {
     ready: false,
@@ -9,7 +8,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "124",
+    version: "125",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -30,7 +29,6 @@
       if (typeof node === "object") {
         if (typeof node.path === "string") out.add(node.path);
         Object.keys(node).forEach((k) => {
-          // Skip numeric metadata
           if (k === "w" || k === "h" || k === "previewW" || k === "previewH" || k === "name") return;
           this.collectPaths(node[k], out);
         });
@@ -44,7 +42,7 @@
         this.manifest = await res.json();
       } catch (err) {
         console.error("manifest.json fehlt", err);
-        this.manifest = { heroes: {}, enemies: {}, bosses: {}, worlds: {}, fx: {}, ui: {} };
+        this.manifest = { heroes: {}, enemies: {}, bosses: {}, worlds: {}, fx: {}, ui: {}, props: {} };
       }
       return this.manifest;
     },
@@ -61,12 +59,12 @@
     async loadRest() {
       await this.fetchManifest();
       const paths = new Set();
-      ["enemies", "bosses", "fx", "fxSprites", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // Welten: volle Scene + Mid + Boden (keine Preview mit eingebackenen Figuren)
+      ["enemies", "bosses", "fx", "fxSprites", "ui", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
+      // Welten: nur bg + foreground (kein preview/ground/midband/scene – Figuren eingebacken)
       const worlds = this.manifest.worlds || {};
       Object.keys(worlds).forEach((theme) => {
         const w = worlds[theme] || {};
-        ["scene", "mid_clean", "bg", "ground"].forEach((key) => {
+        ["bg", "foreground"].forEach((key) => {
           if (typeof w[key] === "string") paths.add(w[key]);
         });
       });
@@ -134,6 +132,21 @@
     listEnemySlugs(theme) {
       const map = this.manifest?.enemies?.[theme] || {};
       return Object.keys(map);
+    },
+
+    propMeta(theme, index) {
+      const list = this.manifest?.props?.[theme];
+      if (!list || !list[index]) return null;
+      return list[index];
+    },
+
+    prop(theme, index) {
+      const meta = this.propMeta(theme, index);
+      return meta ? this.img(meta.path) : null;
+    },
+
+    listPropCount(theme) {
+      return (this.manifest?.props?.[theme] || []).length;
     },
 
     fxSprite(key) {
