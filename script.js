@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "unique-bg-v119";
+const BUILD_ID = "hero-anim-v120";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -3775,9 +3775,12 @@ function updateFrame(dt) {
   const heroMoving = !!(game.isRunning && !game.isPaused && !game.isDead && (moveLeft || moveRight));
   if (game.isRunning && !game.isPaused && !game.isDead) {
     const spd = CLASSES[game.classKey].moveSpeed;
-    if (moveLeft) { h.x -= spd * dt; h.facing = -1; }
-    if (moveRight) { h.x += spd * dt; h.facing = 1; }
+    h.vx = 0;
+    if (moveLeft) { h.x -= spd * dt; h.facing = -1; h.vx = -spd; }
+    if (moveRight) { h.x += spd * dt; h.facing = 1; h.vx = spd; }
     h.x = Math.max(getHeroMinX(h), Math.min(getHeroMaxX(h), h.x));
+  } else {
+    h.vx = 0;
   }
   h.y = GROUND - h.h;
   pinCharToGround(h);
@@ -4196,13 +4199,8 @@ function render() {
   }
 
   ctx.save();
-  if (h.hitFlash > 0) {
-    ctx.globalAlpha = 0.45 + Math.sin(h.hitFlash) * 0.35;
-    ctx.fillStyle = "rgba(231,76,60,0.25)";
-    ctx.fillRect(h.x - 4, h.y - 8, h.w + 8, h.h + 12);
-  }
+  // Kein weißes/rotes Hitbox-Rechteck – Treffer-Feedback nur am Sprite (HR) + Hurt-Pose
   drawHero(ctx, h, 0, atkOff, hurtOff, world);
-  ctx.globalAlpha = 1;
   ctx.restore();
 
   game.projectiles.forEach((p) => {
