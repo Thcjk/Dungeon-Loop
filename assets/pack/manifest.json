@@ -369,5 +369,582 @@
     "ui_frames_sheet_2": "assets/pack/ui/ui_frames_sheet_2.png",
     "ui_frames_sheet": "assets/pack/ui/ui_frames_sheet.png"
   },
-  "previews": {}
+  "previews": {},
+  "props": {
+    "forest": [
+      {
+        "path": "assets/pack/props/forest/prop_00.png",
+        "w": 134,
+        "h": 103
+      },
+      {
+        "path": "assets/pack/props/forest/prop_01.png",
+        "w": 83,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_02.png",
+        "w": 104,
+        "h": 60
+      },
+      {
+        "path": "assets/pack/props/forest/prop_03.png",
+        "w": 55,
+        "h": 38
+      },
+      {
+        "path": "assets/pack/props/forest/prop_04.png",
+        "w": 89,
+        "h": 48
+      },
+      {
+        "path": "assets/pack/props/forest/prop_05.png",
+        "w": 59,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_06.png",
+        "w": 63,
+        "h": 52
+      },
+      {
+        "path": "assets/pack/props/forest/prop_07.png",
+        "w": 64,
+        "h": 61
+      },
+      {
+        "path": "assets/pack/props/forest/prop_08.png",
+        "w": 33,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_09.png",
+        "w": 126,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_10.png",
+        "w": 109,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_11.png",
+        "w": 96,
+        "h": 87
+      },
+      {
+        "path": "assets/pack/props/forest/prop_12.png",
+        "w": 86,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_13.png",
+        "w": 88,
+        "h": 93
+      },
+      {
+        "path": "assets/pack/props/forest/prop_14.png",
+        "w": 82,
+        "h": 99
+      },
+      {
+        "path": "assets/pack/props/forest/prop_15.png",
+        "w": 86,
+        "h": 94
+      },
+      {
+        "path": "assets/pack/props/forest/prop_16.png",
+        "w": 94,
+        "h": 86
+      },
+      {
+        "path": "assets/pack/props/forest/prop_17.png",
+        "w": 87,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/forest/prop_18.png",
+        "w": 82,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_19.png",
+        "w": 81,
+        "h": 97
+      },
+      {
+        "path": "assets/pack/props/forest/prop_20.png",
+        "w": 85,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/forest/prop_21.png",
+        "w": 81,
+        "h": 94
+      },
+      {
+        "path": "assets/pack/props/forest/prop_22.png",
+        "w": 79,
+        "h": 95
+      },
+      {
+        "path": "assets/pack/props/forest/prop_23.png",
+        "w": 82,
+        "h": 91
+      },
+      {
+        "path": "assets/pack/props/forest/prop_24.png",
+        "w": 79,
+        "h": 94
+      }
+    ],
+    "swamp": [
+      {
+        "path": "assets/pack/props/swamp/prop_00.png",
+        "w": 187,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_01.png",
+        "w": 82,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_02.png",
+        "w": 153,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_03.png",
+        "w": 88,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_04.png",
+        "w": 77,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_05.png",
+        "w": 99,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_06.png",
+        "w": 100,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_07.png",
+        "w": 69,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_08.png",
+        "w": 146,
+        "h": 98
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_09.png",
+        "w": 73,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_10.png",
+        "w": 40,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_11.png",
+        "w": 108,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_12.png",
+        "w": 45,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_13.png",
+        "w": 111,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_14.png",
+        "w": 64,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_15.png",
+        "w": 126,
+        "h": 82
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_16.png",
+        "w": 82,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_17.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_18.png",
+        "w": 115,
+        "h": 82
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_19.png",
+        "w": 68,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_20.png",
+        "w": 76,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_21.png",
+        "w": 74,
+        "h": 110
+      }
+    ],
+    "frost": [
+      {
+        "path": "assets/pack/props/frost/prop_00.png",
+        "w": 165,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_01.png",
+        "w": 166,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_02.png",
+        "w": 178,
+        "h": 88
+      },
+      {
+        "path": "assets/pack/props/frost/prop_03.png",
+        "w": 109,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_04.png",
+        "w": 104,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_05.png",
+        "w": 135,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_06.png",
+        "w": 113,
+        "h": 91
+      },
+      {
+        "path": "assets/pack/props/frost/prop_07.png",
+        "w": 79,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_08.png",
+        "w": 84,
+        "h": 99
+      },
+      {
+        "path": "assets/pack/props/frost/prop_09.png",
+        "w": 79,
+        "h": 107
+      },
+      {
+        "path": "assets/pack/props/frost/prop_10.png",
+        "w": 96,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_11.png",
+        "w": 71,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/frost/prop_12.png",
+        "w": 70,
+        "h": 85
+      },
+      {
+        "path": "assets/pack/props/frost/prop_13.png",
+        "w": 76,
+        "h": 104
+      },
+      {
+        "path": "assets/pack/props/frost/prop_14.png",
+        "w": 89,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/frost/prop_15.png",
+        "w": 71,
+        "h": 83
+      },
+      {
+        "path": "assets/pack/props/frost/prop_16.png",
+        "w": 70,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_17.png",
+        "w": 79,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_18.png",
+        "w": 97,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_19.png",
+        "w": 117,
+        "h": 65
+      },
+      {
+        "path": "assets/pack/props/frost/prop_20.png",
+        "w": 70,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_21.png",
+        "w": 78,
+        "h": 110
+      }
+    ],
+    "fire": [
+      {
+        "path": "assets/pack/props/fire/prop_00.png",
+        "w": 162,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_01.png",
+        "w": 208,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_02.png",
+        "w": 203,
+        "h": 98
+      },
+      {
+        "path": "assets/pack/props/fire/prop_03.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_04.png",
+        "w": 83,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_05.png",
+        "w": 169,
+        "h": 67
+      },
+      {
+        "path": "assets/pack/props/fire/prop_06.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_07.png",
+        "w": 62,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_08.png",
+        "w": 93,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_09.png",
+        "w": 85,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_10.png",
+        "w": 119,
+        "h": 84
+      },
+      {
+        "path": "assets/pack/props/fire/prop_11.png",
+        "w": 91,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_12.png",
+        "w": 67,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_13.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_14.png",
+        "w": 55,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_15.png",
+        "w": 70,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_16.png",
+        "w": 89,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/fire/prop_17.png",
+        "w": 130,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/fire/prop_18.png",
+        "w": 85,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/fire/prop_19.png",
+        "w": 95,
+        "h": 81
+      },
+      {
+        "path": "assets/pack/props/fire/prop_20.png",
+        "w": 89,
+        "h": 89
+      },
+      {
+        "path": "assets/pack/props/fire/prop_21.png",
+        "w": 54,
+        "h": 110
+      }
+    ],
+    "ruins": [
+      {
+        "path": "assets/pack/props/ruins/prop_00.png",
+        "w": 106,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_01.png",
+        "w": 143,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_02.png",
+        "w": 143,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_03.png",
+        "w": 130,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_04.png",
+        "w": 66,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_05.png",
+        "w": 102,
+        "h": 102
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_06.png",
+        "w": 141,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_07.png",
+        "w": 66,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_08.png",
+        "w": 114,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_09.png",
+        "w": 67,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_10.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_11.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_12.png",
+        "w": 98,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_13.png",
+        "w": 94,
+        "h": 95
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_14.png",
+        "w": 98,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_15.png",
+        "w": 56,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_16.png",
+        "w": 93,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_17.png",
+        "w": 49,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_18.png",
+        "w": 94,
+        "h": 88
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_19.png",
+        "w": 48,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_20.png",
+        "w": 48,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_21.png",
+        "w": 71,
+        "h": 110
+      }
+    ]
+  }
 }

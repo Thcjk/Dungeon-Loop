@@ -9,7 +9,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "114",
+    version: "115",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -61,10 +61,11 @@
     async loadRest() {
       await this.fetchManifest();
       const paths = new Set();
-      ["enemies", "bosses", "worlds"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // FX/UI sheets are large – load lazily later if needed; skip blocking boot
+      ["enemies", "bosses", "worlds", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
       await Promise.all([...paths].map((p) => this.loadImage(p)));
       this.ready = true;
+      // invalidate world prop layouts once images arrive
+      if (typeof invalidateParallaxCache === "function") invalidateParallaxCache();
       return this.manifest;
     },
 
