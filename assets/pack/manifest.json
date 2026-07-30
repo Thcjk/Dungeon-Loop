@@ -313,6 +313,8 @@
       "tileset": "assets/pack/worlds/forest/tileset.png",
       "deco": "assets/pack/worlds/forest/deco.png",
       "bg": "assets/pack/worlds/forest/bg.png",
+      "backdrop": "assets/pack/worlds/forest/backdrop.png",
+      "lane": "assets/pack/worlds/forest/lane.png",
       "foreground": "assets/pack/worlds/forest/foreground.png",
       "terrain": "assets/pack/worlds/forest/terrain.png",
       "path": "assets/pack/worlds/forest/path.png"
@@ -326,6 +328,8 @@
       "deco": "assets/pack/worlds/swamp/deco.png",
       "tileset": "assets/pack/worlds/swamp/tileset.png",
       "bg": "assets/pack/worlds/swamp/bg.png",
+      "backdrop": "assets/pack/worlds/swamp/backdrop.png",
+      "lane": "assets/pack/worlds/swamp/lane.png",
       "foreground": "assets/pack/worlds/swamp/foreground.png",
       "terrain": "assets/pack/worlds/swamp/terrain.png",
       "path": "assets/pack/worlds/swamp/path.png"
@@ -339,6 +343,8 @@
       "tileset": "assets/pack/worlds/frost/tileset.png",
       "deco": "assets/pack/worlds/frost/deco.png",
       "bg": "assets/pack/worlds/frost/bg.png",
+      "backdrop": "assets/pack/worlds/frost/backdrop.png",
+      "lane": "assets/pack/worlds/frost/lane.png",
       "foreground": "assets/pack/worlds/frost/foreground.png",
       "terrain": "assets/pack/worlds/frost/terrain.png",
       "path": "assets/pack/worlds/frost/path.png"
@@ -352,6 +358,8 @@
       "tileset": "assets/pack/worlds/fire/tileset.png",
       "deco": "assets/pack/worlds/fire/deco.png",
       "bg": "assets/pack/worlds/fire/bg.png",
+      "backdrop": "assets/pack/worlds/fire/backdrop.png",
+      "lane": "assets/pack/worlds/fire/lane.png",
       "foreground": "assets/pack/worlds/fire/foreground.png",
       "terrain": "assets/pack/worlds/fire/terrain.png",
       "path": "assets/pack/worlds/fire/path.png"
@@ -365,6 +373,8 @@
       "deco": "assets/pack/worlds/ruins/deco.png",
       "tileset": "assets/pack/worlds/ruins/tileset.png",
       "bg": "assets/pack/worlds/ruins/bg.png",
+      "backdrop": "assets/pack/worlds/ruins/backdrop.png",
+      "lane": "assets/pack/worlds/ruins/lane.png",
       "foreground": "assets/pack/worlds/ruins/foreground.png",
       "terrain": "assets/pack/worlds/ruins/terrain.png",
       "path": "assets/pack/worlds/ruins/path.png"

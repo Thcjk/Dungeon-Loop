@@ -8,7 +8,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "126",
+    version: "127",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -60,11 +60,11 @@
       await this.fetchManifest();
       const paths = new Set();
       ["enemies", "bosses", "fx", "fxSprites", "ui", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // Welten: bg + terrain (integrierter Boden/Weg, keine Figuren)
+      // Welten: backdrop (Deko eingebacken) + lane (Weg), bg als Fallback
       const worlds = this.manifest.worlds || {};
       Object.keys(worlds).forEach((theme) => {
         const w = worlds[theme] || {};
-        ["bg", "terrain", "path"].forEach((key) => {
+        ["backdrop", "lane", "bg", "terrain", "path"].forEach((key) => {
           if (typeof w[key] === "string") paths.add(w[key]);
         });
       });
