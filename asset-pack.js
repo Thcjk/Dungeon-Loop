@@ -9,7 +9,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "117",
+    version: "118",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -62,11 +62,11 @@
       await this.fetchManifest();
       const paths = new Set();
       ["enemies", "bosses", "fx", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // Welten: nur Side-Scroller-Hintergrund + Boden (keine Props/Deco/Preview-Figuren)
+      // Welten: nur flache deco-BG + Boden (kein midband/preview mit Helden)
       const worlds = this.manifest.worlds || {};
       Object.keys(worlds).forEach((theme) => {
         const w = worlds[theme] || {};
-        ["bg", "ground", "midband"].forEach((key) => {
+        ["bg", "ground"].forEach((key) => {
           if (typeof w[key] === "string") paths.add(w[key]);
         });
       });

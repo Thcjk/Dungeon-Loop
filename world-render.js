@@ -149,18 +149,16 @@ function drawTiled(ctx, img, scroll, y, h, speed) {
   }
 }
 
-/** Sauberes BG für jede Welt: prefer bg.png, sonst Midband/Preview-Oberteil */
+/** Sauberes BG für jede Welt: nur flat deco (bg.png) – nie Midband/Preview mit Helden */
 function resolveWorldBackdrop(theme) {
   if (typeof PackAssets === "undefined") return null;
-  return PackAssets.worldImg(theme, "bg")
-    || PackAssets.worldImg(theme, "midband")
-    || PackAssets.worldImg(theme, "preview")
-    || null;
+  return PackAssets.worldImg(theme, "bg") || null;
 }
 
 /**
  * Einheitlicher Side-Scroller-Hintergrund für ALLE Welten.
- * Keine deco/tileset/props/preview-Figuren in der Kampfbahn.
+ * Flache Fläche: nur deco-BG (keine Helden/Gegner eingebacken).
+ * Nie deco-sheets / preview / midband mit Figuren.
  */
 function drawSideScrollerBackdrop(ctx, theme, scrollX) {
   const t = wrTheme(theme);
@@ -177,32 +175,21 @@ function drawSideScrollerBackdrop(ctx, theme, scrollX) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, WR.CW, WR.CH);
 
-  // Nur oberhalb der Kampfbahn zeichnen
+  // Nur oberhalb der Kampfbahn – flache Dec-Ebene
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, WR.CW, laneTop);
   ctx.clip();
 
   if (bg) {
-    // bg.png ist bereits nur Himmel/Ferne – sonst nur oberes Drittel nutzen
-    const isCleanBg = bg.height <= 200 || (typeof PackAssets !== "undefined" && PackAssets.worldImg(t, "bg") === bg);
-    if (isCleanBg) {
-      drawTiled(ctx, bg, scrollX, 0, laneTop, WR.SPEEDS[1]);
-    } else {
-      const srcH = Math.floor(bg.height * 0.38);
-      const destH = laneTop;
-      const pw = Math.round(bg.width * (destH / Math.max(1, srcH)));
-      let sx = -Math.floor((scrollX * WR.SPEEDS[1]) % Math.max(1, pw));
-      ctx.drawImage(bg, 0, 0, bg.width, srcH, sx, 0, pw, destH);
-      ctx.drawImage(bg, 0, 0, bg.width, srcH, sx + pw, 0, pw, destH);
-    }
+    drawTiled(ctx, bg, scrollX, 0, laneTop, WR.SPEEDS[1]);
   }
 
   ctx.fillStyle = pal.fog;
   ctx.fillRect(0, 0, WR.CW, Math.floor(laneTop * 0.5));
   ctx.restore();
 
-  // Solide Kampfbahn – deckt Figuren/Kisten/Zäune in ALLEN Welten ab
+  // Solide Kampfbahn – Held/Gegner stehen davor, nichts aus dem BG
   ctx.fillStyle = pal.laneFill;
   ctx.fillRect(0, laneTop, WR.CW, WR.CH - laneTop);
 
