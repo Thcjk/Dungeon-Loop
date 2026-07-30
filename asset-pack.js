@@ -1,5 +1,5 @@
 /* Dungeon Loop – Asset Pack Loader
-   Lädt ausschließlich assets/pack/ – keine Preview/Szenen mit eingebackenen Figuren. */
+   Lädt assets/pack/ – Welten lazy pro Theme, keine Runtime-Props. */
 (function (global) {
   const PackAssets = {
     ready: false,
@@ -7,8 +7,10 @@
     loading: null,
     manifest: null,
     images: Object.create(null),
+    worldReady: Object.create(null),
+    worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "127",
+    version: "128",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -47,6 +49,43 @@
       return this.manifest;
     },
 
+    worldPaths(theme) {
+      const paths = new Set();
+      const w = this.manifest?.worlds?.[theme];
+      if (w) ["backdrop", "lane", "bg"].forEach((key) => { if (w[key]) paths.add(w[key]); });
+      const enemies = this.manifest?.enemies?.[theme] || {};
+      Object.values(enemies).forEach((e) => { if (e?.path) paths.add(e.path); });
+      const boss = this.manifest?.bosses?.[theme];
+      if (boss?.path) paths.add(boss.path);
+      return paths;
+    },
+
+    async ensureWorld(theme) {
+      if (!theme) return;
+      await this.fetchManifest();
+      if (this.worldReady[theme]) return;
+      if (this.worldLoading[theme]) return this.worldLoading[theme];
+
+      this.worldLoading[theme] = (async () => {
+        const paths = this.worldPaths(theme);
+        await Promise.all([...paths].map((p) => this.loadImage(p)));
+        this.worldReady[theme] = true;
+        delete this.worldLoading[theme];
+        if (typeof invalidateParallaxCache === "function") invalidateParallaxCache();
+      })().catch((err) => {
+        delete this.worldLoading[theme];
+        throw err;
+      });
+
+      return this.worldLoading[theme];
+    },
+
+    prefetchWorlds(themes) {
+      (themes || []).forEach((theme) => {
+        this.ensureWorld(theme).catch(() => {});
+      });
+    },
+
     async loadHeroes() {
       await this.fetchManifest();
       const paths = new Set();
@@ -59,17 +98,10 @@
     async loadRest() {
       await this.fetchManifest();
       const paths = new Set();
-      ["enemies", "bosses", "fx", "fxSprites", "ui", "props"].forEach((k) => this.collectPaths(this.manifest[k], paths));
-      // Welten: backdrop (Deko eingebacken) + lane (Weg), bg als Fallback
-      const worlds = this.manifest.worlds || {};
-      Object.keys(worlds).forEach((theme) => {
-        const w = worlds[theme] || {};
-        ["backdrop", "lane", "bg", "terrain", "path"].forEach((key) => {
-          if (typeof w[key] === "string") paths.add(w[key]);
-        });
-      });
+      ["fx", "fxSprites", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
       await Promise.all([...paths].map((p) => this.loadImage(p)));
       this.ready = true;
+      this.ensureWorld("forest").catch(() => {});
       if (typeof invalidateParallaxCache === "function") invalidateParallaxCache();
       return this.manifest;
     },

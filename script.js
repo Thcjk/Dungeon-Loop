@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "integrated-lane-v127";
+const BUILD_ID = "save-load-fast-v128";
 
 /** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
 const DEBUG_HITBOXES = false;
@@ -1057,24 +1057,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   startHeroCardLoop();
 
   if (typeof PackAssets !== "undefined") {
+    const dataLoad = loadGameData();
     try {
       await PackAssets.loadHeroes();
       drawPreviews();
       startHeroCardLoop();
-      // Welten/Gegner im Hintergrund – Starten bleibt möglich
       PackAssets.loadRest().then(() => {
         initParallaxBackground(getWorld());
         invalidateParallaxCache?.();
       }).catch((err) => console.warn("Asset-Pack Rest laden fehlgeschlagen", err));
+      prefetchSaveSlotWorlds();
     } catch (err) {
       console.warn("Asset-Pack Helden laden fehlgeschlagen", err);
     }
+    dataLoad.catch(() => {});
+  } else {
+    loadGameData().catch(() => {});
   }
 
   initParallaxBackground(getWorld());
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
   initSupabase();
-  await loadGameData();
   window.addEventListener("beforeunload", () => {
     if (game.playerName) saveLocalPlayer();
     if (game.isRunning && !game.isDead) saveActiveRun(true);
@@ -2219,7 +2222,10 @@ function showMenuPanel(which) {
     el.classList.toggle("hidden", key !== which);
   });
   if (which === "home") renderHomeSlotPreview();
-  if (which === "load") renderSaveSlotList();
+  if (which === "load") {
+    renderSaveSlotList();
+    prefetchSaveSlotWorlds();
+  }
   if (which === "new-slot") renderNewSlotPicker();
   if (which === "new") {
     const lab = $("new-slot-label");
@@ -2704,6 +2710,7 @@ async function loadSaveSlot(slotIndex) {
   selectClass(game.classKey);
   syncUnlockedAbilities();
   const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(slotIndex));
+  await ensureRunWorldAssets(run?.dungeonLevel || 1);
   const msg = run
     ? "Slot " + (slotIndex + 1) + ": " + slot.name + " – Dungeon " + run.dungeonLevel
     : "Slot " + (slotIndex + 1) + ": " + slot.name + " geladen";
@@ -2737,6 +2744,7 @@ async function loadPlayer(opts) {
     selectClass(game.classKey);
     syncUnlockedAbilities();
     const run = forceNew ? null : (loadActiveRunFor(name) || loadActiveRunFor(slotRunKey(game.slotIndex)));
+    await ensureRunWorldAssets(run?.dungeonLevel || 1);
     const msg = run
       ? "Willkommen zurück, " + name + "! Spielstand Dungeon " + run.dungeonLevel + " wird fortgesetzt."
       : forceNew
@@ -2752,6 +2760,7 @@ async function loadPlayer(opts) {
   saveLocalPlayer();
   selectClass(game.classKey);
   syncUnlockedAbilities();
+  await ensureRunWorldAssets(1);
   enterGame("Neuer Abenteurer: " + name + " (" + (CLASSES[game.classKey]?.name || "") + ")!", { forceNew: true, autoRun: true });
 }
 
@@ -3136,7 +3145,7 @@ function startRun() {
   });
 }
 
-function continueOrStartRun() {
+async function continueOrStartRun() {
   unlockAudio();
   if (game.isRunning && !game.isDead) {
     ensureGameLoop();
@@ -3144,9 +3153,11 @@ function continueOrStartRun() {
   }
   const existing = game.playerName ? loadActiveRunFor(game.playerName) : null;
   if (existing) {
+    await ensureRunWorldAssets(existing.dungeonLevel || 1);
     resumeRun(existing);
     return;
   }
+  await ensureRunWorldAssets(1);
   startRun();
 }
 
@@ -3308,6 +3319,30 @@ function heroStats() {
     maxHp: h.maxHp + lb.hp, maxMana: h.maxMana + lb.mana,
     goldBonus: h.goldBonus + lb.goldBonus
   };
+}
+
+function getWorldForLevel(level) {
+  const lv = Math.max(1, Math.floor(Number(level) || 1));
+  let w = WORLDS[0];
+  for (const x of WORLDS) if (lv >= x.min) w = x;
+  return w;
+}
+
+async function ensureRunWorldAssets(dungeonLevel) {
+  if (typeof PackAssets === "undefined") return;
+  const world = getWorldForLevel(dungeonLevel);
+  await PackAssets.ensureWorld(world.theme);
+}
+
+function prefetchSaveSlotWorlds() {
+  if (typeof PackAssets === "undefined") return;
+  const themes = new Set(["forest"]);
+  loadSaveSlots().forEach((slot, i) => {
+    if (!slot) return;
+    const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(i));
+    themes.add(getWorldForLevel(run?.dungeonLevel || 1).theme);
+  });
+  PackAssets.prefetchWorlds([...themes]);
 }
 
 function getWorld() {
@@ -4181,6 +4216,7 @@ function onEnemyKill(e) {
   game.monstersDefeated++; game.dungeonLevel++;
   const newWorld = getWorld();
   if (newWorld.name !== oldWorld.name) {
+    PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
     initWorldBackground();
     startWorldTransition(newWorld);
     addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, aber machbar!", "boss");
