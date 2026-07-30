@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "hero-anim-v120";
+const BUILD_ID = "slots-v121";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -654,7 +654,7 @@ let enemyId = 0;
 let upgradePause = false;
 
 const game = {
-  playerName: "", classKey: "warrior", playerId: null,
+  playerName: "", classKey: "warrior", playerId: null, slotIndex: 0,
   totalGold: 0, upgrades: {},
   isRunning: false, isPaused: false, isDead: false,
   dungeonLevel: 1, runGold: 0, runXp: 0, playerLevel: 1, monstersDefeated: 0,
@@ -690,17 +690,22 @@ let audioPrefs = { musicEnabled: true, sfxEnabled: true };
 
 /** Meta-Fortschritt – Fähigkeiten-Freischaltung & Account-Level */
 const META_STORAGE_KEY = "dungeon_loop_meta";
-/** Offline-Spielstände – Gold, Upgrades, Klasse pro Spielername */
+/** Offline-Spielstände – max. 3 Slots */
 const PLAYERS_STORAGE_KEY = "dungeon_loop_players";
+const SAVE_SLOTS_KEY = "dungeon_loop_save_slots_v2";
+const MAX_SAVE_SLOTS = 3;
 /** Aktiver Run – Fortsetzen nach Reload / Tab schließen */
 const RUN_STORAGE_KEY = "dungeon_loop_active_run";
-/** Zuletzt genutzter Spielername (Eingabefeld vorausfüllen) */
+/** Zuletzt genutzter Slot / Spieler */
 const LAST_PLAYER_KEY = "dungeon_loop_last_player";
-/** Lokale Highscores – ohne Internet */
+const LAST_SLOT_KEY = "dungeon_loop_last_slot";
+/** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
 const RUN_SAVE_VERSION = 1;
 let runSaveTimer = 0;
 let runSaveDirty = false;
+/** Aktuell gewählter Speicher-Slot (0..2) */
+let pendingSlotIndex = 0;
 
 /** Gegner-KI: unterschiedliche Kampfstile pro Monstertyp */
 const ENEMY_AI = {
@@ -1059,7 +1064,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   initParallaxBackground(getWorld());
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
-  loadLeaderboard();
   initSupabase();
   await loadGameData();
   window.addEventListener("beforeunload", () => {
@@ -1723,9 +1727,10 @@ function bindEvents() {
     });
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
-  bind("btn-menu-new", () => { unlockAudio(); showMenuPanel("new"); });
+  bind("btn-menu-new", () => { unlockAudio(); showMenuPanel("new-slot"); });
   bind("btn-menu-load", () => { unlockAudio(); showMenuPanel("load"); });
-  bind("btn-new-back", () => showMenuPanel("home"));
+  bind("btn-new-slot-back", () => showMenuPanel("home"));
+  bind("btn-new-back", () => showMenuPanel("new-slot"));
   bind("btn-load-back", () => showMenuPanel("home"));
   bind("btn-start-new", () => { startNewGameFromMenu(); });
   bind("btn-to-menu", () => { returnToMainMenu(); });
@@ -1739,7 +1744,7 @@ function bindEvents() {
   bind("btn-gameover-upgrade", goToUpgrades);
   bind("btn-open-upgrades", toggleUpgrades);
   bind("btn-close-upgrades", hideUpgrades);
-  bind("btn-reload-leaderboard", loadLeaderboard);
+  bind("btn-reload-leaderboard", () => {});
   bind("btn-fullscreen", toggleFullscreen);
   bind("btn-toggle-music", toggleMusic);
   bind("btn-toggle-sfx", toggleSfx);
@@ -2025,63 +2030,156 @@ function loadScript(url) {
 }
 
 // ============================================
-// SPIELER – Offline-Speicher (localStorage) + optional Supabase
+// SPIELER – 3 feste Speicher-Slots (localStorage)
 // ============================================
 
 function playerStorageKey(name) {
   return (name || "").trim().toLowerCase();
 }
 
-function loadPlayersStore() {
+function slotRunKey(slotIndex) {
+  return "slot_" + Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, slotIndex | 0));
+}
+
+function emptySlots() {
+  return [null, null, null];
+}
+
+function migrateLegacyPlayersToSlots(slots) {
   try {
     const raw = localStorage.getItem(PLAYERS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch (_) {
-    return {};
-  }
+    if (!raw) return slots;
+    const store = JSON.parse(raw);
+    const entries = Object.keys(store).map((k) => store[k]).filter((p) => p && p.name);
+    entries.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
+      if (slots[i] || !entries[i]) continue;
+      const p = entries[i];
+      slots[i] = {
+        name: p.name,
+        classKey: normalizeClassKey(p.classKey),
+        totalGold: Math.max(0, Math.floor(Number(p.totalGold) || 0)),
+        upgrades: { ...emptyUpgrades(), ...(p.upgrades || {}) },
+        savedAt: p.savedAt || Date.now()
+      };
+    }
+  } catch (_) { /* ignore */ }
+  return slots;
+}
+
+function loadSaveSlots() {
+  try {
+    const raw = localStorage.getItem(SAVE_SLOTS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      const slots = emptySlots();
+      if (Array.isArray(data)) {
+        for (let i = 0; i < MAX_SAVE_SLOTS; i++) slots[i] = data[i] || null;
+        return slots;
+      }
+      if (data && Array.isArray(data.slots)) {
+        for (let i = 0; i < MAX_SAVE_SLOTS; i++) slots[i] = data.slots[i] || null;
+        return slots;
+      }
+    }
+  } catch (_) { /* ignore */ }
+  return migrateLegacyPlayersToSlots(emptySlots());
+}
+
+function persistSaveSlots(slots) {
+  try {
+    localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify({ version: 2, slots }));
+  } catch (_) {}
+}
+
+function getSlot(slotIndex) {
+  const slots = loadSaveSlots();
+  const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, slotIndex | 0));
+  return slots[i] || null;
+}
+
+function countFilledSlots() {
+  return loadSaveSlots().filter(Boolean).length;
 }
 
 function loadLocalPlayer(name) {
+  // Legacy + Slot-Lookup nach Name
+  const slots = loadSaveSlots();
   const key = playerStorageKey(name);
-  if (!key) return null;
-  return loadPlayersStore()[key] || null;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i] && playerStorageKey(slots[i].name) === key) {
+      return { ...slots[i], slotIndex: i };
+    }
+  }
+  try {
+    const raw = localStorage.getItem(PLAYERS_STORAGE_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    return store[key] || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function saveLocalPlayer() {
   if (!game.playerName) return;
-  const key = playerStorageKey(game.playerName);
-  if (!key) return;
-  const store = loadPlayersStore();
-  store[key] = {
+  const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, game.slotIndex | 0));
+  const slots = loadSaveSlots();
+  slots[i] = {
     name: game.playerName,
     classKey: game.classKey,
     totalGold: Math.max(0, Math.floor(Number(game.totalGold) || 0)),
     upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) },
     savedAt: Date.now()
   };
-  try { localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
+  persistSaveSlots(slots);
+  // Legacy-Spiegel für alte Pfade
+  try {
+    const store = {};
+    slots.forEach((s) => {
+      if (!s || !s.name) return;
+      store[playerStorageKey(s.name)] = s;
+    });
+    localStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(store));
+  } catch (_) {}
   try { localStorage.setItem(LAST_PLAYER_KEY, game.playerName); } catch (_) {}
+  try { localStorage.setItem(LAST_SLOT_KEY, String(i)); } catch (_) {}
+}
+
+function clearSaveSlot(slotIndex) {
+  const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, slotIndex | 0));
+  const slots = loadSaveSlots();
+  const old = slots[i];
+  slots[i] = null;
+  persistSaveSlots(slots);
+  if (old && old.name) clearActiveRun(old.name);
+  clearActiveRun(slotRunKey(i));
 }
 
 function getLastPlayerName() {
   try { return (localStorage.getItem(LAST_PLAYER_KEY) || "").trim(); } catch (_) { return ""; }
 }
 
+function getLastSlotIndex() {
+  try {
+    const v = parseInt(localStorage.getItem(LAST_SLOT_KEY) || "0", 10);
+    return Number.isFinite(v) ? Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, v)) : 0;
+  } catch (_) { return 0; }
+}
+
 function listSavedPlayers() {
-  const store = loadPlayersStore();
-  return Object.keys(store).map((key) => {
-    const p = store[key];
+  return loadSaveSlots().map((p, i) => {
     if (!p || !p.name) return null;
-    const run = loadActiveRunFor(p.name);
+    const run = loadActiveRunFor(p.name) || loadActiveRunFor(slotRunKey(i));
     return {
-      key,
+      key: slotRunKey(i),
+      slotIndex: i,
       name: p.name,
       classKey: normalizeClassKey(p.classKey),
       totalGold: Math.max(0, Math.floor(Number(p.totalGold) || 0)),
       savedAt: p.savedAt || 0,
       run
     };
-  }).filter(Boolean).sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  }).filter(Boolean);
 }
 
 function formatSaveDate(ts) {
@@ -2097,16 +2195,90 @@ function formatSaveDate(ts) {
 }
 
 function showMenuPanel(which) {
-  const panels = ["menu-home", "menu-new", "menu-load"];
+  const panels = ["menu-home", "menu-new-slot", "menu-new", "menu-load"];
   panels.forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle("hidden", id !== which);
   });
+  if (which === "home") renderHomeSlotPreview();
   if (which === "load") renderSaveSlotList();
+  if (which === "new-slot") renderNewSlotPicker();
   if (which === "new") {
+    const lab = $("new-slot-label");
+    if (lab) lab.textContent = "Slot " + (pendingSlotIndex + 1);
     updateHeroCardUI();
     renderSetupAbilityHint();
+  }
+}
+
+function buildSlotButtonHtml(slotIndex, data, mode) {
+  const n = slotIndex + 1;
+  if (!data) {
+    return "<div class=\"save-slot-main\">" +
+      "<strong class=\"save-slot-name\">Slot " + n + "</strong>" +
+      "<span class=\"save-slot-class\">Leer</span></div>" +
+      "<div class=\"save-slot-meta\"><span>Bereit für neues Spiel</span></div>" +
+      "<span class=\"save-slot-action\">" + (mode === "load" ? "–" : "Wählen") + "</span>";
+  }
+  const cls = CLASSES[normalizeClassKey(data.classKey)] || CLASSES.warrior;
+  const run = data.run || loadActiveRunFor(data.name) || loadActiveRunFor(slotRunKey(slotIndex));
+  return "<div class=\"save-slot-main\">" +
+    "<strong class=\"save-slot-name\">Slot " + n + " · " + escapeHtml(data.name) + "</strong>" +
+    "<span class=\"save-slot-class\">" + escapeHtml(cls.name) + "</span></div>" +
+    "<div class=\"save-slot-meta\">" +
+      "<span>🪙 " + (data.totalGold || 0) + "</span>" +
+      (run
+        ? "<span>Dungeon " + run.dungeonLevel + " · Held-Lv " + run.playerLevel + "</span>"
+        : "<span>Bereit für neuen Run</span>") +
+      "<span class=\"save-slot-date\">" + formatSaveDate(run?.savedAt || data.savedAt) + "</span>" +
+    "</div>" +
+    "<span class=\"save-slot-action\">" +
+      (mode === "load" ? (run ? "Weiter" : "Laden") : "Überschreiben") +
+    "</span>";
+}
+
+function renderHomeSlotPreview() {
+  const list = $("home-slot-preview");
+  if (!list) return;
+  const slots = loadSaveSlots();
+  list.innerHTML = "";
+  for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
+    const el = document.createElement("div");
+    el.className = "save-slot save-slot--readonly " + (slots[i] ? normalizeClassKey(slots[i].classKey) : "empty");
+    el.innerHTML = buildSlotButtonHtml(i, slots[i] ? {
+      ...slots[i],
+      run: loadActiveRunFor(slots[i].name) || loadActiveRunFor(slotRunKey(i))
+    } : null, "preview");
+    list.appendChild(el);
+  }
+}
+
+function renderNewSlotPicker() {
+  const list = $("new-slot-list");
+  if (!list) return;
+  const slots = loadSaveSlots();
+  list.innerHTML = "";
+  for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const filled = !!slots[i];
+    btn.className = "save-slot " + (filled ? normalizeClassKey(slots[i].classKey) : "empty");
+    btn.innerHTML = buildSlotButtonHtml(i, filled ? {
+      ...slots[i],
+      run: loadActiveRunFor(slots[i].name) || loadActiveRunFor(slotRunKey(i))
+    } : null, "new");
+    btn.addEventListener("click", () => {
+      if (filled) {
+        const ok = confirm("Slot " + (i + 1) + " („" + slots[i].name + "“) überschreiben?\nAlter Stand und Run gehen verloren.");
+        if (!ok) return;
+      }
+      pendingSlotIndex = i;
+      const nameInput = $("player-name");
+      if (nameInput) nameInput.value = filled ? slots[i].name : "";
+      showMenuPanel("new");
+    });
+    list.appendChild(btn);
   }
 }
 
@@ -2114,38 +2286,33 @@ function renderSaveSlotList() {
   const list = $("save-slot-list");
   const hint = $("load-slots-hint");
   if (!list) return;
-  const slots = listSavedPlayers();
+  const slots = loadSaveSlots();
   list.innerHTML = "";
-  if (!slots.length) {
-    if (hint) hint.textContent = "Noch keine Spielstände. Starte ein neues Spiel.";
-    return;
-  }
-  if (hint) hint.textContent = slots.length + " Spielstand" + (slots.length === 1 ? "" : "e") + " gefunden.";
-  slots.forEach((slot) => {
-    const cls = CLASSES[slot.classKey] || CLASSES.warrior;
-    const run = slot.run;
+  let filled = 0;
+  for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
+    const data = slots[i];
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "save-slot " + slot.classKey;
-    btn.innerHTML =
-      "<div class=\"save-slot-main\">" +
-        "<strong class=\"save-slot-name\">" + escapeHtml(slot.name) + "</strong>" +
-        "<span class=\"save-slot-class\">" + escapeHtml(cls.name) + "</span>" +
-      "</div>" +
-      "<div class=\"save-slot-meta\">" +
-        "<span>🪙 " + slot.totalGold + "</span>" +
-        (run
-          ? "<span>Dungeon " + run.dungeonLevel + " · Held-Lv " + run.playerLevel + "</span>"
-          : "<span>Kein aktiver Run</span>") +
-        "<span class=\"save-slot-date\">" + formatSaveDate(run?.savedAt || slot.savedAt) + "</span>" +
-      "</div>" +
-      "<span class=\"save-slot-action\">" + (run ? "Weiter spielen" : "Laden") + "</span>";
-    btn.addEventListener("click", () => {
-      unlockAudio();
-      loadPlayerSlot(slot.name, { forceNew: false });
-    });
+    btn.className = "save-slot " + (data ? normalizeClassKey(data.classKey) : "empty");
+    btn.disabled = !data;
+    btn.innerHTML = buildSlotButtonHtml(i, data ? {
+      ...data,
+      run: loadActiveRunFor(data.name) || loadActiveRunFor(slotRunKey(i))
+    } : null, "load");
+    if (data) {
+      filled++;
+      btn.addEventListener("click", () => {
+        unlockAudio();
+        loadSaveSlot(i);
+      });
+    }
     list.appendChild(btn);
-  });
+  }
+  if (hint) {
+    hint.textContent = filled
+      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt – Tippen lädt direkt in den Run."
+      : "Noch keine Spielstände. Starte ein neues Spiel.";
+  }
 }
 
 function escapeHtml(str) {
@@ -2165,19 +2332,13 @@ function restoreSetupFromSave() {
   const last = getLastPlayerName();
   const nameInput = $("player-name");
   if (last && nameInput && !nameInput.value) nameInput.value = last;
-  const slots = listSavedPlayers();
+  pendingSlotIndex = getLastSlotIndex();
+  const filled = countFilledSlots();
   const homeHint = $("menu-home-hint");
-  const run = peekActiveRun();
   if (homeHint) {
-    if (run) {
-      homeHint.textContent = "Aktiver Run: " + run.playerName + " · Dungeon " + run.dungeonLevel +
-        " – unter „Spielstand laden“ fortsetzen.";
-    } else if (slots.length) {
-      homeHint.textContent = slots.length + " Spielstand" + (slots.length === 1 ? "" : "e") +
-        " gespeichert. Oder starte ein neues Spiel.";
-    } else {
-      homeHint.textContent = "Fortschritt wird lokal gespeichert – kein Internet nötig.";
-    }
+    homeHint.textContent = filled
+      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt. Laden = direkt weiter · Neu = Heldenwahl."
+      : "Neues Spiel → Heldenwahl · Bis zu 3 Spielstände möglich.";
   }
   showMenuPanel("home");
   updateRunButtons();
@@ -2305,6 +2466,7 @@ function saveActiveRun(force) {
     buildId: BUILD_ID,
     savedAt: Date.now(),
     playerName: game.playerName,
+    slotIndex: game.slotIndex | 0,
     classKey: game.classKey,
     dungeonLevel: game.dungeonLevel,
     runGold: game.runGold,
@@ -2323,10 +2485,12 @@ function saveActiveRun(force) {
     enemies: game.enemies.filter((e) => e && e.hp > 0 && !e.dead).map(serializeEnemy)
   };
   const key = playerStorageKey(game.playerName);
-  if (!key) return false;
+  const slotKey = slotRunKey(game.slotIndex);
+  if (!key && !slotKey) return false;
   try {
     const store = loadRunStore();
-    store[key] = payload;
+    if (key) store[key] = payload;
+    store[slotKey] = payload;
     localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
     runSaveDirty = false;
     return true;
@@ -2504,11 +2668,29 @@ function applyPlayerSave(data) {
   game.classKey = normalizeClassKey(data.classKey);
   game.totalGold = Math.max(0, Math.floor(Number(data.totalGold) || 0));
   game.upgrades = { ...emptyUpgrades(), ...(data.upgrades || {}) };
+  if (Number.isFinite(data.slotIndex)) game.slotIndex = data.slotIndex;
 }
 
-function showLeaderboardSection() {
-  const sec = $("leaderboard-section");
-  if (sec) sec.classList.remove("hidden");
+function showLeaderboardSection() { /* Rangliste entfernt */ }
+
+async function loadSaveSlot(slotIndex) {
+  const slot = getSlot(slotIndex);
+  if (!slot || !slot.name) {
+    const hint = $("load-slots-hint");
+    if (hint) hint.textContent = "Dieser Slot ist leer.";
+    return;
+  }
+  game.slotIndex = slotIndex;
+  game.playerName = slot.name;
+  game.playerId = null;
+  applyPlayerSave({ ...slot, slotIndex });
+  selectClass(game.classKey);
+  syncUnlockedAbilities();
+  const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(slotIndex));
+  const msg = run
+    ? "Slot " + (slotIndex + 1) + ": " + slot.name + " – Dungeon " + run.dungeonLevel
+    : "Slot " + (slotIndex + 1) + ": " + slot.name + " geladen";
+  enterGame(msg, { forceNew: false, autoRun: true });
 }
 
 async function loadPlayer(opts) {
@@ -2520,30 +2702,30 @@ async function loadPlayer(opts) {
   }
   game.playerName = name;
   game.playerId = null;
+  if (Number.isFinite(opts && opts.slotIndex)) game.slotIndex = opts.slotIndex;
   const forceNew = !!(opts && opts.forceNew);
   const forceClass = opts && opts.forceClass ? normalizeClassKey(opts.forceClass) : null;
-  if (forceNew) clearActiveRun(name);
+  if (forceNew) {
+    clearActiveRun(name);
+    clearActiveRun(slotRunKey(game.slotIndex));
+  }
 
-  const saved = loadLocalPlayer(name);
+  const saved = forceNew ? null : loadLocalPlayer(name);
   if (saved) {
     applyPlayerSave(saved);
-    // Neues Spiel: gewählte Klasse hat Vorrang vor altem Speicherstand
     if (forceClass) {
       game.classKey = forceClass;
       saveLocalPlayer();
     }
     selectClass(game.classKey);
     syncUnlockedAbilities();
-    showLeaderboardSection();
-    loadLeaderboard();
-    const run = forceNew ? null : loadActiveRunFor(name);
+    const run = forceNew ? null : (loadActiveRunFor(name) || loadActiveRunFor(slotRunKey(game.slotIndex)));
     const msg = run
       ? "Willkommen zurück, " + name + "! Spielstand Dungeon " + run.dungeonLevel + " wird fortgesetzt."
       : forceNew
         ? "Neues Spiel als " + (CLASSES[game.classKey]?.name || game.classKey) + " – " + name + "!"
-        : "Willkommen zurück, " + name + "! (Offline-Speicherstand geladen)";
-    enterGame(msg, { forceNew });
-    if (!forceNew) await tryLoadCloudPlayer(name);
+        : "Willkommen zurück, " + name + "!";
+    enterGame(msg, { forceNew, autoRun: true });
     return;
   }
 
@@ -2553,10 +2735,7 @@ async function loadPlayer(opts) {
   saveLocalPlayer();
   selectClass(game.classKey);
   syncUnlockedAbilities();
-  showLeaderboardSection();
-  loadLeaderboard();
-  enterGame("Neuer Abenteurer: " + name + " (" + (CLASSES[game.classKey]?.name || "") + ")!", { forceNew: true });
-  // Kein Cloud-Overwrite der frisch gewählten Klasse
+  enterGame("Neuer Abenteurer: " + name + " (" + (CLASSES[game.classKey]?.name || "") + ")!", { forceNew: true, autoRun: true });
 }
 
 async function loadPlayerSlot(name, opts) {
@@ -2573,19 +2752,15 @@ async function startNewGameFromMenu() {
   }
   const classKey = getSelectedClassFromUI();
   game.classKey = classKey;
+  game.slotIndex = pendingSlotIndex;
   selectClass(classKey);
-  const existing = loadLocalPlayer(name);
-  const run = loadActiveRunFor(name);
-  if (existing || run) {
-    const ok = confirm(
-      "Für „" + name + "“ gibt es bereits einen Spielstand" +
-      (run ? " (Dungeon " + run.dungeonLevel + ")" : "") +
-      ".\n\nNeues Spiel starten?\nAktiver Run wird verworfen. Gold & Upgrades bleiben – Klasse wird auf " +
-      (CLASSES[classKey]?.name || classKey) + " gesetzt."
-    );
-    if (!ok) return;
-  }
-  await loadPlayer({ forceNew: true, forceClass: classKey, name });
+  // Slot ggf. leeren und neu belegen
+  clearSaveSlot(pendingSlotIndex);
+  game.playerName = name;
+  game.totalGold = 0;
+  game.upgrades = emptyUpgrades();
+  saveLocalPlayer();
+  await loadPlayer({ forceNew: true, forceClass: classKey, name, slotIndex: pendingSlotIndex });
 }
 
 async function startNewGameFromSetup() {
@@ -2633,11 +2808,15 @@ function enterGame(msg, opts) {
   syncUnlockedAbilities();
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
   renderSetupAbilityHint();
-  $("load-hint").textContent = msg;
+  const hint = $("load-hint");
+  if (hint) hint.textContent = msg;
   updateRunButtons();
   $("game-section").scrollIntoView({ behavior: "smooth" });
   const forceNew = !!(opts && opts.forceNew);
-  const savedRun = forceNew ? null : loadActiveRunFor(game.playerName);
+  const savedRun = forceNew
+    ? null
+    : (loadActiveRunFor(game.playerName) || loadActiveRunFor(slotRunKey(game.slotIndex)));
+  // Direkt in den Run (Laden & Neues Spiel)
   requestAnimationFrame(() => {
     if (savedRun) resumeRun(savedRun);
     else startRun();

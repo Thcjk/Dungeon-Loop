@@ -54,7 +54,8 @@ body {
 .setup-card.collapsed { padding: 0.5rem 1rem; }
 .setup-card.collapsed h2, .setup-card.collapsed .label, .setup-card.collapsed .input,
 .setup-card.collapsed .setup-layout, .setup-card.collapsed .menu-panel,
-.setup-card.collapsed #btn-load-player { display: none; }
+.setup-card.collapsed .menu-lead, .setup-card.collapsed .menu-actions,
+.setup-card.collapsed .save-slot-list, .setup-card.collapsed #btn-load-player { display: none; }
 .setup-card.collapsed .ability-section { margin-top: 0; padding-top: 0.5rem; }
 .setup-card.collapsed .ability-heading { font-size: 0.65rem; margin-bottom: 0.4rem; }
 .setup-card.collapsed #load-hint { margin: 0; color: #2ecc71; }
@@ -115,15 +116,11 @@ body {
   color: var(--muted);
 }
 .save-slot-date { opacity: 0.8; }
-.save-slot-action {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  color: var(--gold);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
+.save-slot.empty { opacity: 0.72; border-style: dashed; }
+.save-slot:disabled { cursor: default; opacity: 0.55; }
+.save-slot:disabled:hover { border-color: var(--border); background: var(--bg); }
+.save-slot--readonly { cursor: default; pointer-events: none; }
+.save-slot-list--preview { margin-top: 1rem; max-height: none; }
 
 .label { font-size: 0.75rem; color: var(--muted); margin: 0.4rem 0 0.2rem; display: block; }
 .input { width: 100%; padding: 0.6rem; font-family: inherit; font-size: 0.9rem; background: var(--bg); border: 2px solid var(--border); color: var(--text); outline: none; }
