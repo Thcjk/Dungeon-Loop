@@ -2750,6 +2750,7 @@ function resumeRun(data) {
   initWorldBackground();
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
+  hidePauseMenu();
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.remove("hidden");
   $("btn-start-run").disabled = true;
@@ -3230,6 +3231,7 @@ function startRun() {
   }
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
+  hidePauseMenu();
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.remove("hidden");
   $("btn-start-run").disabled = true;
