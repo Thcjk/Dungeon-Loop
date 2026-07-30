@@ -311,7 +311,8 @@
       "previewW": 1290,
       "previewH": 360,
       "tileset": "assets/pack/worlds/forest/tileset.png",
-      "deco": "assets/pack/worlds/forest/deco.png"
+      "deco": "assets/pack/worlds/forest/deco.png",
+      "bg": "assets/pack/worlds/forest/bg.png"
     },
     "swamp": {
       "preview": "assets/pack/worlds/swamp/preview.png",
@@ -320,7 +321,8 @@
       "previewW": 1290,
       "previewH": 360,
       "deco": "assets/pack/worlds/swamp/deco.png",
-      "tileset": "assets/pack/worlds/swamp/tileset.png"
+      "tileset": "assets/pack/worlds/swamp/tileset.png",
+      "bg": "assets/pack/worlds/swamp/bg.png"
     },
     "frost": {
       "preview": "assets/pack/worlds/frost/preview.png",
@@ -329,7 +331,8 @@
       "previewW": 1290,
       "previewH": 360,
       "tileset": "assets/pack/worlds/frost/tileset.png",
-      "deco": "assets/pack/worlds/frost/deco.png"
+      "deco": "assets/pack/worlds/frost/deco.png",
+      "bg": "assets/pack/worlds/frost/bg.png"
     },
     "fire": {
       "preview": "assets/pack/worlds/fire/preview.png",
@@ -338,7 +341,8 @@
       "previewW": 1290,
       "previewH": 360,
       "tileset": "assets/pack/worlds/fire/tileset.png",
-      "deco": "assets/pack/worlds/fire/deco.png"
+      "deco": "assets/pack/worlds/fire/deco.png",
+      "bg": "assets/pack/worlds/fire/bg.png"
     },
     "ruins": {
       "preview": "assets/pack/worlds/ruins/preview.png",
@@ -347,7 +351,8 @@
       "previewW": 1290,
       "previewH": 360,
       "deco": "assets/pack/worlds/ruins/deco.png",
-      "tileset": "assets/pack/worlds/ruins/tileset.png"
+      "tileset": "assets/pack/worlds/ruins/tileset.png",
+      "bg": "assets/pack/worlds/ruins/bg.png"
     }
   },
   "fx": {

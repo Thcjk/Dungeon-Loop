@@ -1,11 +1,11 @@
 /* Dungeon Loop – World Renderer
-   Side-Scroller: nur Hintergrundbild + Boden.
-   Keine Props, keine Preview-Figuren vor Held/Gegner. */
+   Side-Scroller für ALLE Welten gleich:
+   nur Hintergrundbild (bg) + Boden. Keine Props/Deco vor Held/Gegner. */
 
 const WR = {
-  CW: 640, CH: 360, GROUND: 308, STRIP_W: 1290,
-  SPEEDS: [0, 0.1, 0.55],
-  /** Horizon: darunter solide Kampfbahn – nichts aus dem BG-Bild */
+  CW: 640, CH: 360, GROUND: 308,
+  SPEEDS: [0, 0.12, 0.55],
+  /** Ab hier solide Kampfbahn – gilt für forest/swamp/frost/fire/ruins */
   LANE_TOP: 168,
   cache: { theme: null },
   ambient: [], transition: null, animTime: 0
@@ -21,31 +21,32 @@ const WORLD_VISUALS = {
 WORLD_VISUALS.frost = WORLD_VISUALS.frozen;
 WORLD_VISUALS.fire = WORLD_VISUALS.firelands;
 
+/** Pro Welt eigenes Aussehen – gleiche Layer-Regeln */
 const WORLD_PAL = {
   forest: {
-    sky: ["#07140f", "#0c1e16", "#143627"], fog: "rgba(24,55,38,0.2)", accent: "#8fe6a8",
+    sky: ["#07140f", "#0c1e16", "#143627"], fog: "rgba(24,55,38,0.22)", accent: "#8fe6a8",
     lighting: "rgba(150,220,160,0.1)", weather: ["leaf", "firefly", "mist"],
-    groundTint: "#1a2a1c", laneFill: "#0e1410"
+    groundTint: "#1a2a1c", laneFill: "#0e1410", laneEdge: "#162018"
   },
   swamp: {
-    sky: ["#080f08", "#101a0e", "#1a2614"], fog: "rgba(48,70,36,0.26)", accent: "#a6d46a",
+    sky: ["#080f08", "#101a0e", "#1a2614"], fog: "rgba(48,70,36,0.28)", accent: "#a6d46a",
     lighting: "rgba(150,210,110,0.1)", weather: ["mist", "bubble", "firefly"],
-    groundTint: "#1a2214", laneFill: "#0a100a"
+    groundTint: "#1a2214", laneFill: "#0a100a", laneEdge: "#142018"
   },
   frost: {
     sky: ["#081422", "#122840", "#2a4060"], fog: "rgba(180,210,240,0.18)", accent: "#dff0ff",
     lighting: "rgba(180,215,255,0.12)", weather: ["snow", "snow", "wind"],
-    groundTint: "#c8d6e4", laneFill: "#1c2838"
+    groundTint: "#b8c8d8", laneFill: "#1c2838", laneEdge: "#2a3a50"
   },
   fire: {
-    sky: ["#100508", "#240a08", "#4a1408"], fog: "rgba(90,35,15,0.24)", accent: "#ff9a3c",
+    sky: ["#100508", "#240a08", "#4a1408"], fog: "rgba(90,35,15,0.26)", accent: "#ff9a3c",
     lighting: "rgba(255,120,50,0.16)", weather: ["ash", "ember", "smoke"],
-    groundTint: "#2a120c", laneFill: "#140804"
+    groundTint: "#2a120c", laneFill: "#140804", laneEdge: "#2a1008"
   },
   ruins: {
-    sky: ["#090b18", "#141830", "#262c4c"], fog: "rgba(50,45,80,0.22)", accent: "#8fd0ff",
+    sky: ["#090b18", "#141830", "#262c4c"], fog: "rgba(50,45,80,0.24)", accent: "#8fd0ff",
     lighting: "rgba(140,200,255,0.12)", weather: ["dust", "rune", "storm"],
-    groundTint: "#222030", laneFill: "#0c0c14"
+    groundTint: "#222030", laneFill: "#0c0c14", laneEdge: "#1a1828"
   }
 };
 
@@ -54,8 +55,15 @@ Object.keys(WORLD_PAL).forEach((k) => { WR_PALETTES[k] = { fog: WORLD_PAL[k].fog
 
 function wrTheme(world) {
   if (!world) return "forest";
-  if (typeof world === "string") return world;
-  return world.theme || "forest";
+  if (typeof world === "string") {
+    if (world === "frozen") return "frost";
+    if (world === "firelands") return "fire";
+    return world;
+  }
+  const t = world.theme || "forest";
+  if (t === "frozen") return "frost";
+  if (t === "firelands") return "fire";
+  return t;
 }
 
 function wrR(n) {
@@ -64,12 +72,12 @@ function wrR(n) {
 }
 
 function getWorldPal(theme) {
-  return WORLD_PAL[theme] || WORLD_PAL.forest;
+  return WORLD_PAL[wrTheme(theme)] || WORLD_PAL.forest;
 }
 
 function getWorldVisualConfig(worldId) {
   const key = typeof worldId === "string" ? worldId : (worldId?.theme || "forest");
-  return WORLD_VISUALS[key] || WORLD_VISUALS.forest;
+  return WORLD_VISUALS[key] || WORLD_VISUALS[wrTheme(key)] || WORLD_VISUALS.forest;
 }
 
 function invalidateParallaxCache() {
@@ -132,6 +140,7 @@ function startWorldTransition(world) {
 function drawTiled(ctx, img, scroll, y, h, speed) {
   if (!img) return;
   const dw = Math.round(img.width * (h / img.height));
+  if (dw <= 0) return;
   let x = -Math.floor((scroll * speed) % dw);
   if (x > 0) x -= dw;
   while (x < WR.CW + dw) {
@@ -140,12 +149,24 @@ function drawTiled(ctx, img, scroll, y, h, speed) {
   }
 }
 
-/** Nur ferner Hintergrund – Midband/Sky. Niemals Props oder Preview-Figuren. */
+/** Sauberes BG für jede Welt: prefer bg.png, sonst Midband/Preview-Oberteil */
+function resolveWorldBackdrop(theme) {
+  if (typeof PackAssets === "undefined") return null;
+  return PackAssets.worldImg(theme, "bg")
+    || PackAssets.worldImg(theme, "midband")
+    || PackAssets.worldImg(theme, "preview")
+    || null;
+}
+
+/**
+ * Einheitlicher Side-Scroller-Hintergrund für ALLE Welten.
+ * Keine deco/tileset/props/preview-Figuren in der Kampfbahn.
+ */
 function drawSideScrollerBackdrop(ctx, theme, scrollX) {
-  const midband = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "midband") : null;
-  const preview = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "preview") : null;
-  const ground = typeof PackAssets !== "undefined" ? PackAssets.worldImg(theme, "ground") : null;
-  const pal = getWorldPal(theme);
+  const t = wrTheme(theme);
+  const bg = resolveWorldBackdrop(t);
+  const ground = typeof PackAssets !== "undefined" ? PackAssets.worldImg(t, "ground") : null;
+  const pal = getWorldPal(t);
   const laneTop = WR.LANE_TOP;
   ctx.imageSmoothingEnabled = false;
 
@@ -156,34 +177,36 @@ function drawSideScrollerBackdrop(ctx, theme, scrollX) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, WR.CW, WR.CH);
 
-  // Fern-Hintergrund nur oberhalb der Kampfbahn
+  // Nur oberhalb der Kampfbahn zeichnen
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, WR.CW, laneTop);
   ctx.clip();
 
-  if (midband) {
-    drawTiled(ctx, midband, scrollX, 0, laneTop, WR.SPEEDS[1]);
-  } else if (preview) {
-    // Fallback: nur oberes Drittel der Preview (Himmel/Bäume), kein Kampfbereich
-    const srcH = Math.floor(preview.height * 0.38);
-    const destH = laneTop;
-    const pw = Math.round(preview.width * (destH / srcH));
-    let sx = -Math.floor((scrollX * WR.SPEEDS[1]) % pw);
-    ctx.drawImage(preview, 0, 0, preview.width, srcH, sx, 0, pw, destH);
-    ctx.drawImage(preview, 0, 0, preview.width, srcH, sx + pw, 0, pw, destH);
+  if (bg) {
+    // bg.png ist bereits nur Himmel/Ferne – sonst nur oberes Drittel nutzen
+    const isCleanBg = bg.height <= 200 || (typeof PackAssets !== "undefined" && PackAssets.worldImg(t, "bg") === bg);
+    if (isCleanBg) {
+      drawTiled(ctx, bg, scrollX, 0, laneTop, WR.SPEEDS[1]);
+    } else {
+      const srcH = Math.floor(bg.height * 0.38);
+      const destH = laneTop;
+      const pw = Math.round(bg.width * (destH / Math.max(1, srcH)));
+      let sx = -Math.floor((scrollX * WR.SPEEDS[1]) % Math.max(1, pw));
+      ctx.drawImage(bg, 0, 0, bg.width, srcH, sx, 0, pw, destH);
+      ctx.drawImage(bg, 0, 0, bg.width, srcH, sx + pw, 0, pw, destH);
+    }
   }
 
   ctx.fillStyle = pal.fog;
-  ctx.fillRect(0, 0, WR.CW, Math.floor(laneTop * 0.55));
+  ctx.fillRect(0, 0, WR.CW, Math.floor(laneTop * 0.5));
   ctx.restore();
 
-  // Solide Kampfbahn – deckt alle eingebackenen Figuren/Kisten/Zäune ab
+  // Solide Kampfbahn – deckt Figuren/Kisten/Zäune in ALLEN Welten ab
   ctx.fillStyle = pal.laneFill;
   ctx.fillRect(0, laneTop, WR.CW, WR.CH - laneTop);
 
-  // Weicher Übergang Horizont → Bahn
-  ctx.fillStyle = pal.laneFill;
+  ctx.fillStyle = pal.laneEdge || pal.laneFill;
   ctx.globalAlpha = 0.55;
   ctx.fillRect(0, laneTop - 12, WR.CW, 18);
   ctx.globalAlpha = 1;
@@ -246,7 +269,7 @@ function renderParallaxBackground(ctx, world, scrollX) {
   drawLighting(ctx, theme);
 }
 
-/** Kein Vordergrund vor Held/Gegner */
+/** Nie Vordergrund vor Held/Gegner – in keiner Welt */
 function renderWorldForeground() { /* no-op */ }
 
 function renderWorld(ctx, worldId, camera) {
