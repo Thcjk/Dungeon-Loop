@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-141";
+const BUILD_ID = "sidescroller-v3-142";
 const GAME_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
@@ -1425,6 +1425,37 @@ function getEquippedAbilities() {
 function getEffectiveAbilityCd(ab) {
   const cdRed = (game.upgrades.upgrade_cooldown || 0) * 0.35;
   return Math.max(2, ab.cd - cdRed);
+}
+
+/** Dauerhafte Ult-Anzeige über dem Helden: W / S, ✓ wenn bereit. */
+function drawAbilityOverhead(ctx, h) {
+  const slots = [0, 1].map((slotIdx) => {
+    const ab = getEquippedAbilityAtSlot(slotIdx);
+    if (!ab) return null;
+    const ready = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
+    return { key: getAbilityKeyLabel(slotIdx), ready };
+  }).filter(Boolean);
+  if (!slots.length) return;
+
+  const labels = slots.map((s) => (s.ready ? s.key + "✓" : s.key));
+  const text = labels.join("  ");
+  const cx = Math.round(h.x + h.w / 2);
+  const y = Math.round(h.y - 8);
+
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  ctx.font = "bold 11px Courier New";
+  let x = cx - ctx.measureText(text).width / 2;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0,0,0,0.75)";
+  ctx.strokeText(text, x, y);
+  labels.forEach((label, i) => {
+    ctx.fillStyle = slots[i].ready ? "#2ecc71" : "rgba(180,180,190,0.78)";
+    ctx.fillText(label, x, y);
+    x += ctx.measureText(label + (i < labels.length - 1 ? "  " : "")).width;
+  });
+  ctx.restore();
 }
 
 function canCastAbility(ab, h, st) {
@@ -3664,7 +3695,8 @@ function rangerShoot(cls, target) {
     life: 70, owner: "player", pierce: false, trail: "#2ecc71"
   });
   h.facing = dx >= 0 ? 1 : -1;
-  h.attackAnim = 0.1;
+  // Bogenspann-Asset (attack.png) sichtbar halten – vorher zu kurz (~15ms).
+  h.attackAnim = 0.42;
   spawnBurst(hx + (dx / len) * 8, hy + (dy / len) * 8, "#27ae60", 3, 2);
   emitCombatEvent("player_arrow");
   return true;
@@ -4088,7 +4120,11 @@ function updateFrame(dt) {
   h.specialTimer += dt;
   h.anim += dt * 8;
   if (h.hitFlash > 0) h.hitFlash -= dt * 30;
-  if (h.attackAnim > 0) h.attackAnim -= dt * 4;
+  // Waldläufer: attack.png ist die Bogenspann-Pose – länger halten, sonst unsichtbar.
+  if (h.attackAnim > 0) {
+    const decay = game.classKey === "ranger" ? 1.55 : 4;
+    h.attackAnim -= dt * decay;
+  }
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (h.shieldTimer > 0) h.shieldTimer -= dt;
   if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
@@ -4579,18 +4615,9 @@ function render() {
     }
   });
 
-  /** Ausgerüstete Fähigkeiten – CD-Anzeige am Helden (Taste W / S) */
-  // Ability status lives in sidebar loadout – no floating debug text over hero
-  if (false && game.isRunning) {
-    ctx.font = "bold 8px Courier New";
-    [0, 1].forEach((slotIdx) => {
-      const ab = getEquippedAbilityAtSlot(slotIdx);
-      if (!ab) return;
-      const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
-      ctx.fillStyle = left <= 0 ? "rgba(46,204,113,0.95)" : "rgba(200,160,255,0.85)";
-      const label = getAbilityKeyLabel(slotIdx) + ":" + ab.name.substring(0, 5) + (left <= 0 ? " ✓" : " " + Math.ceil(left) + "s");
-      ctx.fillText(label, h.x, h.y - 18 - slotIdx * 10);
-    });
+  /** Ult / Fähigkeiten dauerhaft über dem Kopf: W & S, ✓ wenn bereit */
+  if (game.isRunning && !game.isDead) {
+    drawAbilityOverhead(ctx, h);
   }
 
   if (typeof renderWorldForeground === "function") {
