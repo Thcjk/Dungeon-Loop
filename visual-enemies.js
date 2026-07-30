@@ -64,7 +64,8 @@ const VisualEnemies = {
     tc.globalCompositeOperation = "source-atop";
     tc.fillStyle = "rgba(255, 236, 220, " + a + ")";
     tc.fillRect(0, 0, w, h);
-    tc.globalCompositeOperation = "lighter";
+    // Rot ebenfalls nur auf Figur-Pixel ("lighter" würde den transparenten
+    // Bereich aufhellen und ein sichtbares Rechteck um das Sprite erzeugen)
     tc.fillStyle = "rgba(255, 70, 50, " + (a * 0.3) + ")";
     tc.fillRect(0, 0, w, h);
     tc.globalCompositeOperation = "source-over";

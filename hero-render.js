@@ -89,7 +89,8 @@ function hrDrawTintedSprite(ctx, img, dx, y, flashStrength) {
   tc.globalCompositeOperation = "source-atop";
   tc.fillStyle = "rgba(255, 240, 230, " + a + ")";
   tc.fillRect(0, 0, w, h);
-  tc.globalCompositeOperation = "lighter";
+  // Rot ebenfalls nur auf Figur-Pixel ("lighter" würde den transparenten
+  // Bereich aufhellen und ein sichtbares Rechteck um das Sprite erzeugen)
   tc.fillStyle = "rgba(255, 70, 55, " + (a * 0.35) + ")";
   tc.fillRect(0, 0, w, h);
   tc.globalCompositeOperation = "source-over";
