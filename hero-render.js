@@ -1,5 +1,5 @@
 /* Dungeon Loop – Hero Renderer (Asset-Pack Bitmaps)
-   Nutzt ausschließlich Sprites aus assets/pack/. Gameplay-API bleibt stabil. */
+   Bewegung: Idle/Walk/Run-Posen als Zyklus. Treffer: Tint am Sprite, nie weiße Box. */
 
 const HR = {
   W: 52,
@@ -9,8 +9,9 @@ const HR = {
   MENU_FILL: 0.9,
   ANIM: {
     idle: { n: 1, t: 0.35 },
-    walk: { n: 1, t: 0.16 },
-    run: { n: 1, t: 0.12 },
+    /** Walk/Run nutzen 2 Posen (walk.png + run.png) als Zyklus */
+    walk: { n: 2, t: 0.14 },
+    run: { n: 2, t: 0.10 },
     attack: { n: 1, t: 0.1 },
     cast: { n: 1, t: 0.12 },
     hurt: { n: 1, t: 0.16 },
@@ -29,7 +30,8 @@ HR.getAnimState = (h, moving) => {
   if (typeof game !== "undefined" && game.abilityCastLock > 0) return "cast";
   if ((h.attackAnim || 0) > 0.04) return "attack";
   if (moving && typeof game !== "undefined" && game.isRunning && !game.isPaused) {
-    return (Math.abs(h.vx) > 40 || true) ? "run" : "walk";
+    const spd = Math.abs(h.vx || 0);
+    return spd > 100 ? "run" : "walk";
   }
   if (moving) return "walk";
   return "idle";
@@ -45,7 +47,7 @@ HR.updateAnim = (h, dt, moving) => {
   const cfg = HR.ANIM[state] || HR.ANIM.idle;
   h.animTime = (h.animTime || 0) + dt;
   if (h.animTime >= cfg.t) {
-    h.animTime = 0;
+    h.animTime -= cfg.t;
     h.animFrame = ((h.animFrame || 0) + 1) % cfg.n;
   }
 };
@@ -59,7 +61,20 @@ function hrShadow(ctx, cx, groundY, scale) {
   ctx.restore();
 }
 
-function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flash) {
+/** Treffer-Flash nur auf Sprite-Pixel (kein Rechteck / keine weiße Box) */
+function hrDrawHitTint(ctx, dx, y, w, h, strength) {
+  const a = Math.max(0.15, Math.min(0.55, strength));
+  ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.fillStyle = "rgba(220, 40, 40, " + a + ")";
+  ctx.fillRect(dx, y, w, h);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = "rgba(255, 80, 60, " + (a * 0.35) + ")";
+  ctx.fillRect(dx, y, w, h);
+  ctx.restore();
+}
+
+function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flashStrength) {
   if (!img) return false;
   const w = img.width;
   const h = img.height;
@@ -72,18 +87,23 @@ function hrDrawBitmap(ctx, img, cx, footY, facing, bobY, flash) {
     ctx.scale(-1, 1);
   }
   const dx = facing < 0 ? Math.round(cx * 2 - x - w) : x;
-  if (flash) {
-    ctx.drawImage(img, dx, y);
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.fillStyle = "rgba(255,220,200,0.35)";
-    ctx.fillRect(dx, y, w, h);
-    ctx.globalCompositeOperation = "source-over";
-  } else {
-    ctx.drawImage(img, dx, y);
+  ctx.drawImage(img, dx, y);
+  if (flashStrength > 0) {
+    hrDrawHitTint(ctx, dx, y, w, h, flashStrength);
   }
   ctx.restore();
   return true;
 }
+
+HR.resolveMoveFrame = (classKey, state, frame, pack) => {
+  if (!pack) return null;
+  if (state === "walk" || state === "run") {
+    // 2-Posen-Zyklus aus walk/run – sichtbare Geh-Animation
+    const pose = ((frame || 0) % 2 === 0) ? "walk" : "run";
+    return pack.hero(classKey, pose) || pack.hero(classKey, state) || pack.hero(classKey, "idle");
+  }
+  return pack.hero(classKey, state) || pack.hero(classKey, "idle");
+};
 
 HR.draw = (ctx, opts) => {
   const h = opts.hero || opts.h || opts;
@@ -91,15 +111,24 @@ HR.draw = (ctx, opts) => {
   const groundY = opts.groundY != null ? opts.groundY : HR.getGroundY();
   const facing = h.facing === -1 ? -1 : 1;
   const state = h.animState || "idle";
-  const bob = state === "idle" ? Math.sin((h.animTime || 0) * 6) * 1.2 : (state === "run" || state === "walk" ? Math.sin((h.animTime || 0) * 18) * 1.5 : 0);
+  const bob = state === "idle"
+    ? Math.sin((h.animTime || 0) * 6) * 1.2
+    : (state === "run" || state === "walk"
+      ? Math.sin(((h.animFrame || 0) + (h.animTime || 0) / 0.12) * Math.PI) * 2.2
+      : 0);
   const baseX = (opts.x != null ? opts.x : h.x) || 0;
   const cx = baseX + (h.w || HR.W) / 2 + (opts.hurtOff || 0) + (opts.atkOff || 0);
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
-  const img = pack ? pack.hero(classKey, state) || pack.hero(classKey, "idle") : null;
+  const img = HR.resolveMoveFrame(classKey, state, h.animFrame, pack);
+
+  // Flash-Stärke aus hitFlash (kein Rechteck drumherum)
+  let flash = 0;
+  if ((h.hitFlash || 0) > 0) {
+    flash = 0.25 + 0.35 * Math.abs(Math.sin(h.hitFlash * 1.2));
+  }
 
   hrShadow(ctx, cx, groundY, 1);
-  if (!hrDrawBitmap(ctx, img, cx, groundY, facing, bob, (h.hitFlash || 0) > 0)) {
-    // Fallback silhouette if pack not ready
+  if (!hrDrawBitmap(ctx, img, cx, groundY, facing, bob, flash)) {
     ctx.fillStyle = "#2a3038";
     ctx.fillRect(cx - 16, groundY - 70, 32, 70);
   }
@@ -133,7 +162,6 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame) => {
     const bob = Math.sin((frame || 0) * 0.8) * 2;
     ctx.drawImage(img, Math.round((w - dw) / 2), Math.round((h - dh) / 2 + bob - 6), dw, dh);
   } else {
-    // Lade-Hinweis statt leerer Fläche
     ctx.fillStyle = "#8a7d6c";
     ctx.font = "14px Georgia, serif";
     ctx.textAlign = "center";
