@@ -457,6 +457,57 @@ body {
 }
 
 /* Game Over – großes Overlay über dem Canvas */
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 190;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 1rem;
+}
+
+.pause-overlay.hidden { display: none; }
+
+.pause-content {
+  text-align: center;
+  width: min(92%, 360px);
+  padding: 1.4rem 1.2rem;
+  border: 3px solid rgba(241, 196, 15, 0.75);
+  background: rgba(8, 10, 20, 0.96);
+  box-shadow: 0 0 40px rgba(241, 196, 15, 0.25), inset 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
+.pause-title {
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  color: #f1c40f;
+  letter-spacing: 8px;
+  margin-bottom: 0.45rem;
+  text-shadow: 0 0 20px rgba(241, 196, 15, 0.7);
+  line-height: 1.1;
+}
+
+.pause-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pause-actions .btn { width: 100%; }
+
+.game-frame:fullscreen .pause-content {
+  width: min(80%, 420px);
+  padding: 1.8rem 1.5rem;
+}
+
 .gameover-overlay {
   position: absolute;
   inset: 0;

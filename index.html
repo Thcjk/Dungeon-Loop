@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=142">
+  <link rel="stylesheet" href="style.css?v=143">
 </head>
 <body>
 
@@ -177,8 +177,20 @@
             <kbd>Maus</kbd> auf Gegner = angreifen · Münze in der Luft <strong>bewegen &amp; fangen</strong> = x2 &nbsp;|&nbsp;
             <kbd>W</kbd>/<kbd>S</kbd> (<kbd>↑</kbd>/<kbd>↓</kbd>) Spezial &nbsp;|&nbsp;
             <kbd>U</kbd> Upgrades &amp; Fähigkeiten &nbsp;|&nbsp;
-            <kbd>P</kbd> Pause &nbsp;|&nbsp;
+            <kbd>P</kbd>/<kbd>Esc</kbd> Pause &nbsp;|&nbsp;
             <kbd>F</kbd> Vollbild
+          </div>
+
+          <div class="pause-overlay hidden" id="pause-panel">
+            <div class="pause-content">
+              <h2 class="pause-title">PAUSE</h2>
+              <p class="pause-hint">Spiel angehalten · <kbd>Esc</kbd> / <kbd>P</kbd> weiter</p>
+              <div class="pause-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-pause-resume">Weiter</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-pause-upgrades">Upgrades &amp; Fähigkeiten</button>
+                <button type="button" class="btn btn-secondary btn-large" id="btn-pause-menu">Hauptmenü</button>
+              </div>
+            </div>
           </div>
 
           <div class="gameover-overlay hidden" id="gameover-panel">
@@ -253,16 +265,16 @@
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-142</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=142"></script>
-  <script src="world-config.js?v=142"></script>
-  <script src="world-render.js?v=142"></script>
-  <script src="visual-enemies.js?v=142"></script>
-  <script src="visual-fx.js?v=142"></script>
-  <script src="pack-fx.js?v=142"></script>
-  <script src="visual-sprites.js?v=142"></script>
-  <script src="hero-render.js?v=142"></script>
-  <script src="abilities.js?v=142"></script>
-  <script src="script.js?v=142"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-143</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=143"></script>
+  <script src="world-config.js?v=143"></script>
+  <script src="world-render.js?v=143"></script>
+  <script src="visual-enemies.js?v=143"></script>
+  <script src="visual-fx.js?v=143"></script>
+  <script src="pack-fx.js?v=143"></script>
+  <script src="visual-sprites.js?v=143"></script>
+  <script src="hero-render.js?v=143"></script>
+  <script src="abilities.js?v=143"></script>
+  <script src="script.js?v=143"></script>
 </body>
 </html>
