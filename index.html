@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=120">
+  <link rel="stylesheet" href="style.css?v=121">
 </head>
 <body>
 
@@ -26,17 +26,29 @@
       <!-- Startmenü -->
       <div id="menu-home" class="menu-panel">
         <h2>Hauptmenü</h2>
-        <p class="menu-lead">Wähle, wie du starten möchtest.</p>
+        <p class="menu-lead">Bis zu 3 Spielstände · lokal gespeichert</p>
         <div class="menu-actions">
           <button type="button" class="btn btn-primary btn-large" id="btn-menu-new">Neues Spiel</button>
           <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
         </div>
-        <p class="hint" id="menu-home-hint">Fortschritt wird lokal gespeichert – kein Internet nötig.</p>
+        <div id="home-slot-preview" class="save-slot-list save-slot-list--preview"></div>
+        <p class="hint" id="menu-home-hint">Neues Spiel → Heldenwahl · Spielstand laden → direkt weiterspielen</p>
       </div>
 
-      <!-- Neues Spiel -->
+      <!-- Neues Spiel: zuerst Slot wählen -->
+      <div id="menu-new-slot" class="menu-panel hidden">
+        <h2>Neues Spiel – Slot wählen</h2>
+        <p class="menu-lead">Wähle einen der 3 Speicherplätze.</p>
+        <div id="new-slot-list" class="save-slot-list"></div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-new-slot-back">Zurück</button>
+        </div>
+      </div>
+
+      <!-- Neues Spiel: Heldenwahl -->
       <div id="menu-new" class="menu-panel hidden">
-        <h2>Neues Spiel</h2>
+        <h2>Neues Spiel – Held wählen</h2>
+        <p class="menu-lead" id="new-slot-label">Slot 1</p>
         <div class="setup-layout">
           <div class="setup-main">
             <label class="label" for="player-name">Spielername</label>
@@ -110,7 +122,7 @@
       <!-- Spielstände laden -->
       <div id="menu-load" class="menu-panel hidden">
         <h2>Spielstand laden</h2>
-        <p class="menu-lead">Wähle einen gespeicherten Held.</p>
+        <p class="menu-lead">Wähle einen Slot – du startest direkt im Run.</p>
         <div id="save-slot-list" class="save-slot-list"></div>
         <div class="menu-actions menu-actions--row">
           <button type="button" class="btn btn-secondary" id="btn-load-back">Zurück</button>
@@ -118,7 +130,6 @@
         <p class="hint" id="load-slots-hint">Noch keine Spielstände.</p>
       </div>
 
-      <!-- Legacy-IDs für bestehende JS-Hooks (versteckt) -->
       <button type="button" class="hidden" id="btn-load-player" tabindex="-1" aria-hidden="true">Spiel starten</button>
       <button type="button" class="hidden" id="btn-new-game" tabindex="-1" aria-hidden="true">Neuer Spielstand</button>
     </section>
@@ -240,22 +251,16 @@
       </div>
     </section>
 
-    <section class="card leaderboard-card" id="leaderboard-section">
-      <h2>Lokale Rangliste</h2>
-      <button type="button" class="btn btn-secondary btn-small" id="btn-reload-leaderboard">Rangliste neu laden</button>
-      <ol class="leaderboard" id="leaderboard"><li class="empty">Noch keine Scores.</li></ol>
-    </section>
-
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">hero-anim-v120</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=120"></script>
-  <script src="world-render.js?v=120"></script>
-  <script src="visual-enemies.js?v=120"></script>
-  <script src="visual-fx.js?v=120"></script>
-  <script src="visual-sprites.js?v=120"></script>
-  <script src="hero-render.js?v=120"></script>
-  <script src="abilities.js?v=120"></script>
-  <script src="script.js?v=120"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">slots-v121</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=121"></script>
+  <script src="world-render.js?v=121"></script>
+  <script src="visual-enemies.js?v=121"></script>
+  <script src="visual-fx.js?v=121"></script>
+  <script src="visual-sprites.js?v=121"></script>
+  <script src="hero-render.js?v=121"></script>
+  <script src="abilities.js?v=121"></script>
+  <script src="script.js?v=121"></script>
 </body>
 </html>
