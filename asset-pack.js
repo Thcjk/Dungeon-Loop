@@ -1,12 +1,15 @@
 /* Dungeon Loop – Asset Pack Loader
-   Lädt vorverarbeitete Sprites aus assets/pack/ (einziges visuelles Pack). */
+   Lädt vorverarbeitete Sprites aus assets/pack/.
+   Kritische Assets (Helden) zuerst – UI blockiert nicht auf dem vollen Pack. */
 (function (global) {
   const PackAssets = {
     ready: false,
+    heroesReady: false,
     loading: null,
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
+    version: "113",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -16,33 +19,61 @@
         img.decoding = "async";
         img.onload = () => { this.images[path] = img; resolve(img); };
         img.onerror = () => { console.warn("Asset fehlt:", path); resolve(null); };
-        img.src = path + (path.includes("?") ? "" : "?v=111");
+        const bust = path.includes("?") ? "" : ("?v=" + this.version);
+        img.src = path + bust;
       });
+    },
+
+    collectPaths(node, out) {
+      if (!node) return;
+      if (typeof node === "string") { out.add(node); return; }
+      if (typeof node === "object") {
+        if (typeof node.path === "string") out.add(node.path);
+        Object.keys(node).forEach((k) => {
+          // Skip numeric metadata
+          if (k === "w" || k === "h" || k === "previewW" || k === "previewH" || k === "name") return;
+          this.collectPaths(node[k], out);
+        });
+      }
+    },
+
+    async fetchManifest() {
+      if (this.manifest) return this.manifest;
+      try {
+        const res = await fetch(this.base + "manifest.json?v=" + this.version);
+        this.manifest = await res.json();
+      } catch (err) {
+        console.error("manifest.json fehlt", err);
+        this.manifest = { heroes: {}, enemies: {}, bosses: {}, worlds: {}, fx: {}, ui: {} };
+      }
+      return this.manifest;
+    },
+
+    async loadHeroes() {
+      await this.fetchManifest();
+      const paths = new Set();
+      this.collectPaths(this.manifest.heroes, paths);
+      await Promise.all([...paths].map((p) => this.loadImage(p)));
+      this.heroesReady = true;
+      return this.manifest;
+    },
+
+    async loadRest() {
+      await this.fetchManifest();
+      const paths = new Set();
+      ["enemies", "bosses", "worlds"].forEach((k) => this.collectPaths(this.manifest[k], paths));
+      // FX/UI sheets are large – load lazily later if needed; skip blocking boot
+      await Promise.all([...paths].map((p) => this.loadImage(p)));
+      this.ready = true;
+      return this.manifest;
     },
 
     async load() {
       if (this.ready) return this.manifest;
       if (this.loading) return this.loading;
       this.loading = (async () => {
-        try {
-          const res = await fetch(this.base + "manifest.json?v=111");
-          this.manifest = await res.json();
-        } catch (err) {
-          console.error("manifest.json fehlt", err);
-          this.manifest = { heroes: {}, enemies: {}, bosses: {}, worlds: {}, fx: {}, ui: {} };
-        }
-        const paths = new Set();
-        const walk = (node) => {
-          if (!node) return;
-          if (typeof node === "string") { paths.add(node); return; }
-          if (typeof node === "object") {
-            if (node.path) paths.add(node.path);
-            Object.values(node).forEach(walk);
-          }
-        };
-        walk(this.manifest);
-        await Promise.all([...paths].map((p) => this.loadImage(p)));
-        this.ready = true;
+        await this.loadHeroes();
+        await this.loadRest();
         return this.manifest;
       })();
       return this.loading;

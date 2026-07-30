@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "pack-v112";
+const BUILD_ID = "start-v113";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -1030,24 +1030,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   ctx.imageSmoothingQuality = "high";
   game.meta = loadMeta();
   loadAudioPrefs();
-  if (typeof PackAssets !== "undefined") {
-    try { await PackAssets.load(); } catch (err) { console.warn("Asset-Pack laden fehlgeschlagen", err); }
-  }
-  initParallaxBackground(getWorld());
-  drawPreviews();
-  startHeroCardLoop();
+
+  // UI sofort bedienbar – nicht auf das volle Asset-Pack warten
   bindEvents();
   syncUnlockedAbilities();
   renderUpgradeButtons();
   renderSetupAbilityHint();
   renderAbilityPanel();
+  restoreSetupFromSave();
   const buildEl = document.querySelector(".footer-build");
   if (buildEl) buildEl.textContent = BUILD_ID;
+  drawPreviews();
+  startHeroCardLoop();
+
+  if (typeof PackAssets !== "undefined") {
+    try {
+      await PackAssets.loadHeroes();
+      drawPreviews();
+      startHeroCardLoop();
+      // Welten/Gegner im Hintergrund – Starten bleibt möglich
+      PackAssets.loadRest().then(() => {
+        initParallaxBackground(getWorld());
+        invalidateParallaxCache?.();
+      }).catch((err) => console.warn("Asset-Pack Rest laden fehlgeschlagen", err));
+    } catch (err) {
+      console.warn("Asset-Pack Helden laden fehlgeschlagen", err);
+    }
+  }
+
+  initParallaxBackground(getWorld());
   if (typeof applyVisualSpritePatch === "function") applyVisualSpritePatch();
   loadLeaderboard();
   initSupabase();
   await loadGameData();
-  restoreSetupFromSave();
   window.addEventListener("beforeunload", () => {
     if (game.playerName) saveLocalPlayer();
     if (game.isRunning && !game.isDead) saveActiveRun(true);
