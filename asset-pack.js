@@ -10,7 +10,7 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "136",
+    version: "137",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -191,10 +191,6 @@
       return this.manifest?.fxSprites?.[key] || null;
     },
 
-    hudFrame(key) {
-      const path = this.manifest?.ui?.[key];
-      return path ? this.img(path) : null;
-    },
   };
 
   global.PackAssets = PackAssets;

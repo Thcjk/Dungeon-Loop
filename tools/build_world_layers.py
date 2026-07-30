@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Genau zwei sichtbare Weltebenen – nichts dazwischen:
 
-  1. scene.png  – nur Hintergrundpanorama (bg.png), bis zur Maueroberkante
+  1. scene.png  – das einzige Hintergrundbild der Welt
   2. lane.png   – nur Steinmauer darunter (komplette Lane = Mauerwerk)
+
+scene.png ist zugleich Quelle und Ergebnis: es existiert pro Welt nur EIN
+Hintergrundbild. Die Mauer wird prozedural aus der Stein-Palette erzeugt.
 
 Held und Gegner stehen GENAU auf der Maueroberkante (GROUND = SCENE_H).
 Kein Grasweg, keine Wurzeln, kein Mittelband, keine Deko-Zwischenlage.
@@ -92,10 +95,9 @@ def brick_wall(theme: str, width: int, height: int, seed: str) -> np.ndarray:
 
 
 def build_world_layers(world_dir: Path) -> tuple[Image.Image, Image.Image]:
-    src = world_dir / "_build"
-    bg = load(src / "bg.png")
+    bg = load(world_dir / "scene.png")
     if not bg:
-        raise FileNotFoundError(f"bg.png fehlt in {src}")
+        raise FileNotFoundError(f"scene.png fehlt in {world_dir}")
 
     # Ebene 1: nur Hintergrund – endet hart an der Maueroberkante
     scene = opaque(bg).resize((CANVAS_W, SCENE_H), Image.Resampling.NEAREST)
