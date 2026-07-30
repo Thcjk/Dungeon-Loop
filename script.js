@@ -4,8 +4,9 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-143";
-const GAME_VERSION = 3;
+const BUILD_ID = "sidescroller-v3-144";
+const GAME_VERSION = 4;
+const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
 /* Einmaliger kompletter Neustart: alle alten lokalen Spielstaende und
@@ -25,11 +26,63 @@ const DATA_WIPE_VERSION = "4";
   } catch (_) {}
 })();
 
+function safeSetLocalStorage(key, value) {
+  try {
+    const payload = typeof value === "string" ? value : JSON.stringify(value);
+    const backupKey = key + "__bak";
+    const prev = localStorage.getItem(key);
+    if (prev != null) localStorage.setItem(backupKey, prev);
+    localStorage.setItem(key, payload);
+    // Validate roundtrip
+    const read = localStorage.getItem(key);
+    if (read !== payload) throw new Error("storage-mismatch");
+    return true;
+  } catch (err) {
+    console.error("Speichern fehlgeschlagen:", key, err);
+    try {
+      const el = document.getElementById("save-indicator");
+      if (el) {
+        el.textContent = "Speichern fehlgeschlagen";
+        el.classList.remove("hidden");
+        el.classList.add("show");
+      }
+    } catch (_) {}
+    return false;
+  }
+}
+
+function safeGetLocalStorageJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn("Spielstand beschädigt, Backup wird versucht:", key, err);
+    try {
+      const bak = localStorage.getItem(key + "__bak");
+      if (!bak) return fallback;
+      return JSON.parse(bak);
+    } catch (_) {
+      return fallback;
+    }
+  }
+}
+
 /** Debug: Hitboxen nur bei ausdrücklich aktiviertem Entwicklungsmodus */
 const DEBUG_HITBOXES = false;
 
 /** Partikel-Obergrenze – verhindert unbegrenztes Ansammeln */
 const MAX_PARTICLES = 220;
+
+function canSpawnParticles() {
+  return audioPrefs.particles !== false;
+}
+
+function pushParticle(p) {
+  if (!canSpawnParticles()) return;
+  if (game.particles.length >= MAX_PARTICLES) game.particles.shift();
+  game.particles.push(p);
+}
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -438,27 +491,27 @@ const CLASS_WEAPONS = {
 const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
-    hp: 128, attack: 19, defense: 6, crit: 0.05, mana: 0, magicDamage: 0,
-    range: 82, attackRate: 480, moveSpeed: 122,
-    aoeFalloff: 0.72,
+    hp: 136, attack: 20, defense: 7, crit: 0.06, mana: 0, magicDamage: 0,
+    range: 84, attackRate: 460, moveSpeed: 124,
+    aoeFalloff: 0.74,
     special: "Schildschlag", specialCd: 8, specialRange: 90, specialMult: 2.2,
     desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
   },
   ranger: {
     name: "Waldläufer", attackType: "ranged",
-    hp: 108, attack: 17, defense: 4, crit: 0.18, mana: 0, magicDamage: 0,
-    range: 245, attackRate: 200, moveSpeed: 158,
-    closeRange: 50, meleePenalty: 0.3,
-    proj: "projectile_arrow", projSpeed: 14,
+    hp: 104, attack: 15, defense: 4, crit: 0.16, mana: 0, magicDamage: 0,
+    range: 235, attackRate: 380, moveSpeed: 152,
+    closeRange: 55, meleePenalty: 0.35,
+    proj: "projectile_arrow", projSpeed: 13,
     special: "Präzisionsschuss", specialCd: 5,
     desc: "Bogen, große Reichweite, schwach im Nahkampf"
   },
   mage: {
     name: "Magier", attackType: "magic",
-    hp: 82, attack: 7, defense: 3, crit: 0.12, mana: 120, magicDamage: 28,
-    range: 210, attackRate: 300, moveSpeed: 108, manaPerShot: 5,
+    hp: 88, attack: 7, defense: 3, crit: 0.12, mana: 130, magicDamage: 30,
+    range: 215, attackRate: 320, moveSpeed: 110, manaPerShot: 4,
     proj: "projectile_fire", projSpeed: 8,
-    special: "Feuerball", specialCd: 6, manaCost: 30,
+    special: "Feuerball", specialCd: 6, manaCost: 28,
     desc: "Zauber, mittlere Reichweite, braucht Mana"
   }
 };
@@ -657,18 +710,18 @@ const UPGRADES = [
 
 // Balance – Early Game fairer; Werte hier zum Feintuning
 const BALANCE = {
-  upgradeCostPow: 1.64,
+  upgradeCostPow: 1.58,
   upgradeMax: 25,
-  lootChance: 0.18,
-  xpPerLevel: 155,          // niedriger = schnelleres Held-Level
-  levelScalePow: 1.060,       // niedriger = langsamere Gegner-Skalierung
-  levelUpHealPct: 0.14,
-  waveCooldown: 2.15,
-  minWaveCooldown: 0.95,
-  defenseFactor: 1.3,           // höher = Verteidigung wirkt stärker
-  earlyEaseUntil: 15,           // erste N Dungeon-Level leichter
-  earlyHpEase: 0.12,            // max. HP-Reduktion Early Game
-  earlyAtkEase: 0.22,           // max. Schaden-Reduktion Early Game
+  lootChance: 0.2,
+  xpPerLevel: 145,          // niedriger = schnelleres Held-Level
+  levelScalePow: 1.055,       // niedriger = langsamere Gegner-Skalierung
+  levelUpHealPct: 0.16,
+  waveCooldown: 2.05,
+  minWaveCooldown: 0.9,
+  defenseFactor: 1.35,          // höher = Verteidigung wirkt stärker
+  earlyEaseUntil: 18,           // erste N Dungeon-Level leichter
+  earlyHpEase: 0.14,            // max. HP-Reduktion Early Game
+  earlyAtkEase: 0.24,           // max. Schaden-Reduktion Early Game
   coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln (nur Krieger)
   coinJumpDur: 0.62,            // Sprung in die Luft
   coinJumpHeight: 72,           // Max. Sprunghöhe
@@ -714,7 +767,13 @@ let audioUnlocked = false;
 
 /** Audio-Einstellungen – unabhängig für Musik & Soundeffekte (localStorage) */
 const AUDIO_PREFS_KEY = "dungeon_loop_audio";
-let audioPrefs = { musicEnabled: true, sfxEnabled: true };
+let audioPrefs = {
+  musicEnabled: true, sfxEnabled: true,
+  musicVolume: 0.32, sfxVolume: 0.55,
+  screenShake: true, particles: true,
+  seenTutorial: false
+};
+let saveToastTimer = 0;
 
 /** Meta-Fortschritt – Fähigkeiten-Freischaltung & Account-Level */
 const META_STORAGE_KEY = "dungeon_loop_meta";
@@ -1121,7 +1180,7 @@ async function loadGameData() {
     if (res.ok) WAVE_DATA = await res.json();
   } catch (_) { /* offline / lokal ohne Datei */ }
   try {
-    const res = await fetch("sounds.json?v=99");
+    const res = await fetch("sounds.json?v=" + BUILD_ID);
     if (res.ok) SOUND_MAP = await res.json();
   } catch (_) { /* optional */ }
   if (audioUnlocked) tryMenuMusic();
@@ -1189,10 +1248,11 @@ function updateAudioToggleUI() {
   }
 }
 
-/** Meta-Daten: Account-Level, freigeschaltete & ausgerüstete Fähigkeiten */
+/** Meta-Daten: Account-Level, freigeschaltete & ausgerüstete Fähigkeiten (pro Slot) */
 function defaultMeta() {
   return {
-    level: 1, xp: 0, totalKills: 0,
+    saveVersion: SAVE_SCHEMA_VERSION,
+    level: 1, xp: 0, totalKills: 0, playTimeMs: 0,
     abilities: {
       warrior: { unlocked: [...DEFAULT_UNLOCKED.warrior], equipped: [DEFAULT_UNLOCKED.warrior[0], null] },
       ranger:  { unlocked: [...DEFAULT_UNLOCKED.ranger],  equipped: [DEFAULT_UNLOCKED.ranger[0], null] },
@@ -1201,28 +1261,83 @@ function defaultMeta() {
   };
 }
 
-function loadMeta() {
+function validateMeta(parsed) {
+  const base = defaultMeta();
+  if (!parsed || typeof parsed !== "object") return base;
+  const lvl = Number(parsed.level);
+  const xp = Number(parsed.xp);
+  const kills = Number(parsed.totalKills);
+  const play = Number(parsed.playTimeMs);
+  base.level = clamp(Math.floor(Number.isFinite(lvl) ? lvl : 1), 1, 99);
+  base.xp = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
+  base.totalKills = Number.isFinite(kills) ? Math.max(0, Math.floor(kills)) : 0;
+  base.playTimeMs = Number.isFinite(play) ? Math.max(0, Math.floor(play)) : 0;
+  base.saveVersion = SAVE_SCHEMA_VERSION;
+  ["warrior", "ranger", "mage"].forEach((ck) => {
+    const src = parsed.abilities?.[ck];
+    if (!src) return;
+    const unlocked = Array.isArray(src.unlocked) ? src.unlocked.filter((id) => typeof id === "string") : base.abilities[ck].unlocked;
+    let equipped = Array.isArray(src.equipped) ? src.equipped.slice(0, 2) : base.abilities[ck].equipped;
+    while (equipped.length < 2) equipped.push(null);
+    equipped = equipped.map((id) => (id && unlocked.includes(id) ? id : null));
+    if (!equipped[0] && unlocked.length) equipped[0] = unlocked[0];
+    base.abilities[ck] = { unlocked, equipped };
+  });
+  return base;
+}
+
+function loadLegacyGlobalMeta() {
   try {
     const raw = localStorage.getItem(META_STORAGE_KEY);
-    if (!raw) return defaultMeta();
-    const parsed = JSON.parse(raw);
-    const base = defaultMeta();
-    base.level = parsed.level || 1;
-    base.xp = parsed.xp || 0;
-    base.totalKills = parsed.totalKills || 0;
-    ["warrior", "ranger", "mage"].forEach((ck) => {
-      if (parsed.abilities?.[ck]) {
-        base.abilities[ck].unlocked = parsed.abilities[ck].unlocked || base.abilities[ck].unlocked;
-        base.abilities[ck].equipped = parsed.abilities[ck].equipped || base.abilities[ck].equipped;
-      }
-    });
-    return base;
-  } catch (_) { return defaultMeta(); }
+    if (!raw) return null;
+    return validateMeta(JSON.parse(raw));
+  } catch (_) { return null; }
+}
+
+function loadMeta() {
+  try {
+    const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, (game && game.slotIndex) | 0));
+    const slot = getSlot(i);
+    if (slot && slot.meta) return validateMeta(slot.meta);
+  } catch (_) {}
+  const legacy = loadLegacyGlobalMeta();
+  return legacy || defaultMeta();
 }
 
 function saveMeta() {
   if (!game.meta) return;
+  game.meta = validateMeta(game.meta);
+  const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, game.slotIndex | 0));
+  try {
+    const slots = loadSaveSlots();
+    if (slots[i]) {
+      slots[i] = { ...slots[i], meta: game.meta, savedAt: Date.now() };
+      persistSaveSlots(slots);
+    }
+  } catch (_) {}
+  // Legacy-Spiegel für Migration älterer Builds
   try { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(game.meta)); } catch (_) {}
+}
+
+function flashSaveIndicator(msg) {
+  const el = $("save-indicator");
+  if (!el) return;
+  el.textContent = msg || "Gespeichert";
+  el.classList.remove("hidden");
+  el.classList.add("show");
+  saveToastTimer = 1.6;
+}
+
+function updateSaveIndicator(dt) {
+  if (saveToastTimer <= 0) return;
+  saveToastTimer -= dt;
+  if (saveToastTimer <= 0) {
+    const el = $("save-indicator");
+    if (el) {
+      el.classList.remove("show");
+      el.classList.add("hidden");
+    }
+  }
 }
 
 function addMetaXp(amount) {
@@ -1258,7 +1373,7 @@ function getNextCdAbilityUnlock(classKey, cdLv) {
 function syncUnlockedAbilities(classKey) {
   ensureMeta();
   const cdLv = getSpecialCdLevel();
-  const classes = classKey ? [classKey] : ["warrior", "ranger", "mage"];
+  const classes = classKey ? [classKey] : [game.classKey || "warrior"];
   classes.forEach((ck) => {
     game.meta.abilities[ck].unlocked = getUnlockedAbilityIds(ck, cdLv);
     const eq = game.meta.abilities[ck].equipped || [null, null];
@@ -1460,6 +1575,8 @@ function drawAbilityOverhead(ctx, h) {
 
 function canCastAbility(ab, h, st) {
   if (ab.manaCost && h.mana < ab.manaCost) return false;
+  // Buffs brauchen keinen Gegner – sonst ist z. B. Kriegsschrei zwischen Wellen tot
+  if (ab.type === "buff_shout") return true;
   const range = ab.range || CLASSES[game.classKey].range;
   return hasTargetableEnemy(range);
 }
@@ -1517,7 +1634,7 @@ function playSound(key) {
   if (!SOUND_MAP?.enabled || !audioPrefs.sfxEnabled) return;
   const src = getSoundSrc(key);
   if (!src) return;
-  const vol = SOUND_MAP.sfxVolume ?? SOUND_MAP.volume ?? 0.5;
+  const vol = Math.max(0, Math.min(1, Number(audioPrefs.sfxVolume ?? SOUND_MAP.sfxVolume ?? SOUND_MAP.volume ?? 0.5)));
   if (!audioCache[src]) {
     const a = new Audio(resolveAudioSrc(src));
     a.volume = vol;
@@ -1545,7 +1662,7 @@ function playMusic(key) {
   musicKey = key;
   musicTrack = new Audio(resolveAudioSrc(src));
   musicTrack.loop = true;
-  musicTrack.volume = SOUND_MAP.musicVolume ?? 0.32;
+  musicTrack.volume = Math.max(0, Math.min(1, Number(audioPrefs.musicVolume ?? SOUND_MAP.musicVolume ?? 0.32)));
   if (!audioUnlocked) {
     musicTrack.play().then(() => { audioUnlocked = true; }).catch(() => {});
     return;
@@ -1666,7 +1783,7 @@ function spawnBurst(x, y, color, count, speed) {
   const spd = speed || 4;
   for (let i = 0; i < n; i++) {
     const ang = Math.random() * Math.PI * 2;
-    game.particles.push({
+    pushParticle({
       x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
       life: 14 + Math.random() * 8, color: color || "#f1c40f", size: 2 + Math.random() * 2
     });
@@ -1800,7 +1917,21 @@ function bindEvents() {
   });
   const bind = (id, fn) => { const el = $(id); if (el) el.addEventListener("click", fn); };
   bind("btn-menu-new", () => { unlockAudio(); showMenuPanel("new-slot"); });
+  bind("btn-menu-continue", () => {
+    unlockAudio();
+    const i = getLastSlotIndex();
+    if (getSlot(i)) loadSaveSlot(i);
+  });
   bind("btn-menu-load", () => { unlockAudio(); showMenuPanel("load"); });
+  bind("btn-menu-settings", () => { unlockAudio(); showMenuPanel("settings"); });
+  bind("btn-menu-credits", () => { unlockAudio(); showMenuPanel("credits"); });
+  bind("btn-settings-back", () => showMenuPanel("home"));
+  bind("btn-credits-back", () => showMenuPanel("home"));
+  bind("btn-settings-save", () => applySettingsFromUI());
+  ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles"].forEach((id) => {
+    const el = $(id);
+    if (el) el.addEventListener("change", () => applySettingsFromUI());
+  });
   bind("btn-new-slot-back", () => showMenuPanel("home"));
   bind("btn-new-back", () => showMenuPanel("new-slot"));
   bind("btn-load-back", () => showMenuPanel("home"));
@@ -1963,7 +2094,7 @@ function hitTestCoin(wx, wy) {
 }
 
 function spawnCoinBonusText(x, y, text) {
-  game.particles.push({
+  pushParticle({
     x, y: y - 12, vx: 0, vy: -1.4, life: 52, text, crit: true
   });
 }
@@ -2172,7 +2303,7 @@ function loadSaveSlots() {
 
 function persistSaveSlots(slots) {
   try {
-    localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify({ version: 2, slots }));
+    safeSetLocalStorage(SAVE_SLOTS_KEY, { version: SAVE_SCHEMA_VERSION, slots });
   } catch (_) {}
 }
 
@@ -2208,14 +2339,20 @@ function saveLocalPlayer() {
   if (!game.playerName) return;
   const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, game.slotIndex | 0));
   const slots = loadSaveSlots();
+  ensureMeta();
   slots[i] = {
+    saveVersion: SAVE_SCHEMA_VERSION,
     name: game.playerName,
     classKey: game.classKey,
     totalGold: Math.max(0, Math.floor(Number(game.totalGold) || 0)),
     upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) },
-    savedAt: Date.now()
+    meta: validateMeta(game.meta),
+    createdAt: slots[i]?.createdAt || Date.now(),
+    savedAt: Date.now(),
+    playTimeMs: Math.max(0, Math.floor(Number(game.meta.playTimeMs) || 0))
   };
   persistSaveSlots(slots);
+  flashSaveIndicator("Spielstand gespeichert");
   // Legacy-Spiegel für alte Pfade
   try {
     const store = {};
@@ -2237,6 +2374,7 @@ function clearSaveSlot(slotIndex) {
   persistSaveSlots(slots);
   if (old && old.name) clearActiveRun(old.name);
   clearActiveRun(slotRunKey(i));
+  flashSaveIndicator("Slot " + (i + 1) + " gelöscht");
 }
 
 function getLastPlayerName() {
@@ -2279,13 +2417,16 @@ function formatSaveDate(ts) {
 }
 
 function showMenuPanel(which) {
-  const panels = ["home", "new-slot", "new", "load"];
+  const panels = ["home", "new-slot", "new", "load", "settings", "credits"];
   panels.forEach((key) => {
     const el = $("menu-" + key);
     if (!el) return;
     el.classList.toggle("hidden", key !== which);
   });
-  if (which === "home") renderHomeSlotPreview();
+  if (which === "home") {
+    renderHomeSlotPreview();
+    updateContinueButton();
+  }
   if (which === "load") {
     renderSaveSlotList();
     prefetchSaveSlotWorlds();
@@ -2297,6 +2438,56 @@ function showMenuPanel(which) {
     updateHeroCardUI();
     renderSetupAbilityHint();
   }
+  if (which === "settings") syncSettingsUI();
+}
+
+function updateContinueButton() {
+  const btn = $("btn-menu-continue");
+  if (!btn) return;
+  const i = getLastSlotIndex();
+  const slot = getSlot(i);
+  const ok = !!(slot && slot.name);
+  btn.disabled = !ok;
+  btn.textContent = ok
+    ? ("Fortsetzen · Slot " + (i + 1) + " · " + slot.name)
+    : "Fortsetzen";
+}
+
+function syncSettingsUI() {
+  const set = (id, val) => { const el = $(id); if (el) el.value = String(val); };
+  const setCheck = (id, val) => { const el = $(id); if (el) el.checked = !!val; };
+  set("setting-music-vol", Math.round((audioPrefs.musicVolume ?? 0.32) * 100));
+  set("setting-sfx-vol", Math.round((audioPrefs.sfxVolume ?? 0.55) * 100));
+  setCheck("setting-music-enabled", audioPrefs.musicEnabled !== false);
+  setCheck("setting-sfx-enabled", audioPrefs.sfxEnabled !== false);
+  setCheck("setting-screen-shake", audioPrefs.screenShake !== false);
+  setCheck("setting-particles", audioPrefs.particles !== false);
+  updateAudioToggleUI();
+}
+
+function applySettingsFromUI() {
+  const num = (id, def) => {
+    const el = $(id);
+    if (!el) return def;
+    const v = Number(el.value);
+    return Number.isFinite(v) ? v : def;
+  };
+  const chk = (id, def) => {
+    const el = $(id);
+    return el ? !!el.checked : def;
+  };
+  audioPrefs.musicVolume = Math.max(0, Math.min(1, num("setting-music-vol", 32) / 100));
+  audioPrefs.sfxVolume = Math.max(0, Math.min(1, num("setting-sfx-vol", 55) / 100));
+  audioPrefs.musicEnabled = chk("setting-music-enabled", true);
+  audioPrefs.sfxEnabled = chk("setting-sfx-enabled", true);
+  audioPrefs.screenShake = chk("setting-screen-shake", true);
+  audioPrefs.particles = chk("setting-particles", true);
+  saveAudioPrefs();
+  updateAudioToggleUI();
+  if (musicTrack) musicTrack.volume = audioPrefs.musicVolume;
+  if (!audioPrefs.musicEnabled) stopMusic();
+  else if (!game.isRunning || game.isDead) tryMenuMusic();
+  flashSaveIndicator("Einstellungen gespeichert");
 }
 
 function buildSlotButtonHtml(slotIndex, data, mode) {
@@ -2378,6 +2569,8 @@ function renderSaveSlotList() {
   let filled = 0;
   for (let i = 0; i < MAX_SAVE_SLOTS; i++) {
     const data = slots[i];
+    const row = document.createElement("div");
+    row.className = "save-slot-row";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "save-slot " + (data ? normalizeClassKey(data.classKey) : "empty");
@@ -2393,11 +2586,28 @@ function renderSaveSlotList() {
         loadSaveSlot(i);
       });
     }
-    list.appendChild(btn);
+    row.appendChild(btn);
+    if (data) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-danger btn-small save-slot-delete";
+      del.textContent = "Löschen";
+      del.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const ok = confirm("Slot " + (i + 1) + ' ("' + data.name + '") wirklich löschen?\nDieser Vorgang kann nicht rückgängig gemacht werden.');
+        if (!ok) return;
+        clearSaveSlot(i);
+        renderSaveSlotList();
+        renderHomeSlotPreview();
+        updateContinueButton();
+      });
+      row.appendChild(del);
+    }
+    list.appendChild(row);
   }
   if (hint) {
     hint.textContent = filled
-      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt – Tippen lädt direkt in den Run."
+      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt – Tippen lädt, Löschen entfernt den Stand."
       : "Noch keine Spielstände. Starte ein neues Spiel.";
   }
 }
@@ -2452,6 +2662,7 @@ function returnToMainMenu() {
     setup.classList.remove("hidden");
   }
   restoreSetupFromSave();
+  tryMenuMusic();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2524,7 +2735,7 @@ function loadActiveRunFor(name) {
       const store = loadRunStore();
       store[key] = data;
       store[slotRunKey(data.slotIndex | 0)] = data;
-      localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+      safeSetLocalStorage(RUN_STORAGE_KEY, store);
     } catch (_) {}
   }
   return data;
@@ -2618,7 +2829,7 @@ function saveActiveRun(force) {
     const store = loadRunStore();
     if (key) store[key] = payload;
     store[slotKey] = payload;
-    localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+    safeSetLocalStorage(RUN_STORAGE_KEY, store);
     runSaveDirty = false;
     return true;
   } catch (_) {
@@ -2795,8 +3006,14 @@ function updateRunButtons() {
 function applyPlayerSave(data) {
   game.classKey = normalizeClassKey(data.classKey);
   game.totalGold = Math.max(0, Math.floor(Number(data.totalGold) || 0));
-  game.upgrades = { ...emptyUpgrades(), ...(data.upgrades || {}) };
+  const ups = { ...emptyUpgrades(), ...(data.upgrades || {}) };
+  Object.keys(ups).forEach((k) => {
+    const n = Math.floor(Number(ups[k]) || 0);
+    ups[k] = Math.max(0, Math.min(BALANCE.upgradeMax, Number.isFinite(n) ? n : 0));
+  });
+  game.upgrades = ups;
   if (Number.isFinite(data.slotIndex)) game.slotIndex = data.slotIndex;
+  game.meta = validateMeta(data.meta || defaultMeta());
 }
 
 function showLeaderboardSection() { /* Rangliste entfernt */ }
@@ -2813,7 +3030,8 @@ async function loadSaveSlot(slotIndex) {
   game.playerId = null;
   applyPlayerSave({ ...slot, slotIndex });
   selectClass(game.classKey);
-  syncUnlockedAbilities();
+  syncUnlockedAbilities(game.classKey);
+  saveMeta();
   const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(slotIndex));
   await ensureRunWorldAssets(run?.dungeonLevel || 1);
   const msg = run
@@ -2884,6 +3102,7 @@ async function startNewGameFromMenu() {
   const classKey = getSelectedClassFromUI();
   game.classKey = classKey;
   game.slotIndex = pendingSlotIndex;
+  game.meta = defaultMeta();
   selectClass(classKey);
   // Slot ggf. leeren und neu belegen
   clearSaveSlot(pendingSlotIndex);
@@ -3510,8 +3729,8 @@ function getAttackScale() {
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  const ease = lv <= 10 ? 0.82 : lv <= 25 ? 0.92 : lv <= 50 ? 1.0 : 1.08;
-  return { hp: 5.2 * ease, atk: 2.25 * ease, rew: 3.8 };
+  const ease = lv <= 10 ? 0.78 : lv <= 25 ? 0.9 : lv <= 50 ? 0.98 : 1.05;
+  return { hp: 4.8 * ease, atk: 2.1 * ease, rew: 4.0 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4042,7 +4261,7 @@ function castAbility(ab, h, st) {
       if (!target) return false;
       const tx = target.x + target.w / 2, ty = target.y + target.h / 2;
       for (let i = 0; i < 6; i++) {
-        game.particles.push({
+        pushParticle({
           x: tx + (Math.random() - 0.5) * 20, y: ty - 30 - i * 8,
           vx: 0, vy: 8, life: 12, color: ab.particle, size: 3
         });
@@ -4142,6 +4361,8 @@ function updateFrame(dt) {
   const h = game.hero;
   if (!h) return;
   const st = heroStats();
+  updateSaveIndicator(dt);
+  if (game.meta) game.meta.playTimeMs = (game.meta.playTimeMs || 0) + dt * 1000;
   game.scrollX += dt * 40;
   h.specialTimer += dt;
   h.anim += dt * 8;
@@ -4153,7 +4374,8 @@ function updateFrame(dt) {
   }
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;
   if (h.shieldTimer > 0) h.shieldTimer -= dt;
-  if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
+  if (!audioPrefs.screenShake) game.screenShake = 0;
+  else if (game.screenShake > 0) game.screenShake = Math.max(0, game.screenShake - dt * 28);
   if (game.critFlash > 0) game.critFlash = Math.max(0, game.critFlash - dt * 2.5);
   if (game.zoomPulse > 0) game.zoomPulse = Math.max(0, game.zoomPulse - dt * 0.06);
   updateBossIntro(dt);
@@ -4207,6 +4429,17 @@ function updateFrame(dt) {
     if (e.attackWindup > 0) e.attackWindup -= dt * 5;
     if (e.slowTimer > 0) e.slowTimer -= dt;
     if (e.weakTimer > 0) e.weakTimer -= dt;
+    if ((e.poisonTicks || 0) > 0 && e.hp > 0 && !e.dead) {
+      e.poisonTimer = (e.poisonTimer || 0.4) - dt;
+      if (e.poisonTimer <= 0) {
+        e.poisonTimer = 0.4;
+        e.poisonTicks -= 1;
+        const dot = Math.max(1, e.poisonDmg || 1);
+        e.hp -= dot;
+        spawnDamage(e.x + e.w / 2, e.y, dot, { magic: true });
+        if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
+      }
+    }
 
     if (e.walkingIn && e.x > CW - 28) {
       e.attackWindup = 0;
@@ -4266,7 +4499,7 @@ function updateFrame(dt) {
   game.projectiles = game.projectiles.filter((p) => {
     p.x += p.vx; p.y += p.vy; p.life--;
     if (p.trail && p.life % 3 === 0) {
-      game.particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 8, color: p.trail, size: 2 });
+      pushParticle({ x: p.x, y: p.y, vx: 0, vy: 0, life: 8, color: p.trail, size: 2 });
     }
     if (p.life <= 0) return false;
     if (p.owner === "enemy") {
@@ -4294,17 +4527,11 @@ function updateFrame(dt) {
           });
           spawnImpactRing(vb.cx, vb.y + vb.h / 2, p.big ? 24 : 14, p.crit ? "#f1c40f" : (p.magic ? "#5dade2" : "#ecf0f1"), 10);
           emitCombatEvent("enemy_hit");
-          /** Giftpfeil: Schaden über Zeit */
+          /** Giftpfeil: DoT am Gegner (pausierbar, kein setTimeout) */
           if (p.poison && e.hp > 0) {
-            const dot = Math.floor(p.dmg * (p.poisonMult || 0.25));
-            for (let t = 1; t <= p.poison; t++) {
-              setTimeout(() => {
-                if (e.dead || e.hp <= 0) return;
-                e.hp -= dot;
-                spawnDamage(e.x + e.w / 2, e.y, dot, { magic: true });
-                if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKill(e); }
-              }, t * 400);
-            }
+            e.poisonTicks = Math.max(e.poisonTicks || 0, p.poison);
+            e.poisonDmg = Math.max(e.poisonDmg || 0, Math.floor(p.dmg * (p.poisonMult || 0.25)));
+            e.poisonTimer = e.poisonTimer || 0.4;
           }
           if (p.explosive) {
             const rad = p.explosiveRadius || 90;
@@ -4385,7 +4612,7 @@ function onEnemyKill(e) {
   if (typeof PackFX !== "undefined") {
     PackFX.spawnExplosion(e.x + e.w / 2, e.y + e.h / 2, { radius: e.isBoss ? 48 : 28, life: e.isBoss ? 20 : 14 });
   } else {
-    for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
+    for (let i = 0; i < 5; i++) pushParticle({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
   }
 
   while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
@@ -4466,7 +4693,7 @@ function spawnDamage(x, y, val, arg4, arg5) {
   const life = damagePopupLife(amount, opts);
   const prefix = opts.heal ? "+" : opts.taken ? "-" : "";
 
-  game.particles.push({
+  pushParticle({
     x, y: y - 10, vx: (Math.random() - 0.5) * 0.8, vy: -1.8,
     life, maxLife: life,
     text: prefix + amount,

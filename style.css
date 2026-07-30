@@ -21,7 +21,7 @@
 }
 
 body {
-  font-family: "Cinzel", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
   background:
     radial-gradient(ellipse at 50% 0%, #1a1420 0%, transparent 55%),
     linear-gradient(180deg, #0b0a0e 0%, #121018 40%, #0a090c 100%);
@@ -1128,3 +1128,60 @@ body {
 .header h1 {
   text-shadow: 0 0 24px rgba(240, 192, 64, 0.25), 0 2px 0 rgba(0, 0, 0, 0.5);
 }
+
+
+/* Save indicator */
+.save-indicator {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 9999;
+  padding: 0.4rem 0.75rem;
+  background: rgba(12, 16, 12, 0.9);
+  border: 1px solid rgba(46, 204, 113, 0.55);
+  color: #7dffa0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.save-indicator.show { opacity: 1; }
+.save-indicator.hidden { display: none; }
+
+.settings-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0 1.25rem;
+  max-width: 420px;
+}
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.settings-row input[type="range"] { width: min(180px, 46vw); }
+.credits-body {
+  margin: 0.75rem 0 1.25rem;
+  line-height: 1.55;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.credits-body strong { color: var(--gold); }
+.tutorial-hint {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(212, 168, 75, 0.25);
+  background: rgba(40, 30, 16, 0.45);
+}
+.save-slot-row {
+  display: flex;
+  gap: 0.45rem;
+  align-items: stretch;
+  margin-bottom: 0.45rem;
+}
+.save-slot-row .save-slot { flex: 1; }
+.save-slot-delete { align-self: center; white-space: nowrap; }

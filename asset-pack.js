@@ -10,7 +10,7 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "143",
+    version: "144",
 
     loadImage(path) {
       return new Promise((resolve) => {
