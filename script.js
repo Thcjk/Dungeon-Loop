@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-142";
+const BUILD_ID = "sidescroller-v3-143";
 const GAME_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
 
@@ -1810,6 +1810,15 @@ function bindEvents() {
   bind("btn-new-game", () => { startNewGameFromSetup(); });
   bind("btn-start-run", continueOrStartRun);
   bind("btn-pause", togglePause);
+  bind("btn-pause-resume", () => { if (game.isPaused) togglePause(); });
+  bind("btn-pause-upgrades", () => {
+    hidePauseMenu();
+    showUpgrades();
+  });
+  bind("btn-pause-menu", () => {
+    hidePauseMenu();
+    returnToMainMenu();
+  });
   bind("btn-restart", restartRun);
   bind("btn-save-score", saveScore);
   bind("btn-gameover-run", () => { clearActiveRun(); startRun(); });
@@ -1857,11 +1866,14 @@ function bindEvents() {
       toggleUpgrades();
     }
     if (e.key === "Escape") {
+      e.preventDefault();
       const sec = $("upgrade-section");
       if (sec && !sec.classList.contains("hidden")) {
-        e.preventDefault();
         hideUpgrades();
         return;
+      }
+      if (game.isRunning && !game.isDead) {
+        togglePause();
       }
     }
   });
@@ -2429,6 +2441,7 @@ function returnToMainMenu() {
   game.isPaused = false;
   game.isDead = false;
   game.hero = null;
+  hidePauseMenu();
   hideUpgrades();
   $("gameover-panel")?.classList.add("hidden");
   $("game-frame")?.classList.add("hidden");
@@ -3276,6 +3289,7 @@ function restartRun() {
   game.isRunning = false; game.isPaused = false; game.isDead = false;
   resetRun();
   game.hero = null;
+  hidePauseMenu();
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.add("hidden");
   $("btn-start-run").disabled = false;
@@ -3293,8 +3307,19 @@ function mountUpgradeOverlay() {
   if (sec.parentElement !== host) host.appendChild(sec);
 }
 
+function showPauseMenu() {
+  const panel = $("pause-panel");
+  if (panel) panel.classList.remove("hidden");
+}
+
+function hidePauseMenu() {
+  const panel = $("pause-panel");
+  if (panel) panel.classList.add("hidden");
+}
+
 function showUpgrades() {
   $("gameover-panel").classList.add("hidden");
+  hidePauseMenu();
   mountUpgradeOverlay();
   const sec = $("upgrade-section");
   if (!sec || !$("game-section") || $("game-section").classList.contains("hidden")) return;
@@ -3322,6 +3347,10 @@ function hideUpgrades() {
     $("btn-pause").textContent = "Pause (P)";
   }
   if (game.isDead) $("gameover-panel").classList.remove("hidden");
+  // Aus Upgrades zurück ins Pausenmenü, wenn der Run noch pausiert ist
+  if (game.isRunning && !game.isDead && game.isPaused) {
+    showPauseMenu();
+  }
   if (game.isRunning && !game.isDead && !game.isPaused) {
     ensureGameLoop();
     if (countAliveEnemies() === 0) safeSpawnWave();
@@ -3342,13 +3371,19 @@ function goToUpgrades() {
 
 function togglePause() {
   if (!game.isRunning || game.isDead) return;
+  // Während Upgrade-Overlay: Pause nicht umschalten (schließen per Esc/U)
+  const sec = $("upgrade-section");
+  if (sec && !sec.classList.contains("hidden")) return;
   game.isPaused = !game.isPaused;
   $("btn-pause").textContent = game.isPaused ? "Weiter (P)" : "Pause (P)";
   if (game.isPaused) {
     saveActiveRun(true);
     if (game.playerName) saveLocalPlayer();
     stopLoop();
+    showPauseMenu();
+    addLog("Pausiert.");
   } else {
+    hidePauseMenu();
     startLoop();
   }
 }
@@ -4045,23 +4080,12 @@ function updateAbilityState(dt, h) {
   if (h.warriorBuff > 0) h.warriorBuff -= dt;
   Object.keys(h.abilityCds).forEach((k) => { h.abilityCds[k] += dt; });
 
-  // Sichtbare Rückmeldung nur beim Übergang Cooldown → bereit.
-  // Initial bereite Fähigkeiten werden nicht als Popup gespammt.
+  // Bereit-Status nur über der Heldenkopf-Anzeige (W/S ✓) – kein mittiges Popup.
   h.abilityReadyState = h.abilityReadyState || {};
   [0, 1].forEach((slotIdx) => {
     const ab = getEquippedAbilityAtSlot(slotIdx);
     if (!ab) return;
-    const ready = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
-    const previous = h.abilityReadyState[ab.id];
-    if (previous === false && ready) {
-      showAnnouncement(
-        "ability",
-        "ULT BEREIT",
-        getAbilityKeyLabel(slotIdx) + " · " + ab.name,
-        1.8
-      );
-    }
-    h.abilityReadyState[ab.id] = ready;
+    h.abilityReadyState[ab.id] = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
   });
 }
 
@@ -4398,7 +4422,7 @@ function onDeath() {
 }
 
 function showGameOver() {
-
+  hidePauseMenu();
   const world = getWorld();
   emitCombatEvent("game_over");
   $("gameover-panel").classList.remove("hidden");
