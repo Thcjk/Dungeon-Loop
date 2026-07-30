@@ -12,7 +12,8 @@ Vorverarbeitete Assets aus `assets/incoming/` (Meshy Pixel-Art Pack).
 | `worlds/` | Preview, Ground, Midband, Tileset, Deco |
 | `props/` | Freigestellte Deko-Props (ohne Schachbrett) |
 | `fx/` | Effekt-/Projektil-Sheets |
+| `fx/sprites/` | Zugeschnittene FX (Arrow, Feuerball, Slash, Explosion …) |
 | `ui/` | HUD-/Frame-/Icon-Sheets |
-| `manifest.json` | Zentrale Pfad-Zuordnung |
+| `manifest.json` | Zentrale Pfad-Zuordnung (`fxSprites` für Runtime) |
 
-Runtime: `asset-pack.js` → `PackAssets`
+Runtime: `asset-pack.js` → `PackAssets` · `pack-fx.js` → Kampf-VFX

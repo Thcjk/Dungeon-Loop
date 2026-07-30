@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "slots-v121";
+const BUILD_ID = "assets-fx-v122";
 
 /** Tasten für ausgerüstete Spezialfähigkeiten */
 const ABILITY_KEY_LABELS = ["W", "S"];
@@ -909,6 +909,7 @@ function drawHero(c, h, bob, atkOff, hurtOff, world) {
 }
 
 function drawPremiumSlashFx(c, s) {
+  if (typeof PackFX !== "undefined" && PackFX.drawSlash(c, s)) return;
   const maxLife = s.maxLife || (s.big ? 20 : 14);
   const t = s.life / maxLife;
   const color = s.owner === "enemy" ? "#e74c3c" : game.classKey === "warrior" ? "#f1c40f" : game.classKey === "ranger" ? "#95e1a3" : "#bb86fc";
@@ -933,6 +934,7 @@ function drawPremiumSlashFx(c, s) {
 }
 
 function drawPremiumProjectileFx(c, p) {
+  if (typeof PackFX !== "undefined" && PackFX.drawProjectile(c, p)) return;
   const rows = SPRITES[p.sprite];
   if (!rows) return;
   const sc = p.big ? 1.5 : 1;
@@ -1584,9 +1586,10 @@ function spawnMeleeSlash(x, y, angle, opts) {
 
 function spawnImpactRing(x, y, radius, color, life) {
   game.attackEffects.push({
-    type: "ring", x, y, radius: radius || 24,
+    type: "spark", x, y, radius: radius || 24,
     color: color || "#e74c3c",
-    life: life || 12, maxLife: life || 12
+    life: life || 12, maxLife: life || 12,
+    fxKey: "spark_a"
   });
 }
 
@@ -3695,6 +3698,9 @@ function castAbility(ab, h, st) {
   emitCombatEvent(getClassSpecialSound(game.classKey));
   spawnBurst(hx, hy, ab.particle || ab.color, 10, 4);
   game.screenShake = Math.max(game.screenShake, ab.type === "aoe_ground" ? 5 : 3);
+  if (typeof PackFX !== "undefined" && (game.classKey === "mage" || ab.type === "aoe_ground" || ab.magic)) {
+    PackFX.spawnMagicCircle(hx, hy + 10, { life: 18 });
+  }
 
   const atkBase = game.classKey === "mage" ? st.magicDamage : st.attack;
   const buffMult = h.warriorBuff > 0 ? h.warriorBuffMult : 1;
@@ -4170,7 +4176,11 @@ function onEnemyKill(e) {
   addLog(e.name + " besiegt!", e.isBoss ? "boss" : "damage");
   addMetaXp(2);
   spawnCoinDrop(gold, e.x + e.w / 2, e.y + e.h / 2);
-  for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
+  if (typeof PackFX !== "undefined") {
+    PackFX.spawnExplosion(e.x + e.w / 2, e.y + e.h / 2, { radius: e.isBoss ? 48 : 28, life: e.isBoss ? 20 : 14 });
+  } else {
+    for (let i = 0; i < 5; i++) game.particles.push({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
+  }
 
   while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
     game.runXp -= game.playerLevel * BALANCE.xpPerLevel;
@@ -4284,10 +4294,14 @@ function render() {
 
   drawCoinDrops(ctx);
 
-  // Treffer-Ringe & Explosionen (hinten)
+  // Treffer-Ringe & Explosionen (hinten) – Pack-FX wenn verfügbar
   game.attackEffects.forEach((fx) => {
+    if (typeof PackFX !== "undefined" && PackFX.drawEffect(ctx, fx)) {
+      ctx.globalAlpha = 1;
+      return;
+    }
     const t = fx.life / fx.maxLife;
-    if (fx.type === "ring") {
+    if (fx.type === "ring" || fx.type === "spark") {
       ctx.strokeStyle = fx.color;
       ctx.globalAlpha = t * 0.85;
       ctx.lineWidth = 2 + (1 - t) * 2;
@@ -4310,18 +4324,9 @@ function render() {
     ctx.globalAlpha = 1;
   });
 
-  // Nahkampf-Schläge (Spieler + Gegner)
+  // Nahkampf-Schläge (Spieler + Gegner) – Pack-Slash bevorzugt
   game.meleeSlashes.forEach((s) => {
-    const maxLife = s.maxLife || (s.big ? 20 : 14);
     drawPremiumSlashFx(ctx, s);
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(s.angle);
-    ctx.globalAlpha = (s.life / maxLife) * (s.big ? 0.95 : 0.8);
-    const sc = s.big ? 2.5 : 1.8;
-    const sp = s.owner === "enemy" ? SPRITES.enemy_slash : SPRITES.slash;
-    drawSprite(ctx, sp, s.range * 0.35, -6 * sc, false);
-    ctx.restore();
   });
 
   // Gegner

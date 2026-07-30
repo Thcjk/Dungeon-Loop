@@ -9,7 +9,7 @@
     manifest: null,
     images: Object.create(null),
     base: "assets/pack/",
-    version: "119",
+    version: "122",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -61,7 +61,7 @@
     async loadRest() {
       await this.fetchManifest();
       const paths = new Set();
-      ["enemies", "bosses", "fx", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
+      ["enemies", "bosses", "fx", "fxSprites", "ui"].forEach((k) => this.collectPaths(this.manifest[k], paths));
       // Welten: nur flache deco-BG + Boden (kein midband/preview mit Helden)
       const worlds = this.manifest.worlds || {};
       Object.keys(worlds).forEach((theme) => {
@@ -134,6 +134,16 @@
     listEnemySlugs(theme) {
       const map = this.manifest?.enemies?.[theme] || {};
       return Object.keys(map);
+    },
+
+    fxSprite(key) {
+      const s = this.manifest?.fxSprites?.[key];
+      if (!s) return null;
+      return this.img(typeof s === "string" ? s : s.path);
+    },
+
+    fxMeta(key) {
+      return this.manifest?.fxSprites?.[key] || null;
     }
   };
 
