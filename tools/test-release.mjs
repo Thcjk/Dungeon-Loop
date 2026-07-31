@@ -16,7 +16,7 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-147"'), "BUILD_ID v147");
+assert(script.includes('BUILD_ID = "sidescroller-v3-148"'), "BUILD_ID v148");
 assert(fs.existsSync(path.join(root, "logo.svg")), "logo.svg vorhanden");
 assert(html.includes('class="menu-brand"'), "Hauptmenü-Logo-Bereich");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
@@ -30,6 +30,10 @@ assert(script.includes("e.poisonTicks"), "Gift-DoT pausierbar");
 assert(!/setTimeout\(\(\) => \{\s*if \(e\.dead/.test(script), "kein Gift-setTimeout mehr");
 assert(/attackRate:\s*380/.test(script), "Ranger attackRate 380");
 assert(/attackRate:\s*460/.test(script), "Krieger attackRate 460");
+assert(script.includes("function shouldSpawnWorldBoss("), "Welt-Boss-Tor vorhanden");
+assert(script.includes("function tryAdvanceWorldAfterBossWave("), "Weltwechsel nach Boss-Welle");
+assert(script.includes("worldIndex:"), "worldIndex im Spielstand");
+assert(!script.includes("dungeonLevel % 10 === 0"), "kein alter Level-%-10-Boss mehr");
 assert(html.includes('id="menu-settings"'), "Einstellungen-Menü");
 assert(html.includes('id="menu-credits"'), "Credits-Menü");
 assert(html.includes('id="btn-menu-continue"'), "Fortsetzen im Hauptmenü");
