@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-148";
+const BUILD_ID = "sidescroller-v3-150";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -1932,7 +1932,10 @@ function bindEvents() {
   bind("btn-menu-credits", () => { unlockAudio(); showMenuPanel("credits"); });
   bind("btn-settings-back", () => showMenuPanel("home"));
   bind("btn-credits-back", () => showMenuPanel("home"));
-  bind("btn-settings-save", () => applySettingsFromUI());
+  bind("btn-settings-save", () => {
+    applySettingsFromUI();
+    showMenuPanel("home");
+  });
   ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles"].forEach((id) => {
     const el = $(id);
     if (el) el.addEventListener("change", () => applySettingsFromUI());
