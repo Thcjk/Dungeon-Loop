@@ -10,16 +10,28 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "145",
+    version: "149",
 
     loadImage(path) {
       return new Promise((resolve) => {
         if (!path) { resolve(null); return; }
-        if (this.images[path]) { resolve(this.images[path]); return; }
+        const cached = this.images[path];
+        if (cached) {
+          if (cached.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+          if (cached.complete && cached.naturalWidth === 0) { resolve(null); return; }
+          cached.addEventListener("load", () => resolve(cached.naturalWidth > 0 ? cached : null), { once: true });
+          cached.addEventListener("error", () => resolve(null), { once: true });
+          return;
+        }
         const img = new Image();
+        this.images[path] = img;
         img.decoding = "async";
-        img.onload = () => { this.images[path] = img; resolve(img); };
-        img.onerror = () => { console.warn("Asset fehlt:", path); resolve(null); };
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          if (this.images[path] === img) delete this.images[path];
+          console.warn("Asset fehlt:", path);
+          resolve(null);
+        };
         const bust = path.includes("?") ? "" : ("?v=" + this.version);
         img.src = path + bust;
       });
@@ -128,9 +140,12 @@
       return this.img(path);
     },
 
-    heroCard(classKey) {
+    heroCard(classKey, pose) {
       const h = this.manifest?.heroes?.[classKey];
       if (!h) return null;
+      if (pose === "attack") {
+        return this.img(h.attack_card || h.attack || h.idle_card || h.idle);
+      }
       return this.img(h.idle_card || h.idle);
     },
 
