@@ -4177,7 +4177,7 @@ function castAbility(ab, h, st) {
   if (ab.manaCost && h.mana < ab.manaCost) return false;
   if (ab.manaCost) h.mana -= ab.manaCost;
 
-  h.attackAnim = 0.18;
+  h.attackAnim = 0.36;
   game.abilityCastLock = 0.4;
   addLog(ab.name + "!", "magic");
   emitCombatEvent(getClassSpecialSound(game.classKey));
