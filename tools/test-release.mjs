@@ -16,8 +16,10 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-148"'), "BUILD_ID v148");
-assert(fs.existsSync(path.join(root, "logo.svg")), "logo.svg vorhanden");
+assert(script.includes('BUILD_ID = "sidescroller-v3-152"'), "BUILD_ID v152");
+assert(script.includes("upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) }"), "Upgrades im Run-Save");
+assert(script.includes("function countUpgradeLevels("), "Upgrade-Zähler für Slots");
+assert(script.includes('saveLocalPlayer({ quiet: true })'), "Leises Slot-Sync beim Run-Save");
 assert(html.includes('class="menu-brand"'), "Hauptmenü-Logo-Bereich");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
 assert(script.includes("function validateMeta("), "validateMeta vorhanden");
