@@ -16,7 +16,7 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-144"'), "BUILD_ID v144");
+assert(script.includes('BUILD_ID = "sidescroller-v3-145"'), "BUILD_ID v144");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
 assert(script.includes("function validateMeta("), "validateMeta vorhanden");
 assert(script.includes("function safeSetLocalStorage("), "safeSetLocalStorage vorhanden");
