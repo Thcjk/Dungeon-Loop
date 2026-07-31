@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-145";
+const BUILD_ID = "sidescroller-v3-146";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -737,6 +737,10 @@ const game = {
   totalGold: 0, upgrades: {},
   isRunning: false, isPaused: false, isDead: false,
   dungeonLevel: 1, runGold: 0, runXp: 0, playerLevel: 1, monstersDefeated: 0,
+  /** Aktuelle Welt (0..WORLDS.length-1) – wechselt erst nach Boss-Welle */
+  worldIndex: 0,
+  /** Aktuelle Welle war Welt-Boss (Tor zur nächsten Welt) */
+  waveWasBoss: false,
   hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
   attackEffects: [], screenShake: 0,
   waveNumber: 0, currentWave: null,
@@ -1745,6 +1749,7 @@ function onWaveClear() {
   const soundKey = WAVE_DATA?.waveTypes?.[waveType]?.soundClear || "wave_clear";
   playSound(soundKey);
   game.currentWave = null;
+  tryAdvanceWorldAfterBossWave();
 }
 
 // ============================================
@@ -2807,6 +2812,8 @@ function saveActiveRun(force) {
     slotIndex: game.slotIndex | 0,
     classKey: game.classKey,
     dungeonLevel: game.dungeonLevel,
+    worldIndex: game.worldIndex | 0,
+    waveWasBoss: !!game.waveWasBoss,
     runGold: game.runGold,
     runXp: game.runXp,
     playerLevel: game.playerLevel,
@@ -2927,6 +2934,13 @@ function resumeRun(data) {
   game.classKey = normalizeClassKey(data.classKey || game.classKey);
   selectClass(game.classKey);
   game.dungeonLevel = Math.max(1, Math.floor(Number(data.dungeonLevel) || 1));
+  game.worldIndex = clampWorldIndex(
+    Number.isFinite(Number(data.worldIndex))
+      ? Number(data.worldIndex)
+      : worldIndexFromLevel(game.dungeonLevel)
+  );
+  game.waveWasBoss = !!data.waveWasBoss ||
+    (Array.isArray(data.enemies) && data.enemies.some((e) => e && e.isBoss));
   game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
   game.runXp = Math.max(0, Math.floor(Number(data.runXp) || 0));
   game.playerLevel = Math.max(1, Math.floor(Number(data.playerLevel) || 1));
@@ -3033,7 +3047,7 @@ async function loadSaveSlot(slotIndex) {
   syncUnlockedAbilities(game.classKey);
   saveMeta();
   const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(slotIndex));
-  await ensureRunWorldAssets(run?.dungeonLevel || 1);
+  await ensureRunWorldAssets(run?.dungeonLevel || 1, run?.worldIndex);
   const msg = run
     ? "Slot " + (slotIndex + 1) + ": " + slot.name + " – Dungeon " + run.dungeonLevel
     : "Slot " + (slotIndex + 1) + ": " + slot.name + " geladen";
@@ -3067,7 +3081,7 @@ async function loadPlayer(opts) {
     selectClass(game.classKey);
     syncUnlockedAbilities();
     const run = forceNew ? null : (loadActiveRunFor(name) || loadActiveRunFor(slotRunKey(game.slotIndex)));
-    await ensureRunWorldAssets(run?.dungeonLevel || 1);
+    await ensureRunWorldAssets(run?.dungeonLevel || 1, run?.worldIndex);
     const msg = run
       ? "Willkommen zurück, " + name + "! Spielstand Dungeon " + run.dungeonLevel + " wird fortgesetzt."
       : forceNew
@@ -3481,7 +3495,7 @@ async function continueOrStartRun() {
   }
   const existing = game.playerName ? loadActiveRunFor(game.playerName) : null;
   if (existing) {
-    await ensureRunWorldAssets(existing.dungeonLevel || 1);
+    await ensureRunWorldAssets(existing.dungeonLevel || 1, existing.worldIndex);
     resumeRun(existing);
     return;
   }
@@ -3491,6 +3505,7 @@ async function continueOrStartRun() {
 
 function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
+  game.worldIndex = 0; game.waveWasBoss = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
   game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
@@ -3678,9 +3693,23 @@ function getWorldForLevel(level) {
   return w;
 }
 
-async function ensureRunWorldAssets(dungeonLevel) {
+function worldIndexFromLevel(level) {
+  const lv = Math.max(1, Math.floor(Number(level) || 1));
+  let idx = 0;
+  for (let i = 0; i < WORLDS.length; i++) if (lv >= WORLDS[i].min) idx = i;
+  return idx;
+}
+
+function clampWorldIndex(idx) {
+  const n = Math.floor(Number(idx) || 0);
+  return Math.max(0, Math.min(WORLDS.length - 1, n));
+}
+
+async function ensureRunWorldAssets(dungeonLevel, worldIndex) {
   if (typeof PackAssets === "undefined") return;
-  const world = getWorldForLevel(dungeonLevel);
+  const world = Number.isFinite(Number(worldIndex))
+    ? WORLDS[clampWorldIndex(worldIndex)]
+    : getWorldForLevel(dungeonLevel);
   await PackAssets.ensureWorld(world.theme);
 }
 
@@ -3690,15 +3719,49 @@ function prefetchSaveSlotWorlds() {
   loadSaveSlots().forEach((slot, i) => {
     if (!slot) return;
     const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(i));
-    themes.add(getWorldForLevel(run?.dungeonLevel || 1).theme);
+    const idx = Number.isFinite(Number(run?.worldIndex))
+      ? clampWorldIndex(run.worldIndex)
+      : worldIndexFromLevel(run?.dungeonLevel || 1);
+    themes.add(WORLDS[idx].theme);
   });
   PackAssets.prefetchWorlds([...themes]);
 }
 
 function getWorld() {
-  let w = WORLDS[0];
-  for (const x of WORLDS) if (game.dungeonLevel >= x.min) w = x;
-  return w;
+  return WORLDS[clampWorldIndex(game.worldIndex)];
+}
+
+/** Boss-Welle: Tor zur nächsten Welt, sobald Dungeon-Level die nächste Welt erreicht hat. */
+function shouldSpawnWorldBoss() {
+  const idx = clampWorldIndex(game.worldIndex);
+  if (idx >= WORLDS.length - 1) {
+    // Letzte Welt: Bosse alle 20 Level nach dem Eintritt (nicht sofort)
+    const base = WORLDS[idx].min;
+    return game.dungeonLevel > base && (game.dungeonLevel - base) % 20 === 0;
+  }
+  const gate = WORLDS[idx + 1].min;
+  return game.dungeonLevel >= gate;
+}
+
+/** Nach besiegter Boss-Welle in die nächste Welt wechseln (BG/Musik/Ansage). */
+function tryAdvanceWorldAfterBossWave() {
+  if (!game.waveWasBoss) return false;
+  game.waveWasBoss = false;
+  const idx = clampWorldIndex(game.worldIndex);
+  if (idx >= WORLDS.length - 1) return false;
+  const gate = WORLDS[idx + 1].min;
+  if (game.dungeonLevel < gate) return false;
+
+  game.worldIndex = idx + 1;
+  const newWorld = getWorld();
+  PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
+  initWorldBackground();
+  startWorldTransition(newWorld);
+  addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, aber machbar!", "boss");
+  showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
+  playWorldMusic(newWorld);
+  emitCombatEvent("world_change");
+  return true;
 }
 
 // Schwierigkeit skaliert mit Dungeon-Level & Welt – Meta-Upgrades helfen spürbar mit
@@ -3795,7 +3858,8 @@ function updateWaveIntro() {
 
 function spawnWave() {
   const count = getWaveSize();
-  const isBoss = game.dungeonLevel % 10 === 0 && game.dungeonLevel > 0;
+  const isBoss = shouldSpawnWorldBoss();
+  game.waveWasBoss = isBoss;
   const world = getWorld();
   onWaveSpawn(isBoss, count);
   startWaveIntro();
@@ -3805,7 +3869,7 @@ function spawnWave() {
     if (e && e.isBoss) bossEnemy = e;
   }
   if (bossEnemy) startBossIntro(bossEnemy);
-  if (isBoss) addLog("⚠ BOSS: " + (bossEnemy?.name || "Unbekannt") + "! Gefahr " + world.danger + "/5", "boss");
+  if (isBoss) addLog("⚠ WELT-BOSS: " + (bossEnemy?.name || "Unbekannt") + "! Besiege die Welle für die nächste Welt.", "boss");
   else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "damage");
   else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
 }
@@ -4593,19 +4657,8 @@ function onEnemyKill(e) {
   const st = heroStats();
   const gold = Math.floor(e.goldReward * st.goldBonus);
   const xp = Math.floor(e.xpReward * game.hero.xpBonus);
-  const oldWorld = getWorld();
   game.runXp += xp;
   game.monstersDefeated++; game.dungeonLevel++;
-  const newWorld = getWorld();
-  if (newWorld.name !== oldWorld.name) {
-    PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
-    initWorldBackground();
-    startWorldTransition(newWorld);
-    addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, aber machbar!", "boss");
-    showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
-    playWorldMusic(newWorld);
-    emitCombatEvent("world_change");
-  }
   addLog(e.name + " besiegt!", e.isBoss ? "boss" : "damage");
   addMetaXp(2);
   spawnCoinDrop(gold, e.x + e.w / 2, e.y + e.h / 2);
