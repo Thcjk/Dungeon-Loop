@@ -134,9 +134,10 @@ HR.draw = (ctx, opts) => {
   // Kein vertikales Bobbing: Füße bleiben sichtbar auf der Mauer.
   const bob = 0;
   const gaitLean = moving ? Math.sin(h.gaitPhase || 0) * 0.028 * facing : 0;
-  // attack.png = volle Bogenspannung / Waffenpose. Leichter Lean verstärkt den Zug.
+  // attack.png = Waffenpose. Lean macht den Schwung lesbarer (Krieger/Magier).
   const attackLean = state === "attack"
-    ? -facing * Math.sin(Math.min(1, h.attackAnim || 0) * Math.PI) * (classKey === "ranger" ? 0.04 : 0.055)
+    ? -facing * Math.sin(Math.min(1, h.attackAnim || 0) * Math.PI) *
+      (classKey === "ranger" ? 0.04 : classKey === "mage" ? 0.07 : 0.09)
     : 0;
   const baseX = (opts.x != null ? opts.x : h.x) || 0;
   const cx = baseX + (h.w || HR.W) / 2 + (opts.hurtOff || 0) + (opts.atkOff || 0);
@@ -176,7 +177,13 @@ HR.drawHeroCard = (ctx, classKey, w, h, frame) => {
   ctx.fillRect(0, 0, w, h);
 
   const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
-  const img = pack ? (pack.heroCard(classKey) || pack.hero(classKey, "idle")) : null;
+  // Idle + kurze Attack-Pose, damit die drei Helden klar unterscheidbar sind
+  const pulse = ((frame || 0) % 10) >= 6;
+  const img = pack
+    ? (pulse
+      ? (pack.heroCard(classKey, "attack") || pack.heroCard(classKey) || pack.hero(classKey, "attack") || pack.hero(classKey, "idle"))
+      : (pack.heroCard(classKey) || pack.hero(classKey, "idle")))
+    : null;
   if (img && img.complete && img.naturalWidth > 0) {
     ctx.imageSmoothingEnabled = false;
     const scale = Math.min((w * 0.78) / img.width, (h * 0.82) / img.height);
