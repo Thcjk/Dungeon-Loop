@@ -9,7 +9,7 @@
   <title>Dungeon Loop</title>
   <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=145">
+  <link rel="stylesheet" href="style.css?v=146">
 </head>
 <body>
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
@@ -25,18 +25,31 @@
 
       <!-- Startmenü -->
       <div id="menu-home" class="menu-panel">
-        <h2>Hauptmenü</h2>
-        <p class="menu-lead">Bis zu 3 Spielstände · lokal in diesem Browser gespeichert</p>
-        <div class="menu-actions">
-          <button type="button" class="btn btn-primary btn-large" id="btn-menu-continue" disabled>Fortsetzen</button>
-          <button type="button" class="btn btn-gold btn-large" id="btn-menu-new">Neues Spiel</button>
-          <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
-          <button type="button" class="btn btn-secondary btn-large" id="btn-menu-settings">Einstellungen</button>
-          <button type="button" class="btn btn-secondary btn-large" id="btn-menu-credits">Credits</button>
+        <div class="menu-home-layout">
+          <div class="menu-home-main">
+            <h2>Hauptmenü</h2>
+            <p class="menu-lead">Bis zu 3 Spielstände · lokal in diesem Browser gespeichert</p>
+            <div class="menu-actions">
+              <button type="button" class="btn btn-primary btn-large" id="btn-menu-continue" disabled>Fortsetzen</button>
+              <button type="button" class="btn btn-gold btn-large" id="btn-menu-new">Neues Spiel</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-settings">Einstellungen</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-credits">Credits</button>
+            </div>
+            <div id="home-slot-preview" class="save-slot-list save-slot-list--preview"></div>
+            <p class="hint" id="menu-home-hint">Fortsetzen lädt den letzten Slot · Neues Spiel → Heldenwahl · Laden zeigt alle Slots</p>
+            <p class="hint tutorial-hint" id="tutorial-hint">Tipp: Mit der Maus auf Gegner zielen und angreifen. <kbd>A</kbd>/<kbd>D</kbd> bewegen, <kbd>W</kbd>/<kbd>S</kbd> Spezial, <kbd>U</kbd> Upgrades, <kbd>Esc</kbd> Pause.</p>
+          </div>
+          <aside class="menu-brand" aria-label="Dungeon Loop">
+            <div class="menu-brand-glow" aria-hidden="true"></div>
+            <div class="menu-brand-embers" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <img class="menu-brand-logo" src="logo.svg" width="280" height="315" alt="">
+            <p class="menu-brand-title">Dungeon Loop</p>
+            <p class="menu-brand-tag">Wellen · Welten · Upgrades</p>
+          </aside>
         </div>
-        <div id="home-slot-preview" class="save-slot-list save-slot-list--preview"></div>
-        <p class="hint" id="menu-home-hint">Fortsetzen lädt den letzten Slot · Neues Spiel → Heldenwahl · Laden zeigt alle Slots</p>
-        <p class="hint tutorial-hint" id="tutorial-hint">Tipp: Mit der Maus auf Gegner zielen und angreifen. <kbd>A</kbd>/<kbd>D</kbd> bewegen, <kbd>W</kbd>/<kbd>S</kbd> Spezial, <kbd>U</kbd> Upgrades, <kbd>Esc</kbd> Pause.</p>
       </div>
 
       <div id="menu-settings" class="menu-panel hidden">
@@ -62,7 +75,7 @@
           <p><strong>Dungeon Loop</strong> – Indie-SeitenScroller</p>
           <p>Kampf, Wellen, Welten, Upgrades und lokale Spielstände.</p>
           <p>Pixel-Art &amp; Audio aus dem integrierten Asset-Pack.</p>
-          <p>Version <span class="credits-build">sidescroller-v3-145</span></p>
+          <p>Version <span class="credits-build">sidescroller-v3-147</span></p>
           <p class="hint">Keine Cloud-Pflicht · Fortschritt liegt in deinem Browser (localStorage).</p>
         </div>
         <div class="menu-actions menu-actions--row">
@@ -300,16 +313,16 @@
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-145</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=145"></script>
-  <script src="world-config.js?v=145"></script>
-  <script src="world-render.js?v=145"></script>
-  <script src="visual-enemies.js?v=145"></script>
-  <script src="visual-fx.js?v=145"></script>
-  <script src="pack-fx.js?v=145"></script>
-  <script src="visual-sprites.js?v=145"></script>
-  <script src="hero-render.js?v=145"></script>
-  <script src="abilities.js?v=145"></script>
-  <script src="script.js?v=145"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-147</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=146"></script>
+  <script src="world-config.js?v=146"></script>
+  <script src="world-render.js?v=146"></script>
+  <script src="visual-enemies.js?v=146"></script>
+  <script src="visual-fx.js?v=146"></script>
+  <script src="pack-fx.js?v=146"></script>
+  <script src="visual-sprites.js?v=146"></script>
+  <script src="hero-render.js?v=146"></script>
+  <script src="abilities.js?v=146"></script>
+  <script src="script.js?v=146"></script>
 </body>
 </html>
