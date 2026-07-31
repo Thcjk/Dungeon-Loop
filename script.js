@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-152";
+const BUILD_ID = "sidescroller-v3-153";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -1062,8 +1062,8 @@ let heroCardFrame = 0;
 let heroCardTime = 0;
 
 /* ============================================
-   HAUPTMENÜ-LOGO – aus Asset-Pack zusammengesetzt
-   Wald-Szene + Steinbogen + Props + 3 Helden + FX
+   HAUPTMENÜ-LOGO – klar & ruhig
+   Waldweg + drei Helden (keine Props/FX-Schicht)
    ============================================ */
 let menuBrandRaf = null;
 let menuBrandTime = 0;
@@ -1093,7 +1093,6 @@ function drawMenuBrand(cv, time) {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
 
-  // Fallback-Himmel
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, "#07140f");
   g.addColorStop(1, "#0a0c10");
@@ -1105,84 +1104,47 @@ function drawMenuBrand(cv, time) {
 
   const scene = pack.worldImg("forest", "scene");
   const lane = pack.worldImg("forest", "lane");
-  const sceneH = 220;
-  const laneH = 52;
-  const groundY = sceneH + laneH;
+  // Weg unten, Wald darüber – wie im Spiel (Maueroberkante = groundY)
+  const laneH = 58;
+  const sceneH = H - laneH;
+  const groundY = sceneH + 2; // Füße sitzen auf der Mauerkrone
 
   if (scene && scene.complete && scene.naturalWidth > 0) {
-    const sx = Math.min(220, Math.max(0, scene.width - W));
+    const sx = Math.min(160, Math.max(0, scene.width - W));
     ctx.drawImage(scene, sx, 0, W, Math.min(scene.height, 288), 0, 0, W, sceneH);
   }
   if (lane && lane.complete && lane.naturalWidth > 0) {
-    const sx = Math.min(220, Math.max(0, lane.width - W));
+    const sx = Math.min(160, Math.max(0, lane.width - W));
     ctx.drawImage(lane, sx, 0, W, lane.height, 0, sceneH, W, laneH);
   }
 
-  // Bäume hinten
-  const tree = pack.prop("forest", 14);
-  drawMenuBrandScaled(ctx, tree, -18, groundY - 110, 1.15, false);
-  drawMenuBrandScaled(ctx, tree, W - 100, groundY - 105, 1.05, true);
-
-  // Steinbogen / Dungeon-Tor
-  const arch = pack.prop("forest", 20) || pack.prop("forest", 16);
-  if (arch) {
-    const sc = 1.85;
-    const dw = arch.width * sc;
-    drawMenuBrandScaled(ctx, arch, (W - dw) / 2, groundY - arch.height * sc - 2, sc, false);
-  }
-
-  // Magischer Loop-Kreis
-  const circle = pack.fxSprite("magic_circle");
-  if (circle) {
-    const pulse = 1 + Math.sin(time * 2.2) * 0.06;
-    const sc = 1.35 * pulse;
-    const dw = circle.width * sc;
-    const dh = circle.height * sc;
-    ctx.globalAlpha = 0.82;
-    drawMenuBrandScaled(ctx, circle, (W - dw) / 2, groundY - dh * 0.62, sc, false);
-    ctx.globalAlpha = 1;
-  }
-
-  // Drei Helden
+  // Drei Helden fest auf dem Weg – kein Schweben, kein Bob
   const heroes = ["warrior", "ranger", "mage"];
-  const heroXs = [86, 160, 234];
+  const heroXs = [74, 160, 246];
+  const sc = 2.05;
   heroes.forEach((cls, i) => {
     const img = pack.hero(cls, "idle");
     if (!img) return;
-    const bob = Math.sin(time * 2.4 + i * 1.1) * 2;
-    const sc = 1.85;
     const dw = img.width * sc;
     const dh = img.height * sc;
-    drawMenuBrandScaled(ctx, img, heroXs[i] - dw / 2, groundY - dh - 2 + bob, sc, false);
+    const cx = heroXs[i];
+    // Bodenschatten direkt auf der Mauerkrone
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY + 1, Math.max(14, dw * 0.3), 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawMenuBrandScaled(ctx, img, cx - dw / 2, groundY - dh, sc, false);
   });
 
-  // Geländer seitlich
-  const fence = pack.prop("forest", 9);
-  drawMenuBrandScaled(ctx, fence, 6, groundY - 48, 0.55, false);
-  drawMenuBrandScaled(ctx, fence, W - 78, groundY - 48, 0.55, true);
-
-  // Lagerfeuer vorne (Ember-Fokus)
-  const fire = pack.prop("forest", 0);
-  if (fire) {
-    const flicker = 1 + Math.sin(time * 9) * 0.04;
-    const sc = 0.72 * flicker;
-    const dw = fire.width * sc;
-    drawMenuBrandScaled(ctx, fire, (W - dw) / 2, groundY - fire.height * sc + 6, sc, false);
-  }
-
-  // Funken oben
-  const spark = pack.fxSprite((Math.floor(time * 3) % 2 === 0) ? "spark_a" : "spark_b");
-  if (spark) {
-    ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.25;
-    drawMenuBrandScaled(ctx, spark, W / 2 - 22, 28 + Math.sin(time * 1.7) * 4, 0.7, false);
-    ctx.globalAlpha = 1;
-  }
-
-  // Vignette
-  const vig = ctx.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H * 0.5, W * 0.72);
-  vig.addColorStop(0, "rgba(0,0,0,0)");
-  vig.addColorStop(1, "rgba(0,0,0,0.45)");
-  ctx.fillStyle = vig;
+  // Leichte seitliche Abdunkelung, kein starker Vignette-Kreis
+  const edge = ctx.createLinearGradient(0, 0, W, 0);
+  edge.addColorStop(0, "rgba(0,0,0,0.35)");
+  edge.addColorStop(0.18, "rgba(0,0,0,0)");
+  edge.addColorStop(0.82, "rgba(0,0,0,0)");
+  edge.addColorStop(1, "rgba(0,0,0,0.35)");
+  ctx.fillStyle = edge;
   ctx.fillRect(0, 0, W, H);
 }
 
@@ -1194,13 +1156,20 @@ function tickMenuBrand() {
     menuBrandRaf = null;
     return;
   }
-  menuBrandTime += 1 / 60;
   drawMenuBrand(cv, menuBrandTime);
+  const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
+  const ready = !!(pack && pack.menuBrandReady && pack.hero("warrior", "idle"));
+  if (ready) {
+    menuBrandRaf = null;
+    return;
+  }
+  menuBrandTime += 1 / 60;
   menuBrandRaf = requestAnimationFrame(tickMenuBrand);
 }
 
 function startMenuBrandLoop() {
   if (menuBrandRaf) cancelAnimationFrame(menuBrandRaf);
+  drawMenuBrand($("menu-brand-canvas"), menuBrandTime);
   menuBrandRaf = requestAnimationFrame(tickMenuBrand);
 }
 

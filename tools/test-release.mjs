@@ -16,7 +16,7 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-152"'), "BUILD_ID v152");
+assert(script.includes('BUILD_ID = "sidescroller-v3-153"'), "BUILD_ID v153");
 assert(script.includes("upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) }"), "Upgrades im Run-Save");
 assert(script.includes("function countUpgradeLevels("), "Upgrade-Zähler für Slots");
 assert(script.includes('saveLocalPlayer({ quiet: true })'), "Leises Slot-Sync beim Run-Save");
