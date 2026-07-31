@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-144";
+const BUILD_ID = "sidescroller-v3-145";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -723,11 +723,11 @@ const BALANCE = {
   earlyHpEase: 0.14,            // max. HP-Reduktion Early Game
   earlyAtkEase: 0.24,           // max. Schaden-Reduktion Early Game
   coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln (nur Krieger)
-  coinJumpDur: 0.62,            // Sprung in die Luft
-  coinJumpHeight: 72,           // Max. Sprunghöhe
-  coinHitRadius: 24,            // Maus/Touch-Trefferzone
-  coinCatchDelay: 0.16,         // Kurz nicht einsammelbar – Münze entweicht der Maus
-  coinCatchMoveMin: 34          // Mausbewegung nötig für x2-Bonus
+  coinJumpDur: 0.78,            // Sprung in die Luft (länger oben)
+  coinJumpHeight: 118,          // Max. Sprunghöhe – gut mit der Maus erreichbar
+  coinHitRadius: 28,            // Maus/Touch-Trefferzone
+  coinCatchDelay: 0.14,         // Kurz nicht einsammelbar – Münze entweicht der Maus
+  coinCatchMoveMin: 28          // Mausbewegung nötig für x2-Bonus
 };
 let enemyId = 0;
 let upgradePause = false;
