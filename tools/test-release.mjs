@@ -16,9 +16,12 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-148"'), "BUILD_ID v148");
-assert(fs.existsSync(path.join(root, "logo.svg")), "logo.svg vorhanden");
+assert(script.includes('BUILD_ID = "sidescroller-v3-151"'), "BUILD_ID v151");
+assert(script.includes("function drawMenuBrand("), "Menü-Logo aus Asset-Pack");
+assert(script.includes("loadMenuBrand"), "PackAssets.loadMenuBrand");
+assert(html.includes('id="menu-brand-canvas"'), "Menü-Logo-Canvas");
 assert(html.includes('class="menu-brand"'), "Hauptmenü-Logo-Bereich");
+assert(!html.includes('src="logo.svg"'), "kein SVG-Logo mehr");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
 assert(script.includes("function validateMeta("), "validateMeta vorhanden");
 assert(script.includes("function safeSetLocalStorage("), "safeSetLocalStorage vorhanden");

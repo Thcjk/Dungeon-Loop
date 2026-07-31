@@ -10,16 +10,28 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "145",
+    version: "151",
 
     loadImage(path) {
       return new Promise((resolve) => {
         if (!path) { resolve(null); return; }
-        if (this.images[path]) { resolve(this.images[path]); return; }
+        const cached = this.images[path];
+        if (cached) {
+          if (cached.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+          if (cached.complete && cached.naturalWidth === 0) { resolve(null); return; }
+          cached.addEventListener("load", () => resolve(cached.naturalWidth > 0 ? cached : null), { once: true });
+          cached.addEventListener("error", () => resolve(null), { once: true });
+          return;
+        }
         const img = new Image();
+        this.images[path] = img;
         img.decoding = "async";
-        img.onload = () => { this.images[path] = img; resolve(img); };
-        img.onerror = () => { console.warn("Asset fehlt:", path); resolve(null); };
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          if (this.images[path] === img) delete this.images[path];
+          console.warn("Asset fehlt:", path);
+          resolve(null);
+        };
         const bust = path.includes("?") ? "" : ("?v=" + this.version);
         img.src = path + bust;
       });
@@ -189,6 +201,36 @@
 
     fxMeta(key) {
       return this.manifest?.fxSprites?.[key] || null;
+    },
+
+    /** Assets für das Hauptmenü-Logo (Wald-Szene + Props + FX + Helden) */
+    menuBrandReady: false,
+    menuBrandLoading: null,
+    async loadMenuBrand() {
+      if (this.menuBrandReady) return;
+      if (this.menuBrandLoading) return this.menuBrandLoading;
+      this.menuBrandLoading = (async () => {
+        await this.fetchManifest();
+        await this.loadHeroes();
+        await this.ensureWorld("forest");
+        const paths = new Set();
+        [0, 9, 14, 16, 20].forEach((i) => {
+          const meta = this.propMeta("forest", i);
+          if (meta?.path) paths.add(meta.path);
+        });
+        ["magic_circle", "spark_a", "spark_b"].forEach((key) => {
+          const s = this.manifest?.fxSprites?.[key];
+          const p = typeof s === "string" ? s : s?.path;
+          if (p) paths.add(p);
+        });
+        await Promise.all([...paths].map((p) => this.loadImage(p)));
+        this.menuBrandReady = true;
+        this.menuBrandLoading = null;
+      })().catch((err) => {
+        this.menuBrandLoading = null;
+        throw err;
+      });
+      return this.menuBrandLoading;
     },
 
   };
