@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-151";
+const BUILD_ID = "sidescroller-v3-152";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -792,7 +792,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 3;
+const RUN_SAVE_VERSION = 4;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
@@ -2515,8 +2515,9 @@ function loadLocalPlayer(name) {
   }
 }
 
-function saveLocalPlayer() {
-  if (!game.playerName) return;
+function saveLocalPlayer(opts) {
+  if (!game.playerName) return false;
+  const quiet = !!(opts && opts.quiet);
   const i = Math.max(0, Math.min(MAX_SAVE_SLOTS - 1, game.slotIndex | 0));
   const slots = loadSaveSlots();
   ensureMeta();
@@ -2532,7 +2533,7 @@ function saveLocalPlayer() {
     playTimeMs: Math.max(0, Math.floor(Number(game.meta.playTimeMs) || 0))
   };
   persistSaveSlots(slots);
-  flashSaveIndicator("Spielstand gespeichert");
+  if (!quiet) flashSaveIndicator("Spielstand gespeichert");
   // Legacy-Spiegel für alte Pfade
   try {
     const store = {};
@@ -2544,6 +2545,7 @@ function saveLocalPlayer() {
   } catch (_) {}
   try { localStorage.setItem(LAST_PLAYER_KEY, game.playerName); } catch (_) {}
   try { localStorage.setItem(LAST_SLOT_KEY, String(i)); } catch (_) {}
+  return true;
 }
 
 function clearSaveSlot(slotIndex) {
@@ -2672,6 +2674,11 @@ function applySettingsFromUI() {
   flashSaveIndicator("Einstellungen gespeichert");
 }
 
+function countUpgradeLevels(upgrades) {
+  const u = upgrades || {};
+  return Object.keys(u).reduce((s, k) => s + Math.max(0, Math.floor(Number(u[k]) || 0)), 0);
+}
+
 function buildSlotButtonHtml(slotIndex, data, mode) {
   const n = slotIndex + 1;
   if (!data) {
@@ -2683,11 +2690,13 @@ function buildSlotButtonHtml(slotIndex, data, mode) {
   }
   const cls = CLASSES[normalizeClassKey(data.classKey)] || CLASSES.warrior;
   const run = data.run || loadActiveRunFor(data.name) || loadActiveRunFor(slotRunKey(slotIndex));
+  const upLv = countUpgradeLevels(data.upgrades || run?.upgrades);
   return "<div class=\"save-slot-main\">" +
     "<strong class=\"save-slot-name\">Slot " + n + " · " + escapeHtml(data.name) + "</strong>" +
     "<span class=\"save-slot-class\">" + escapeHtml(cls.name) + "</span></div>" +
     "<div class=\"save-slot-meta\">" +
       "<span>🪙 " + (data.totalGold || 0) + "</span>" +
+      (upLv > 0 ? "<span>⬆ " + upLv + " Upgrades</span>" : "") +
       (run
         ? "<span>Dungeon " + run.dungeonLevel + " · Held-Lv " + run.playerLevel + "</span>"
         : "<span>Bereit für neuen Run</span>") +
@@ -2855,10 +2864,14 @@ function loadRunStore() {
     const raw = localStorage.getItem(RUN_STORAGE_KEY);
     if (!raw) return {};
     const data = JSON.parse(raw);
-    // Migration: altes Einzel-Objekt → Store
-    if (data && data.version === RUN_SAVE_VERSION && data.playerName && data.hero) {
-      const key = playerStorageKey(data.playerName);
-      return key ? { [key]: data } : {};
+    // Migration: altes Einzel-Objekt → Store (auch ältere RUN_SAVE_VERSION)
+    if (data && data.hero && data.playerName && data.version != null && !Object.keys(data).some((k) => /^slot_\d+$/.test(k))) {
+      const migrated = migrateRunData(data) || data;
+      const key = playerStorageKey(migrated.playerName);
+      const out = {};
+      if (key) out[key] = migrated;
+      out[slotRunKey(migrated.slotIndex | 0)] = migrated;
+      return out;
     }
     return data && typeof data === "object" ? data : {};
   } catch (_) {
@@ -2869,15 +2882,22 @@ function loadRunStore() {
 function peekActiveRun() {
   const last = getLastPlayerName();
   if (last) {
-    const forLast = loadActiveRunFor(last);
+    const forLast = loadActiveRunFor(last) || loadActiveRunFor(slotRunKey(getLastSlotIndex()));
     if (forLast) return forLast;
   }
   const store = loadRunStore();
   const keys = Object.keys(store);
   if (!keys.length) return null;
-  const data = store[keys[0]];
-  if (!data || data.version !== RUN_SAVE_VERSION || !data.playerName || !data.hero) return null;
-  return data;
+  // Neuesten gültigen Run nehmen (nicht an exakte Versionsnummer scheitern)
+  let best = null;
+  keys.forEach((k) => {
+    const raw = store[k];
+    if (!raw || !raw.hero || !raw.playerName) return;
+    const data = migrateRunData(raw);
+    if (!data) return;
+    if (!best || (data.savedAt || 0) > (best.savedAt || 0)) best = data;
+  });
+  return best;
 }
 
 function migrateRunData(data) {
@@ -2908,35 +2928,67 @@ function migrateRunData(data) {
   return out;
 }
 
-function loadActiveRunFor(name) {
-  const key = playerStorageKey(name);
-  if (!key) return null;
-  const raw = loadRunStore()[key];
+function loadActiveRunFor(nameOrSlotKey) {
+  if (nameOrSlotKey == null || nameOrSlotKey === "") return null;
+  const store = loadRunStore();
+  const rawName = String(nameOrSlotKey);
+  const candidates = [];
+  // Direkter Slot-Key (slot_0 …)
+  if (/^slot_\d+$/.test(rawName)) candidates.push(rawName);
+  const nameKey = playerStorageKey(rawName);
+  if (nameKey) candidates.push(nameKey);
+  // Falls Name übergeben: auch Slot-Key aus gespeichertem slotIndex versuchen
+  let raw = null;
+  for (const k of candidates) {
+    if (store[k] && store[k].hero) { raw = store[k]; break; }
+  }
+  if (!raw) {
+    // Fallback: Run mit passendem Spielernamen / Slot suchen
+    const keys = Object.keys(store);
+    for (let i = 0; i < keys.length; i++) {
+      const entry = store[keys[i]];
+      if (!entry || !entry.hero) continue;
+      if (nameKey && playerStorageKey(entry.playerName) === nameKey) { raw = entry; break; }
+      if (/^slot_\d+$/.test(rawName) && slotRunKey(entry.slotIndex | 0) === rawName) { raw = entry; break; }
+    }
+  }
   if (!raw || !raw.hero) return null;
   const data = migrateRunData(raw);
   if (data !== raw) {
     try {
-      const store = loadRunStore();
-      store[key] = data;
-      store[slotRunKey(data.slotIndex | 0)] = data;
-      safeSetLocalStorage(RUN_STORAGE_KEY, store);
+      const next = loadRunStore();
+      const nameK = playerStorageKey(data.playerName);
+      if (nameK) next[nameK] = data;
+      next[slotRunKey(data.slotIndex | 0)] = data;
+      safeSetLocalStorage(RUN_STORAGE_KEY, next);
     } catch (_) {}
   }
   return data;
 }
 
-function clearActiveRun(name) {
+function clearActiveRun(nameOrSlotKey) {
   runSaveDirty = false;
-  const key = playerStorageKey(name || game.playerName);
   try {
-    if (!key) {
-      localStorage.removeItem(RUN_STORAGE_KEY);
-    } else {
-      const store = loadRunStore();
-      delete store[key];
-      if (Object.keys(store).length) localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
-      else localStorage.removeItem(RUN_STORAGE_KEY);
-    }
+    const store = loadRunStore();
+    const raw = nameOrSlotKey != null && nameOrSlotKey !== ""
+      ? String(nameOrSlotKey)
+      : (game.playerName || "");
+    const keysToDelete = new Set();
+    if (/^slot_\d+$/.test(raw)) keysToDelete.add(raw);
+    const nameKey = playerStorageKey(raw || game.playerName);
+    if (nameKey) keysToDelete.add(nameKey);
+    // Immer auch den aktuellen Slot-Key mitlöschen
+    keysToDelete.add(slotRunKey(game.slotIndex | 0));
+    // Falls Run den Spielernamen trägt: alle passenden Keys finden
+    Object.keys(store).forEach((k) => {
+      const e = store[k];
+      if (!e) return;
+      if (nameKey && playerStorageKey(e.playerName) === nameKey) keysToDelete.add(k);
+      if (nameKey && k === nameKey) keysToDelete.add(k);
+    });
+    keysToDelete.forEach((k) => { delete store[k]; });
+    if (Object.keys(store).length) localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(store));
+    else localStorage.removeItem(RUN_STORAGE_KEY);
   } catch (_) {}
   updateRunButtons();
 }
@@ -2981,6 +3033,7 @@ function serializeEnemy(e) {
 function saveActiveRun(force) {
   if (!game.playerName || !game.hero || !game.isRunning || game.isDead) return false;
   if (!force && !runSaveDirty) return false;
+  ensureMeta();
   const payload = {
     version: RUN_SAVE_VERSION,
     worldLayoutVersion: WORLD_LAYOUT_VERSION,
@@ -2990,6 +3043,10 @@ function saveActiveRun(force) {
     playerName: game.playerName,
     slotIndex: game.slotIndex | 0,
     classKey: game.classKey,
+    // Meta-Fortschritt mit dem Run mitspeichern – sonst fehlen Upgrades nach Laden
+    totalGold: Math.max(0, Math.floor(Number(game.totalGold) || 0)),
+    upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) },
+    meta: validateMeta(game.meta),
     dungeonLevel: game.dungeonLevel,
     worldIndex: game.worldIndex | 0,
     waveWasBoss: !!game.waveWasBoss,
@@ -3017,6 +3074,8 @@ function saveActiveRun(force) {
     store[slotKey] = payload;
     safeSetLocalStorage(RUN_STORAGE_KEY, store);
     runSaveDirty = false;
+    // Slot-Upgrades/Gold leise mitsynchronisieren
+    saveLocalPlayer({ quiet: true });
     return true;
   } catch (_) {
     return false;
@@ -3110,8 +3169,20 @@ function resumeRun(data) {
   hideUpgrades();
   stopLoop();
   resetRun();
+  // Upgrades/Gold/Meta aus dem Run wiederherstellen (sonst fehlen sie nach Laden)
+  if (data.upgrades || Number.isFinite(Number(data.totalGold)) || data.meta) {
+    applyPlayerSave({
+      classKey: data.classKey || game.classKey,
+      totalGold: Number.isFinite(Number(data.totalGold)) ? data.totalGold : game.totalGold,
+      upgrades: data.upgrades || game.upgrades,
+      meta: data.meta || game.meta,
+      slotIndex: Number.isFinite(Number(data.slotIndex)) ? data.slotIndex : game.slotIndex
+    });
+  }
+  if (data.playerName) game.playerName = data.playerName;
   game.classKey = normalizeClassKey(data.classKey || game.classKey);
   selectClass(game.classKey);
+  syncUnlockedAbilities(game.classKey);
   game.dungeonLevel = Math.max(1, Math.floor(Number(data.dungeonLevel) || 1));
   game.worldIndex = clampWorldIndex(
     Number.isFinite(Number(data.worldIndex))
@@ -3169,9 +3240,13 @@ function resumeRun(data) {
   updateClassHint();
   updateHUD();
   updateStatus();
+  updateTotalGold();
+  renderUpgradeButtons();
+  renderAbilityPanel();
   updateRunButtons();
   markRunSaveDirty();
   saveActiveRun(true);
+  saveLocalPlayer({ quiet: true });
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       beginRunLoop();
@@ -3183,7 +3258,9 @@ function resumeRun(data) {
 function updateRunButtons() {
   const startBtn = $("btn-start-run");
   if (!startBtn) return;
-  const run = game.playerName ? loadActiveRunFor(game.playerName) : peekActiveRun();
+  const run = game.playerName
+    ? (loadActiveRunFor(game.playerName) || loadActiveRunFor(slotRunKey(game.slotIndex)))
+    : peekActiveRun();
   if (game.isRunning && !game.isDead) {
     startBtn.textContent = "Run läuft";
     startBtn.disabled = true;
@@ -3226,10 +3303,23 @@ async function loadSaveSlot(slotIndex) {
   syncUnlockedAbilities(game.classKey);
   saveMeta();
   const run = loadActiveRunFor(slot.name) || loadActiveRunFor(slotRunKey(slotIndex));
+  // Falls Run Upgrades hat, die neueren übernehmen
+  if (run && run.upgrades) {
+    applyPlayerSave({
+      classKey: run.classKey || game.classKey,
+      totalGold: Number.isFinite(Number(run.totalGold)) ? run.totalGold : game.totalGold,
+      upgrades: run.upgrades,
+      meta: run.meta || game.meta,
+      slotIndex
+    });
+  }
   await ensureRunWorldAssets(run?.dungeonLevel || 1, run?.worldIndex);
+  const upLv = countUpgradeLevels(game.upgrades);
   const msg = run
-    ? "Slot " + (slotIndex + 1) + ": " + slot.name + " – Dungeon " + run.dungeonLevel
-    : "Slot " + (slotIndex + 1) + ": " + slot.name + " geladen";
+    ? "Slot " + (slotIndex + 1) + ": " + slot.name + " – Dungeon " + run.dungeonLevel +
+      (upLv ? " · " + upLv + " Upgrades" : "")
+    : "Slot " + (slotIndex + 1) + ": " + slot.name + " geladen" +
+      (upLv ? " (" + upLv + " Upgrades)" : "");
   enterGame(msg, { forceNew: false, autoRun: true });
 }
 
@@ -3674,7 +3764,9 @@ async function continueOrStartRun() {
     ensureGameLoop();
     return;
   }
-  const existing = game.playerName ? loadActiveRunFor(game.playerName) : null;
+  const existing = game.playerName
+    ? (loadActiveRunFor(game.playerName) || loadActiveRunFor(slotRunKey(game.slotIndex)))
+    : peekActiveRun();
   if (existing) {
     await ensureRunWorldAssets(existing.dungeonLevel || 1, existing.worldIndex);
     resumeRun(existing);
@@ -4868,12 +4960,14 @@ function onEnemyKill(e) {
 function onDeath() {
   game.isDead = true;
   stopMusic();
-  clearActiveRun();
-  if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
+  // Gold aus dem Run sichern, Upgrades bleiben im Slot
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + Math.floor(Number(game.runGold) || 0));
+  game.runGold = 0;
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
+  clearActiveRun();
+  if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   addLog("Game Over!", "death");
   let deathT = 0;
   function deathFrame(now) {

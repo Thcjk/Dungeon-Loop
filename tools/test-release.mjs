@@ -16,7 +16,10 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-151"'), "BUILD_ID v151");
+assert(script.includes('BUILD_ID = "sidescroller-v3-152"'), "BUILD_ID v152");
+assert(script.includes("upgrades: { ...emptyUpgrades(), ...(game.upgrades || {}) }"), "Upgrades im Run-Save");
+assert(script.includes("function countUpgradeLevels("), "Upgrade-Zähler für Slots");
+assert(script.includes('saveLocalPlayer({ quiet: true })'), "Leises Slot-Sync beim Run-Save");
 assert(script.includes("function drawMenuBrand("), "Menü-Logo aus Asset-Pack");
 assert(script.includes("loadMenuBrand"), "PackAssets.loadMenuBrand");
 assert(html.includes('id="menu-brand-canvas"'), "Menü-Logo-Canvas");
