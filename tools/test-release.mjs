@@ -16,7 +16,9 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-146"'), "BUILD_ID v146");
+assert(script.includes('BUILD_ID = "sidescroller-v3-148"'), "BUILD_ID v148");
+assert(fs.existsSync(path.join(root, "logo.svg")), "logo.svg vorhanden");
+assert(html.includes('class="menu-brand"'), "Hauptmenü-Logo-Bereich");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
 assert(script.includes("function validateMeta("), "validateMeta vorhanden");
 assert(script.includes("function safeSetLocalStorage("), "safeSetLocalStorage vorhanden");
