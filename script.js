@@ -1234,22 +1234,37 @@ function updateHeroCardUI() {
     card.classList.remove("warrior", "ranger", "mage");
     card.classList.add(game.classKey);
   }
+  // Canvas sofort neu zeichnen – sonst bleibt manchmal der alte Held stehen,
+  // wenn die Preview-Schleife pausiert war.
+  drawHeroCardFrame();
+}
+
+function drawHeroCardFrame(frame) {
+  const cv = $("hero-card-canvas");
+  if (!cv || !HR) return;
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = false;
+  HR.drawHeroCard(c, game.classKey, cv.width, cv.height, frame == null ? heroCardFrame : frame);
 }
 
 function tickHeroCard() {
   const cv = $("hero-card-canvas");
-  if (!cv || !HR || $("setup-section")?.classList.contains("collapsed")) {
+  const setup = $("setup-section");
+  const newPanel = $("menu-new");
+  // Nur zeichnen, wenn Heldenwahl sichtbar ist – Loop trotzdem am Leben halten,
+  // solange Setup offen ist, damit Klassenwechsel sofort greifen.
+  if (!cv || !HR || setup?.classList.contains("collapsed")) {
     heroCardRaf = null;
     return;
   }
-  const c = cv.getContext("2d");
-  c.imageSmoothingEnabled = false;
   heroCardTime += 1 / 60;
   if (heroCardTime >= HR.ANIM.idle.t) {
     heroCardTime = 0;
-    heroCardFrame = (heroCardFrame + 1) % HR.ANIM.idle.n;
+    heroCardFrame = (heroCardFrame + 1) % 10;
   }
-  HR.drawHeroCard(c, game.classKey, cv.width, cv.height, heroCardFrame);
+  if (!newPanel?.classList.contains("hidden")) {
+    drawHeroCardFrame(heroCardFrame);
+  }
   heroCardRaf = requestAnimationFrame(tickHeroCard);
 }
 
@@ -1268,12 +1283,6 @@ function stopHeroCardLoop() {
 
 function drawPreviews() {
   updateHeroCardUI();
-  const cv = $("hero-card-canvas");
-  if (cv && HR) {
-    const c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    HR.drawHeroCard(c, game.classKey, cv.width, cv.height, 0);
-  }
 }
 
 // ============================================
@@ -2078,6 +2087,7 @@ function bindEvents() {
       syncUnlockedAbilities(game.classKey);
       updateClassHint();
       updateHeroCardUI();
+      startHeroCardLoop();
       renderSetupAbilityHint();
       renderAbilityPanel();
     });
@@ -2094,7 +2104,10 @@ function bindEvents() {
   bind("btn-menu-credits", () => { unlockAudio(); showMenuPanel("credits"); });
   bind("btn-settings-back", () => showMenuPanel("home"));
   bind("btn-credits-back", () => showMenuPanel("home"));
-  bind("btn-settings-save", () => applySettingsFromUI());
+  bind("btn-settings-save", () => {
+    applySettingsFromUI();
+    showMenuPanel("home");
+  });
   ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles"].forEach((id) => {
     const el = $(id);
     if (el) el.addEventListener("change", () => applySettingsFromUI());
@@ -2604,6 +2617,7 @@ function showMenuPanel(which) {
     const lab = $("new-slot-label");
     if (lab) lab.textContent = "Slot " + (pendingSlotIndex + 1);
     updateHeroCardUI();
+    startHeroCardLoop();
     renderSetupAbilityHint();
   }
   if (which === "settings") syncSettingsUI();
@@ -2832,6 +2846,7 @@ function returnToMainMenu() {
   restoreSetupFromSave();
   tryMenuMusic();
   startMenuBrandLoop();
+  startHeroCardLoop();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -3354,7 +3369,8 @@ function enterGame(msg, opts) {
 
 function emptyUpgrades() { const u = {}; UPGRADES.forEach((x) => u[x.key] = 0); return u; }
 function selectClass(k) {
-  document.querySelectorAll(".class-btn").forEach((b) => b.classList.toggle("selected", b.dataset.class === k));
+  game.classKey = normalizeClassKey(k || game.classKey);
+  document.querySelectorAll(".class-btn").forEach((b) => b.classList.toggle("selected", b.dataset.class === game.classKey));
   updateHeroCardUI();
 }
 
@@ -4127,7 +4143,8 @@ function warriorMeleeAttack(target) {
   const tx = target.x + target.w / 2, ty = target.y + target.h / 2;
   const angle = Math.atan2(ty - hy, tx - hx);
   h.facing = tx >= hx ? 1 : -1;
-  h.attackAnim = 0.14;
+  // Schwertschwung-Asset (attack.png) sichtbar halten
+  h.attackAnim = 0.4;
 
   let hitAny = false;
   forEachEnemyInRange(cls.range, (e, ex, ey) => {
@@ -4216,7 +4233,7 @@ function mageShoot(cls, target) {
     spawnMeleeSlash(hx, hy, angle, { life: 10, range: 55, owner: "player" });
     spawnMeleeSlash(hx, hy, angle + Math.PI, { life: 8, range: 48, owner: "player" });
     spawnBurst(hx, hy, "#8e44ad", 4, 2);
-    h.attackAnim = 0.12;
+    h.attackAnim = 0.32;
     emitCombatEvent("player_staff");
     if (hitAny) addLog("Kein Mana – Stab-Schlag!");
     return hitAny;
@@ -4233,7 +4250,8 @@ function mageShoot(cls, target) {
     dmg: Math.floor(dmg), crit: isCrit, sprite: cls.proj,
     life: 65, owner: "player", magic: true, trail: "#e74c3c"
   });
-  h.attackAnim = 0.1;
+  // Stab-/Zauberpose (attack.png) sichtbar halten – vorher ~25ms unsichtbar
+  h.attackAnim = 0.38;
   spawnBurst(hx, hy, "#9b59b6", 5, 2.5);
   emitCombatEvent("player_magic");
   return true;
@@ -4327,7 +4345,7 @@ function castAbility(ab, h, st) {
   if (ab.manaCost && h.mana < ab.manaCost) return false;
   if (ab.manaCost) h.mana -= ab.manaCost;
 
-  h.attackAnim = 0.18;
+  h.attackAnim = 0.36;
   game.abilityCastLock = 0.4;
   addLog(ab.name + "!", "magic");
   emitCombatEvent(getClassSpecialSound(game.classKey));
@@ -4596,9 +4614,11 @@ function updateFrame(dt) {
   h.specialTimer += dt;
   h.anim += dt * 8;
   if (h.hitFlash > 0) h.hitFlash -= dt * 30;
-  // Waldläufer: attack.png ist die Bogenspann-Pose – länger halten, sonst unsichtbar.
+  // Attack-Pose sichtbar halten: Ranger spann, Krieger/Magier schwingen/wirken
   if (h.attackAnim > 0) {
-    const decay = game.classKey === "ranger" ? 1.55 : 4;
+    const decay = game.classKey === "ranger" ? 1.55
+      : game.classKey === "mage" ? 2.1
+      : 2.35;
     h.attackAnim -= dt * decay;
   }
   if (h.hurtAnim > 0) h.hurtAnim -= dt * 3;

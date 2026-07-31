@@ -140,9 +140,12 @@
       return this.img(path);
     },
 
-    heroCard(classKey) {
+    heroCard(classKey, pose) {
       const h = this.manifest?.heroes?.[classKey];
       if (!h) return null;
+      if (pose === "attack") {
+        return this.img(h.attack_card || h.attack || h.idle_card || h.idle);
+      }
       return this.img(h.idle_card || h.idle);
     },
 
