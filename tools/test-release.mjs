@@ -16,14 +16,17 @@ function assert(cond, msg) {
   else fail.push(msg);
 }
 
-assert(script.includes('BUILD_ID = "sidescroller-v3-150"'), "BUILD_ID v150");
+assert(script.includes('BUILD_ID = "sidescroller-v3-151"'), "BUILD_ID v151");
+assert(script.includes("function drawMenuBrand("), "Menü-Logo aus Asset-Pack");
+assert(script.includes("loadMenuBrand"), "PackAssets.loadMenuBrand");
+assert(html.includes('id="menu-brand-canvas"'), "Menü-Logo-Canvas");
 assert(script.includes('bind("btn-settings-save"'), "Einstellungen-Übernehmen-Button");
 assert(/btn-settings-save[\s\S]*?showMenuPanel\("home"\)/.test(script), "Übernehmen verlässt Einstellungen");
 assert(script.includes("function drawHeroCardFrame("), "Heldenkarte sofort neu zeichnen");
 assert(script.includes("h.attackAnim = 0.4"), "Krieger-Attack-Anim länger");
 assert(script.includes("h.attackAnim = 0.38"), "Magier-Attack-Anim länger");
-assert(fs.existsSync(path.join(root, "logo.svg")), "logo.svg vorhanden");
 assert(html.includes('class="menu-brand"'), "Hauptmenü-Logo-Bereich");
+assert(!html.includes('src="logo.svg"'), "kein SVG-Logo mehr");
 assert(script.includes("SAVE_SCHEMA_VERSION"), "SAVE_SCHEMA_VERSION vorhanden");
 assert(script.includes("function validateMeta("), "validateMeta vorhanden");
 assert(script.includes("function safeSetLocalStorage("), "safeSetLocalStorage vorhanden");

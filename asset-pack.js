@@ -10,7 +10,7 @@
     worldReady: Object.create(null),
     worldLoading: Object.create(null),
     base: "assets/pack/",
-    version: "149",
+    version: "151",
 
     loadImage(path) {
       return new Promise((resolve) => {
@@ -204,6 +204,36 @@
 
     fxMeta(key) {
       return this.manifest?.fxSprites?.[key] || null;
+    },
+
+    /** Assets für das Hauptmenü-Logo (Wald-Szene + Props + FX + Helden) */
+    menuBrandReady: false,
+    menuBrandLoading: null,
+    async loadMenuBrand() {
+      if (this.menuBrandReady) return;
+      if (this.menuBrandLoading) return this.menuBrandLoading;
+      this.menuBrandLoading = (async () => {
+        await this.fetchManifest();
+        await this.loadHeroes();
+        await this.ensureWorld("forest");
+        const paths = new Set();
+        [0, 9, 14, 16, 20].forEach((i) => {
+          const meta = this.propMeta("forest", i);
+          if (meta?.path) paths.add(meta.path);
+        });
+        ["magic_circle", "spark_a", "spark_b"].forEach((key) => {
+          const s = this.manifest?.fxSprites?.[key];
+          const p = typeof s === "string" ? s : s?.path;
+          if (p) paths.add(p);
+        });
+        await Promise.all([...paths].map((p) => this.loadImage(p)));
+        this.menuBrandReady = true;
+        this.menuBrandLoading = null;
+      })().catch((err) => {
+        this.menuBrandLoading = null;
+        throw err;
+      });
+      return this.menuBrandLoading;
     },
 
   };

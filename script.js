@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-150";
+const BUILD_ID = "sidescroller-v3-151";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -1061,6 +1061,165 @@ let heroCardRaf = null;
 let heroCardFrame = 0;
 let heroCardTime = 0;
 
+/* ============================================
+   HAUPTMENÜ-LOGO – aus Asset-Pack zusammengesetzt
+   Wald-Szene + Steinbogen + Props + 3 Helden + FX
+   ============================================ */
+let menuBrandRaf = null;
+let menuBrandTime = 0;
+
+function drawMenuBrandScaled(ctx, img, x, y, scale, flip) {
+  if (!img || !img.complete || img.naturalWidth <= 0) return { w: 0, h: 0 };
+  const dw = Math.max(1, Math.round(img.width * scale));
+  const dh = Math.max(1, Math.round(img.height * scale));
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (flip) {
+    ctx.translate(Math.round(x + dw), Math.round(y));
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, dw, dh);
+  } else {
+    ctx.drawImage(img, Math.round(x), Math.round(y), dw, dh);
+  }
+  ctx.restore();
+  return { w: dw, h: dh };
+}
+
+function drawMenuBrand(cv, time) {
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width;
+  const H = cv.height;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+
+  // Fallback-Himmel
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#07140f");
+  g.addColorStop(1, "#0a0c10");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const pack = typeof PackAssets !== "undefined" ? PackAssets : null;
+  if (!pack) return;
+
+  const scene = pack.worldImg("forest", "scene");
+  const lane = pack.worldImg("forest", "lane");
+  const sceneH = 220;
+  const laneH = 52;
+  const groundY = sceneH + laneH;
+
+  if (scene && scene.complete && scene.naturalWidth > 0) {
+    const sx = Math.min(220, Math.max(0, scene.width - W));
+    ctx.drawImage(scene, sx, 0, W, Math.min(scene.height, 288), 0, 0, W, sceneH);
+  }
+  if (lane && lane.complete && lane.naturalWidth > 0) {
+    const sx = Math.min(220, Math.max(0, lane.width - W));
+    ctx.drawImage(lane, sx, 0, W, lane.height, 0, sceneH, W, laneH);
+  }
+
+  // Bäume hinten
+  const tree = pack.prop("forest", 14);
+  drawMenuBrandScaled(ctx, tree, -18, groundY - 110, 1.15, false);
+  drawMenuBrandScaled(ctx, tree, W - 100, groundY - 105, 1.05, true);
+
+  // Steinbogen / Dungeon-Tor
+  const arch = pack.prop("forest", 20) || pack.prop("forest", 16);
+  if (arch) {
+    const sc = 1.85;
+    const dw = arch.width * sc;
+    drawMenuBrandScaled(ctx, arch, (W - dw) / 2, groundY - arch.height * sc - 2, sc, false);
+  }
+
+  // Magischer Loop-Kreis
+  const circle = pack.fxSprite("magic_circle");
+  if (circle) {
+    const pulse = 1 + Math.sin(time * 2.2) * 0.06;
+    const sc = 1.35 * pulse;
+    const dw = circle.width * sc;
+    const dh = circle.height * sc;
+    ctx.globalAlpha = 0.82;
+    drawMenuBrandScaled(ctx, circle, (W - dw) / 2, groundY - dh * 0.62, sc, false);
+    ctx.globalAlpha = 1;
+  }
+
+  // Drei Helden
+  const heroes = ["warrior", "ranger", "mage"];
+  const heroXs = [86, 160, 234];
+  heroes.forEach((cls, i) => {
+    const img = pack.hero(cls, "idle");
+    if (!img) return;
+    const bob = Math.sin(time * 2.4 + i * 1.1) * 2;
+    const sc = 1.85;
+    const dw = img.width * sc;
+    const dh = img.height * sc;
+    drawMenuBrandScaled(ctx, img, heroXs[i] - dw / 2, groundY - dh - 2 + bob, sc, false);
+  });
+
+  // Geländer seitlich
+  const fence = pack.prop("forest", 9);
+  drawMenuBrandScaled(ctx, fence, 6, groundY - 48, 0.55, false);
+  drawMenuBrandScaled(ctx, fence, W - 78, groundY - 48, 0.55, true);
+
+  // Lagerfeuer vorne (Ember-Fokus)
+  const fire = pack.prop("forest", 0);
+  if (fire) {
+    const flicker = 1 + Math.sin(time * 9) * 0.04;
+    const sc = 0.72 * flicker;
+    const dw = fire.width * sc;
+    drawMenuBrandScaled(ctx, fire, (W - dw) / 2, groundY - fire.height * sc + 6, sc, false);
+  }
+
+  // Funken oben
+  const spark = pack.fxSprite((Math.floor(time * 3) % 2 === 0) ? "spark_a" : "spark_b");
+  if (spark) {
+    ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.25;
+    drawMenuBrandScaled(ctx, spark, W / 2 - 22, 28 + Math.sin(time * 1.7) * 4, 0.7, false);
+    ctx.globalAlpha = 1;
+  }
+
+  // Vignette
+  const vig = ctx.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H * 0.5, W * 0.72);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function tickMenuBrand() {
+  const cv = $("menu-brand-canvas");
+  const home = $("menu-home");
+  const setup = $("setup-section");
+  if (!cv || setup?.classList.contains("collapsed") || home?.classList.contains("hidden")) {
+    menuBrandRaf = null;
+    return;
+  }
+  menuBrandTime += 1 / 60;
+  drawMenuBrand(cv, menuBrandTime);
+  menuBrandRaf = requestAnimationFrame(tickMenuBrand);
+}
+
+function startMenuBrandLoop() {
+  if (menuBrandRaf) cancelAnimationFrame(menuBrandRaf);
+  menuBrandRaf = requestAnimationFrame(tickMenuBrand);
+}
+
+function stopMenuBrandLoop() {
+  if (menuBrandRaf) cancelAnimationFrame(menuBrandRaf);
+  menuBrandRaf = null;
+}
+
+async function bootMenuBrand() {
+  if (typeof PackAssets === "undefined") return;
+  try {
+    await PackAssets.loadMenuBrand();
+    drawMenuBrand($("menu-brand-canvas"), menuBrandTime);
+    startMenuBrandLoop();
+  } catch (err) {
+    console.warn("Menü-Logo laden fehlgeschlagen", err);
+  }
+}
+
 function updateHeroCardUI() {
   const cls = CLASSES[game.classKey];
   if (!cls) return;
@@ -1148,6 +1307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (buildEl) buildEl.textContent = BUILD_ID;
   drawPreviews();
   startHeroCardLoop();
+  bootMenuBrand();
 
   if (typeof PackAssets !== "undefined") {
     const dataLoad = loadGameData();
@@ -1155,9 +1315,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       await PackAssets.loadHeroes();
       drawPreviews();
       startHeroCardLoop();
+      bootMenuBrand();
       PackAssets.loadRest().then(() => {
         initParallaxBackground(getWorld());
         invalidateParallaxCache?.();
+        bootMenuBrand();
       }).catch((err) => console.warn("Asset-Pack Rest laden fehlgeschlagen", err));
       prefetchSaveSlotWorlds();
     } catch (err) {
@@ -2444,6 +2606,7 @@ function showMenuPanel(which) {
   if (which === "home") {
     renderHomeSlotPreview();
     updateContinueButton();
+    startMenuBrandLoop();
   }
   if (which === "load") {
     renderSaveSlotList();
@@ -2682,6 +2845,7 @@ function returnToMainMenu() {
   }
   restoreSetupFromSave();
   tryMenuMusic();
+  startMenuBrandLoop();
   startHeroCardLoop();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -3180,6 +3344,7 @@ async function tryLoadCloudPlayer(name) {
 
 function enterGame(msg, opts) {
   stopHeroCardLoop();
+  stopMenuBrandLoop();
   $("game-section").classList.remove("hidden");
   hideUpgrades();
   $("setup-section").classList.add("collapsed");
