@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-172";
+const BUILD_ID = "sidescroller-v3-173";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -4136,7 +4136,6 @@ function createHero() {
   const eff = (key) => getUpgradeEff(key);
   const hp = cls.hp + eff("upgrade_health");
   const atkSpd = 1 + eff("upgrade_atkspd");
-  const moveSpd = 1 + eff("upgrade_movespeed");
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
     y: GROUND - HR.displayH(), vx: 0, vy: 0,
@@ -4156,7 +4155,7 @@ function createHero() {
     lifesteal: Math.min(0.12, eff("upgrade_lifesteal")),
     regen: eff("upgrade_regen"),
     atkSpeedMult: Math.min(1.85, atkSpd),
-    moveSpeedMult: Math.min(1.55, moveSpd),
+    moveSpeedMult: 1,
     specialCd: Math.max(2.5, cls.specialCd - eff("upgrade_cooldown")),
     specialTimer: 0,
     abilitySlotCds: [0, 0],
@@ -4205,7 +4204,7 @@ function heroStats() {
     lifesteal: h.lifesteal || 0,
     regen: h.regen || 0,
     atkSpeedMult: h.atkSpeedMult || 1,
-    moveSpeedMult: h.moveSpeedMult || 1
+    moveSpeedMult: 1
   };
 }
 
@@ -4230,7 +4229,7 @@ function refreshHeroFromUpgrades() {
   h.lifesteal = Math.min(0.12, eff("upgrade_lifesteal"));
   h.regen = eff("upgrade_regen");
   h.atkSpeedMult = Math.min(1.85, 1 + eff("upgrade_atkspd"));
-  h.moveSpeedMult = Math.min(1.55, 1 + eff("upgrade_movespeed"));
+  h.moveSpeedMult = 1;
   h.specialCd = Math.max(2.5, cls.specialCd - eff("upgrade_cooldown"));
 }
 
@@ -4581,7 +4580,7 @@ function getWaveSize() {
 function getUpgradeTip() {
   const tips = {
     warrior: "Krieger: Leben → Rüstung → Angriff → Spezial-CD / Lebensraub",
-    ranger:  "Waldläufer: Angriff → Krit → Krit-DMG → Bewegung",
+    ranger:  "Waldläufer: Angriff → Krit → Krit-DMG → Boss-Schaden",
     mage:    "Magier: Magie → Mana → Boss-Schaden → Spezial-CD"
   };
   const goals = (typeof getShortMidLongGoals === "function") ? getShortMidLongGoals() : null;
@@ -6032,7 +6031,7 @@ function renderUpgradeButtons() {
       : getUpgradeTip();
   }
 
-  const cats = ["offense", "defense", "mobility", "economy", "utility"];
+  const cats = ["offense", "defense", "economy", "utility"];
   const labels = (typeof DL_UPGRADE_CAT_LABELS !== "undefined") ? DL_UPGRADE_CAT_LABELS : {};
   const byCat = {};
   UPGRADES.forEach((up) => {

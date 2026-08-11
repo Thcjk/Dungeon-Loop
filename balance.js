@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-172
+   Build: sidescroller-v3-173
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY
@@ -13,7 +13,7 @@
    ============================================ */
 
 const DL_BALANCE = {
-  version: 172,
+  version: 173,
   targetFirstClearMin: 120,
   targetFirstClearRange: [90, 150],
   runsPerMeaningfulUpgrade: [1, 3],
@@ -205,10 +205,7 @@ const DL_UPGRADES = [
     baseCost: 180, bonus: 0.012, bonusText: "+1,2% Lebensraub", tip: "Heilung beim Treffer. Stark begrenzt – kein Unsterblichkeits-Build.",
     forClass: "all", diminish: 0.82, softCap: 6, maxLv: 8 },
 
-  /* MOBILITY */
-  { key: "upgrade_movespeed", cat: "mobility", tier: "major", label: "Bewegung",
-    baseCost: 110, bonus: 0.035, bonusText: "+3,5% Bewegung", tip: "Schneller positionieren und ausweichen.",
-    forClass: "all", diminish: 0.9, softCap: 10, maxLv: 12 },
+  /* MOBILITY – entfernt (Sidescroller: A/D reicht, kein Dash-System) */
 
   /* ECONOMY */
   { key: "upgrade_gold", cat: "economy", tier: "major", label: "Gold-Fund",
@@ -230,7 +227,6 @@ const DL_UPGRADES = [
 const DL_UPGRADE_CAT_LABELS = {
   offense: "ANGRIFF",
   defense: "VERTEIDIGUNG",
-  mobility: "BEWEGLICHKEIT",
   economy: "WIRTSCHAFT",
   utility: "SPEZIAL"
 };
@@ -334,7 +330,7 @@ function dlPlayerPowerScore(stats) {
   const dpsProxy = Math.max(atk, mag) * (s.atkSpeedMult || 1);
   const critEV = 1 + Math.min(0.52, s.crit || 0) * ((s.critDamage || 1.85) - 1);
   const ehp = (s.maxHp || 100) * (1 + (s.defense || 0) * 0.04) * (1 + (s.regen || 0) * 0.03);
-  const mob = 1 + ((s.moveSpeedMult || 1) - 1) * 0.5;
+  const mob = 1;
   const special = 1 + (s.lifesteal || 0) * 2 + (s.bossDamage || 0) * 0.4;
   const raw = dpsProxy * critEV * 2.2 + ehp * 0.35;
   return Math.round(100 * (raw / 120) * mob * special);
