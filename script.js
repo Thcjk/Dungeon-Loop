@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-179";
+const BUILD_ID = "sidescroller-v3-180";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -889,7 +889,14 @@ const game = {
   runUpgradeDraft: null,
   runUpgradePaused: false,
   pendingWorldAdvance: false,
-  pendingBossUpgradeWorld: null
+  pendingBossUpgradeWorld: null,
+  /** World Events / Risk-Reward */
+  eventState: null,
+  eventPaused: false,
+  lastWaveHadElite: false,
+  lastWaveWasBreath: false,
+  eventLootBonus: null,
+  goldenFleeTimer: 0
 };
 
 let WAVE_DATA = null;
@@ -922,7 +929,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 5;
+const RUN_SAVE_VERSION = 6;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
@@ -2092,12 +2099,419 @@ function onWaveSpawn(isBoss, count) {
   playSound(soundKey);
 }
 
+
+/* ============================================
+   WORLD EVENTS – Integration
+   ============================================ */
+
+function ensureEventState() {
+  if (!game.eventState || typeof game.eventState !== "object") {
+    game.eventState = typeof dlCreateEmptyEventState === "function"
+      ? dlCreateEmptyEventState()
+      : { activeEffects: [], worldEventCount: 0, wavesSinceEvent: 999, wavesInWorld: 0 };
+  }
+  return game.eventState;
+}
+
+function getEventBonuses() {
+  ensureEventState();
+  if (typeof dlGetEventBonuses === "function") return dlGetEventBonuses(game.eventState);
+  return {
+    damageMult: 1, atkSpdMult: 1, maxHpMult: 1, armorAdd: 0, abilityDmgMult: 1,
+    bossDmgAdd: 0, goldMult: 1, enemyDmgTakenMult: 1, catchRadiusAdd: 0,
+    manaAdd: 0, encounterDrAdd: 0, encounterDmgAdd: 0, bossElixirBossDmg: 0
+  };
+}
+
+function showEventOverlay(pending) {
+  const overlay = $("event-overlay");
+  const title = $("event-title");
+  const body = $("event-body");
+  const choices = $("event-choices");
+  const feedback = $("event-feedback");
+  if (!overlay || !choices) return;
+  const p = pending || (game.eventState && game.eventState.pendingEvent);
+  if (!p) return;
+  game.eventPaused = true;
+  game.isPaused = true;
+  hidePauseMenu();
+  if (feedback) { feedback.classList.add("hidden"); feedback.textContent = ""; }
+  if (title) title.textContent = p.title || "EREIGNIS";
+  if (body) body.textContent = p.body || "";
+  choices.innerHTML = "";
+  (p.choices || []).forEach((ch, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "event-choice-btn";
+    btn.dataset.choiceId = ch.id;
+    btn.innerHTML = "<strong>" + (ch.label || ("Option " + (i + 1))) + "</strong>" +
+      (ch.hint ? ('<span class="event-choice-hint">' + ch.hint + "</span>") : "") +
+      '<span class="event-choice-key">' + (i + 1) + "</span>";
+    btn.onclick = () => resolveEventChoice(ch.id);
+    choices.appendChild(btn);
+  });
+  overlay.classList.remove("hidden");
+  overlay.classList.toggle("corrupted", !!p.corrupted);
+  $("btn-pause").textContent = "Weiter (P)";
+  markRunSaveDirty();
+  saveActiveRun(true);
+}
+
+function hideEventOverlay() {
+  const overlay = $("event-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function resolveEventChoice(choiceId) {
+  ensureEventState();
+  const es = game.eventState;
+  const pending = es.pendingEvent;
+  if (!pending || typeof dlResolveEventChoice !== "function") return;
+  const h = game.hero;
+  const st = h ? heroStats() : null;
+  const res = dlResolveEventChoice(es, pending, choiceId, {
+    worldIndex: game.worldIndex | 0,
+    loopIndex: game.loopIndex | 0,
+    classKey: game.classKey,
+    runGold: game.runGold,
+    heroHp: h ? h.hp : 0,
+    heroMaxHp: st ? st.maxHp : 1,
+    spendGold: (amt) => {
+      game.runGold = Math.max(0, (game.runGold | 0) - (amt | 0));
+      updateHUD();
+    },
+    addRunGold: (amt) => {
+      game.runGold = Math.max(0, (game.runGold | 0) + (amt | 0));
+      updateHUD();
+    },
+    healHero: (amt) => {
+      if (!h || !st) return;
+      h.hp = Math.max(1, Math.min(st.maxHp, h.hp + (amt | 0)));
+    },
+    setHeroHp: (hp) => {
+      if (!h) return;
+      h.hp = Math.max(1, hp | 0);
+    },
+    fullMana: () => {
+      if (!h) return;
+      const after = heroStats();
+      h.mana = after.maxMana;
+    }
+  });
+  if (!res || !res.ok) {
+    if (res && res.logLines && res.logLines.length) {
+      res.logLines.forEach((line) => addLog(line, "damage"));
+    }
+    return;
+  }
+
+  (res.logLines || []).forEach((line) => addLog(line, "heal"));
+  showEventFeedback(res.logLines || []);
+  emitCombatEvent("wave_clear");
+
+  // Treasure loot
+  if (res.meta && res.meta.loot) {
+    generateLootMinRarity("Ungewöhnlich", res.meta.rarityTable);
+  }
+
+  // Altar max-HP: Stats neu binden
+  if (pending.type === "cursed_altar" || pending.type === "blood_pact" ||
+      (res.effectsApplied && res.effectsApplied.some((e) => e.maxHpAdd || e.maxHpMult))) {
+    const before = heroStats();
+    const ratio = before.maxHp > 0 ? h.hp / before.maxHp : 1;
+    // heroStats liest Event-Boni – HP an neues Max anpassen
+    const after = heroStats();
+    h.hp = Math.max(1, Math.min(after.maxHp, Math.floor(after.maxHp * ratio)));
+  }
+
+  hideEventOverlay();
+  game.eventPaused = false;
+  game.isPaused = false;
+  $("btn-pause").textContent = "Pause (P)";
+  markRunSaveDirty();
+  saveActiveRun(true);
+  updateHUD();
+  updateEventHudIcons();
+  updatePauseEventEffects();
+
+  if (game.isRunning && !game.isDead && countAliveEnemies() === 0) {
+    safeSpawnWave();
+    ensureGameLoop();
+  }
+}
+
+function showEventFeedback(lines) {
+  const el = $("event-feedback-toast");
+  if (!el) {
+    if (lines && lines[0]) showAnnouncement("world", "EREIGNIS", lines[0], 2.2);
+    return;
+  }
+  el.textContent = (lines || []).slice(0, 3).join(" · ");
+  el.classList.remove("hidden");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add("hidden"), 2800);
+}
+
+function applyEventChallengeReward(out, chPrev) {
+  const ch = chPrev || (out && out.challenge) || {};
+  const type = ch.type;
+  const reward = out && out.reward;
+  const loop = game.loopIndex | 0;
+  const ng = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.events && DL_BALANCE.events.ngPlus)
+    ? DL_BALANCE.events.ngPlus : {};
+  let goldMulNg = 1;
+  if (loop >= 2) goldMulNg += (ng.rewardAddPerLoopFrom2 != null ? ng.rewardAddPerLoopFrom2 : 0.08) * Math.max(0, loop - 1);
+
+  if (type === "elite_challenge") {
+    const ec = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.events)
+      ? DL_BALANCE.events.eliteChallenge : {};
+    const base = estimateNormalEncounterGold();
+    const gold = Math.floor(base * (ec.goldMult != null ? ec.goldMult : 2.2) * goldMulNg);
+    game.runGold += gold;
+    game.eventLootBonus = {
+      lootChanceAdd: ec.lootChanceAdd != null ? ec.lootChanceAdd : 0.4,
+      rarePlusMul: ec.rarePlusLootMult != null ? ec.rarePlusLootMult : 2,
+      wavesLeft: 1
+    };
+    addLog("Elite-Herausforderung geschafft! +" + gold + " Gold", "heal");
+    if (reward && reward.buff) {
+      addLog("Event-Buff: " + (reward.buff.id || "Bonus"), "heal");
+      const st = heroStats();
+      if (reward.buff.maxHpAdd && game.hero) {
+        game.hero.hp = Math.min(st.maxHp, game.hero.hp + Math.floor(st.maxHp * reward.buff.maxHpAdd));
+      }
+    }
+    showEventFeedback(["ELITE BESIEGT", "+" + gold + " Gold"]);
+  } else if (type === "fate_gate" && ch.path === "danger" && reward) {
+    const base = estimateNormalEncounterGold();
+    const gold = Math.floor(base * 2 * (reward.goldMult || 2.5) * goldMulNg);
+    game.runGold += gold;
+    generateLootMinRarity("Selten", {
+      rare: 0.78,
+      epic: reward.epicChance || 0.2,
+      legendary: reward.legendaryChance || 0.02
+    });
+    addLog("Schicksalstor geschafft! +" + gold + " Gold + Rare+", "heal");
+    showEventFeedback(["SCHICKSALSTOR", "+" + gold + " Gold"]);
+  } else if (type === "golden_enemy") {
+    const gold = Math.floor((ch.goldReward || 120) * goldMulNg);
+    game.runGold += gold;
+    if (Math.random() < (ch.lootChance != null ? ch.lootChance : 0.35)) {
+      generateLootMinRarity(ch.minLoot === "uncommon" ? "Ungewöhnlich" : "Ungewöhnlich");
+    }
+    addLog("Goldener Gegner besiegt! +" + gold + " Gold", "heal");
+    showEventFeedback(["GOLDENER GEGNER", "+" + gold + " Gold"]);
+  } else if (type === "mimic") {
+    const mimic = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.events)
+      ? DL_BALANCE.events.treasure.mimic : {};
+    for (let i = 0; i < (mimic.rewardMult || 3); i++) {
+      generateLootMinRarity("Selten");
+    }
+    addLog("Mimic besiegt – Rare+ Beute!", "heal");
+    showEventFeedback(["MIMIC BESIEGT"]);
+  }
+  updateHUD();
+  updateEventHudIcons();
+}
+
+function estimateNormalEncounterGold() {
+  const world = getWorld();
+  const depth = getWorldDepth();
+  const E = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.enemy : null;
+  const base = (E ? E.goldBase : 5) + depth * (E ? E.goldPerDepth : 1.1) + (world.danger || 1) * (E ? E.goldPerDanger : 1.6);
+  return Math.max(20, Math.floor(base * 3 * (world.rewardMult || 1)));
+}
+
+function generateLootMinRarity(minName, weightOverride) {
+  const order = ["Gewöhnlich", "Ungewöhnlich", "Selten", "Episch", "Legendär", "Mythisch"];
+  const minIdx = Math.max(0, order.indexOf(minName));
+  let rarity = RARITIES[Math.min(RARITIES.length - 1, minIdx)];
+  if (weightOverride) {
+    const roll = Math.random();
+    let cum = 0;
+    const map = [
+      ["Ungewöhnlich", weightOverride.uncommon],
+      ["Selten", weightOverride.rare],
+      ["Episch", weightOverride.epic],
+      ["Legendär", weightOverride.legendary]
+    ];
+    for (let i = 0; i < map.length; i++) {
+      const w = map[i][1];
+      if (!(w > 0)) continue;
+      cum += w;
+      if (roll <= cum) {
+        rarity = RARITIES.find((r) => r.name === map[i][0]) || rarity;
+        break;
+      }
+    }
+  } else {
+    // Weighted toward min rarity and above
+    const pool = RARITIES.filter((r) => order.indexOf(r.name) >= minIdx);
+    let roll = Math.random(), cum = 0, sum = pool.reduce((s, r) => s + r.chance, 0) || 1;
+    for (const r of pool) {
+      cum += r.chance / sum;
+      if (roll <= cum) { rarity = r; break; }
+    }
+  }
+  const types = LOOT_TYPES_BY_CLASS[game.classKey] || LOOT_TYPES_BY_CLASS.warrior;
+  const baseType = types[Math.floor(Math.random() * types.length)];
+  const prefix = LOOT_PREFIXES[Math.floor(Math.random() * LOOT_PREFIXES.length)];
+  const suffixArr = LOOT_SUFFIXES[baseType] || [""];
+  const suffix = suffixArr[Math.floor(Math.random() * suffixArr.length)];
+  const variance = 0.75 + Math.random() * 0.5;
+  const eff = LOOT_EFFECTS[Math.floor(Math.random() * LOOT_EFFECTS.length)];
+  const val = Math.max(1, Math.floor(rarity.mult * variance * (1 + game.dungeonLevel * 0.12)));
+  const loot = {
+    name: prefix + " " + baseType + suffix,
+    rarity: rarity.name, css: rarity.css, effect: eff.key, value: val, score: rarity.mult * val
+  };
+  applyLoot(loot);
+  if (!game.bestLoot || loot.score > game.bestLoot.score) {
+    game.bestLoot = loot;
+    $("loot-display")?.classList.remove("hidden");
+    if ($("best-loot-text")) {
+      $("best-loot-text").textContent = rarity.name + " " + loot.name + " (+" + eff.label + " " + val + ")";
+      $("best-loot-text").className = "loot-item " + loot.css;
+    }
+  }
+  addLog("Loot: " + rarity.name + " " + loot.name, rarity.logCss);
+}
+
+function updateEventHudIcons() {
+  const wrap = $("hud-event-icons");
+  if (!wrap) return;
+  ensureEventState();
+  if (typeof dlListEventHudIcons !== "function") {
+    wrap.innerHTML = "";
+    wrap.classList.add("hidden");
+    return;
+  }
+  const listed = dlListEventHudIcons(game.eventState);
+  wrap.innerHTML = "";
+  if (!listed.icons.length) {
+    wrap.classList.add("hidden");
+    return;
+  }
+  wrap.classList.remove("hidden");
+  listed.icons.forEach((ic) => {
+    const span = document.createElement("span");
+    span.className = "hud-event-icon";
+    span.title = ic.tip || ic.label;
+    span.textContent = ic.label;
+    wrap.appendChild(span);
+  });
+  if (listed.overflow > 0) {
+    const more = document.createElement("span");
+    more.className = "hud-event-icon hud-event-more";
+    more.textContent = "+" + listed.overflow;
+    more.title = "Weitere Effekte im Pause-Menü";
+    wrap.appendChild(more);
+  }
+}
+
+function updatePauseEventEffects() {
+  const box = $("pause-event-effects");
+  if (!box) return;
+  ensureEventState();
+  const es = game.eventState;
+  const lines = [];
+  (es.activeEffects || []).forEach((e) => {
+    if (!e) return;
+    const hud = (typeof DL_EVENT_HUD !== "undefined" && DL_EVENT_HUD[e.id]) || {};
+    lines.push((hud.label || e.id) + " – " + (hud.tip || e.duration || "Effekt"));
+  });
+  if (es.activeCurse) lines.unshift("Fluch: " + es.activeCurse);
+  // Run-Upgrades kurz
+  const ru = game.runUpgradeState && game.runUpgradeState.upgrades;
+  if (ru && ru.length) {
+    lines.push("— Run-Upgrades (" + ru.length + ") —");
+  }
+  if (!lines.length) {
+    box.innerHTML = "<p class=\"pause-hint\">Keine aktiven Event-Effekte.</p>";
+    return;
+  }
+  box.innerHTML = "<h3 class=\"pause-effects-title\">AKTIVE EFFEKTE</h3><ul class=\"pause-effects-list\">" +
+    lines.map((l) => "<li>" + l + "</li>").join("") + "</ul>";
+}
+
+function tickGoldenEnemyFlee(dt) {
+  ensureEventState();
+  const ch = game.eventState.activeChallenge;
+  if (!ch || ch.type !== "golden_enemy") return;
+  game.goldenFleeTimer = (game.goldenFleeTimer || 0) + dt;
+  const limit = ch.fleeSeconds != null ? ch.fleeSeconds : 12;
+  if (game.goldenFleeTimer >= limit) {
+    game.enemies.forEach((e) => {
+      if (e && e.isGoldenEnemy) { e.hp = 0; e.dead = true; e.fled = true; }
+    });
+    if (typeof dlOnChallengeWaveComplete === "function") {
+      dlOnChallengeWaveComplete(game.eventState, { fled: true });
+    }
+    game.goldenFleeTimer = 0;
+    addLog("Der goldene Gegner entkommt!", "damage");
+    showEventFeedback(["ENTKOMMEN"]);
+  }
+}
+
 function onWaveClear() {
   const waveType = game.currentWave?.type || "normal";
   const soundKey = WAVE_DATA?.waveTypes?.[waveType]?.soundClear || "wave_clear";
   playSound(soundKey);
+  const wasBoss = !!game.waveWasBoss;
+  const wasElite = !!game.lastWaveHadElite;
+  const wasRecovery = !!game.lastWaveWasBreath;
   game.currentWave = null;
-  tryAdvanceWorldAfterBossWave();
+
+  ensureEventState();
+  const es = game.eventState;
+  if (!wasBoss) {
+    es.wavesInWorld = (es.wavesInWorld | 0) + 1;
+  }
+
+  // Challenge-Abschluss (Elite / Schicksalstor / Mimic / Goldener)
+  if (es.activeChallenge && typeof dlOnChallengeWaveComplete === "function") {
+    const ch = es.activeChallenge;
+    const wr = { cleared: true, killed: true };
+    const out = dlOnChallengeWaveComplete(es, wr);
+    if (out && out.completed) applyEventChallengeReward(out, ch);
+  }
+
+  if (typeof dlConsumeEncounterBuffs === "function") dlConsumeEncounterBuffs(es);
+  if (game.eventLootBonus && (game.eventLootBonus.wavesLeft | 0) > 0) {
+    game.eventLootBonus.wavesLeft -= 1;
+    if (game.eventLootBonus.wavesLeft <= 0) game.eventLootBonus = null;
+  }
+
+  if (wasBoss) {
+    if (typeof dlClearUntilBossEffects === "function") dlClearUntilBossEffects(es);
+    tryAdvanceWorldAfterBossWave();
+    return;
+  }
+
+  // Event-Roll nach normaler Welle
+  const world = getWorld();
+  const st = game.hero ? heroStats() : null;
+  const pending = (typeof dlTryTriggerEventAfterWave === "function")
+    ? dlTryTriggerEventAfterWave({
+      eventState: es,
+      worldIndex: game.worldIndex | 0,
+      wavesInWorld: es.wavesInWorld | 0,
+      worldLength: world.length || 20,
+      wasElite,
+      wasRecovery,
+      waveWasBoss: false,
+      preBossImminent: false,
+      heroHp: game.hero ? game.hero.hp : 0,
+      heroMaxHp: st ? st.maxHp : 1,
+      classKey: game.classKey,
+      loopIndex: game.loopIndex | 0
+    })
+    : null;
+
+  if (pending) {
+    showEventOverlay(pending);
+    return;
+  }
 }
 
 // ============================================
@@ -2430,6 +2844,20 @@ function bindEvents() {
       if (document.activeElement?.tagName === "INPUT") return;
       toggleUpgrades();
     }
+    // World-Event Tasten 1/2/3
+    if (game.eventPaused && game.eventState && game.eventState.pendingEvent && !e.repeat) {
+      const choices = game.eventState.pendingEvent.choices || [];
+      if (e.key === "1" || e.key === "2" || e.key === "3") {
+        const idx = (e.key | 0) - 1;
+        if (choices[idx]) { e.preventDefault(); resolveEventChoice(choices[idx].id); return; }
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        const decline = choices.find((c) => c.id === "decline" || c.id === "leave");
+        if (decline) resolveEventChoice(decline.id);
+        return;
+      }
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       const sec = $("upgrade-section");
@@ -2437,6 +2865,8 @@ function bindEvents() {
         hideUpgrades();
         return;
       }
+      const ev = $("event-overlay");
+      if (ev && !ev.classList.contains("hidden")) return;
       if (game.isRunning && !game.isDead) {
         togglePause();
       }
@@ -3246,6 +3676,10 @@ function migrateRunData(data) {
   }
   if (!out.runUpgradeState.stacks) out.runUpgradeState.stacks = {};
   if (!Array.isArray(out.runUpgradeState.upgrades)) out.runUpgradeState.upgrades = [];
+  // Event-State Defaults (niemals Saves löschen)
+  out.eventState = typeof dlMigrateEventState === "function"
+    ? dlMigrateEventState(out.eventState)
+    : (out.eventState || {});
   return out;
 }
 
@@ -3389,6 +3823,13 @@ function saveActiveRun(force) {
     runUpgradeState: game.runUpgradeState
       ? JSON.parse(JSON.stringify(game.runUpgradeState))
       : (typeof dlCreateEmptyRunUpgradeState === "function" ? dlCreateEmptyRunUpgradeState() : null),
+    eventState: game.eventState
+      ? JSON.parse(JSON.stringify(game.eventState))
+      : (typeof dlCreateEmptyEventState === "function" ? dlCreateEmptyEventState() : null),
+    eventLootBonus: game.eventLootBonus || null,
+    goldenFleeTimer: game.goldenFleeTimer || 0,
+    lastWaveHadElite: !!game.lastWaveHadElite,
+    lastWaveWasBreath: !!game.lastWaveWasBreath,
     hero: serializeHero(game.hero),
     enemies: game.enemies.filter((e) => e && e.hp > 0 && !e.dead).map(serializeEnemy)
   };
@@ -3554,6 +3995,14 @@ function resumeRun(data) {
   }
   game.runUpgradeDraft = null;
   game.runUpgradePaused = false;
+  game.eventState = typeof dlMigrateEventState === "function"
+    ? dlMigrateEventState(data.eventState)
+    : (data.eventState || (typeof dlCreateEmptyEventState === "function" ? dlCreateEmptyEventState() : null));
+  game.eventLootBonus = data.eventLootBonus || null;
+  game.goldenFleeTimer = Number(data.goldenFleeTimer) || 0;
+  game.lastWaveHadElite = !!data.lastWaveHadElite;
+  game.lastWaveWasBreath = !!data.lastWaveWasBreath;
+  game.eventPaused = !!(game.eventState && game.eventState.pendingEvent);
   initWorldBackground();
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
@@ -3569,6 +4018,10 @@ function resumeRun(data) {
   }
   playWorldMusic(getWorld());
   addLog("Spielstand geladen – Dungeon " + game.dungeonLevel + ", weiter geht's!", "heal");
+  updateEventHudIcons();
+  if (game.eventState && game.eventState.pendingEvent) {
+    showEventOverlay(game.eventState.pendingEvent);
+  }
   updateClassHint();
   updateHUD();
   updateStatus();
@@ -4158,6 +4611,7 @@ function mountUpgradeOverlay() {
 function showPauseMenu() {
   const panel = $("pause-panel");
   if (panel) panel.classList.remove("hidden");
+  if (typeof updatePauseEventEffects === "function") updatePauseEventEffects();
 }
 
 function hidePauseMenu() {
@@ -4225,6 +4679,9 @@ function togglePause() {
   const ru = $("run-upgrade-overlay");
   if (ru && !ru.classList.contains("hidden")) return;
   if (game.runUpgradePaused) return;
+  const ev = $("event-overlay");
+  if (ev && !ev.classList.contains("hidden")) return;
+  if (game.eventPaused) return;
   const vic = $("victory-panel");
   if (vic && !vic.classList.contains("hidden")) return;
   game.isPaused = !game.isPaused;
@@ -4261,6 +4718,11 @@ function createHero() {
   }
   game.runUpgradeDraft = null;
   game.runUpgradePaused = false;
+  game.eventState = typeof dlCreateEmptyEventState === "function"
+    ? dlCreateEmptyEventState() : null;
+  game.eventPaused = false;
+  game.eventLootBonus = null;
+  game.goldenFleeTimer = 0;
   game.pendingWorldAdvance = false;
   game.pendingBossUpgradeWorld = null;
   game.hero = {
@@ -4337,12 +4799,17 @@ function getRunBonus() {
 
 function heroStats() {
   const h = game.hero, lb = h.lootBonuses || {}, rb = getRunBonus();
+  const eb = typeof getEventBonuses === "function" ? getEventBonuses() : {
+    damageMult: 1, atkSpdMult: 1, maxHpMult: 1, armorAdd: 0, abilityDmgMult: 1,
+    bossDmgAdd: 0, goldMult: 1, enemyDmgTakenMult: 1, catchRadiusAdd: 0,
+    manaAdd: 0, encounterDrAdd: 0, encounterDmgAdd: 0, bossElixirBossDmg: 0
+  };
   const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
   const critCap = caps.critChance || BALANCE.critChanceCap || 0.45;
   const critDmgCap = caps.critDamage || 2.6;
   const lsCap = rb.lifestealCap || caps.lifesteal || 0.10;
-  let hpMult = rb.maxHpMult || 1;
-  let dmgMult = (rb.damageMult || 1) * (rb.attackDmgMult || 1);
+  let hpMult = (rb.maxHpMult || 1) * (eb.maxHpMult || 1);
+  let dmgMult = (rb.damageMult || 1) * (rb.attackDmgMult || 1) * (eb.damageMult || 1) * (1 + (eb.encounterDmgAdd || 0));
   const baseMaxHp = h.maxHp + (lb.hp || 0);
   const maxHp = Math.max(1, Math.floor(baseMaxHp * hpMult));
   let missing = 1 - (h.hp / Math.max(1, maxHp));
@@ -4351,7 +4818,7 @@ function heroStats() {
     const bersPer = rb.bersPer10 != null ? rb.bersPer10 : 0.03;
     dmgMult *= (1 + Math.min(bersMax, Math.floor(missing / 0.1) * bersPer));
   }
-  let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1);
+  let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1) * (eb.atkSpdMult || 1);
   const adrFrac = rb.adrHpFrac != null ? rb.adrHpFrac : 0.30;
   if (rb.adrenaline && (h.hp / Math.max(1, maxHp)) < adrFrac) {
     atkSpd *= (1 + (rb.adrAtkSpdAdd != null ? rb.adrAtkSpdAdd : 0.18));
@@ -4363,18 +4830,19 @@ function heroStats() {
     dmgMult *= (1 + Math.min(0.24, (game.runUpgradeState.warMachineStacks || 0) * 0.015));
   }
   const tempDr = ((h.tempDrTimer || 0) > 0) ? (h.tempDr || 0) : 0;
+  const eventArmor = (eb.armorAdd || 0) + (eb.encounterDrAdd || 0);
   return {
     attack: (h.attack + (lb.attack || 0)) * dmgMult,
     defense: h.defense + (lb.defense || 0),
-    metaArmorDr: Math.min(caps.damageReduction || 0.46, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr),
+    metaArmorDr: Math.min(caps.damageReduction || 0.46, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr + eventArmor),
     crit: Math.min(critCap, h.crit + (lb.crit || 0) + (rb.critAdd || 0)),
     critDamage: Math.min(critDmgCap, (h.critDamage || BALANCE.critDamageBase || 1.65) + (rb.critDmgAdd || 0)),
     magicDamage: (h.magicDamage + (lb.magicDamage || 0)) * dmgMult,
-    abilityDmgMult: rb.abilityDmgMult || 1,
+    abilityDmgMult: (rb.abilityDmgMult || 1) * (eb.abilityDmgMult || 1),
     maxHp,
-    maxMana: h.maxMana + (lb.mana || 0),
-    goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1),
-    bossDamage: Math.min(caps.bossDamage || 0.38, (h.bossDamage || 0) + (rb.bossDmgAdd || 0)),
+    maxMana: h.maxMana + (lb.mana || 0) + (eb.manaAdd || 0),
+    goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1) * (eb.goldMult || 1),
+    bossDamage: Math.min(caps.bossDamage || 0.38, (h.bossDamage || 0) + (rb.bossDmgAdd || 0) + (eb.bossDmgAdd || 0) + (eb.bossElixirBossDmg || 0)),
     lifesteal: Math.min(lsCap, (h.lifesteal || 0) + (rb.lifestealAdd || 0)),
     lifestealCap: lsCap,
     regen: h.regen || 0,
@@ -4382,8 +4850,8 @@ function heroStats() {
     moveSpeedMult: Math.min(1 + (caps.moveSpeedBonus || 0.20), (h.moveSpeedMult || 1) * (rb.moveSpeedMult || 1)),
     eliteGoldMult: rb.eliteGoldMult || 1,
     eliteDamageAdd: rb.eliteDamageAdd || 0,
-    coinCatchMult: rb.coinCatchMult || 2,
-    enemyDmgTakenMult: rb.enemyDmgTakenMult || 1,
+    coinCatchMult: (rb.coinCatchMult || 2) * (1 + (eb.catchRadiusAdd || 0)),
+    enemyDmgTakenMult: (rb.enemyDmgTakenMult || 1) * (eb.enemyDmgTakenMult || 1),
     levelHealMult: rb.levelHealMult || 1,
     executioner: !!rb.executioner,
     execHpFrac: rb.execHpFrac != null ? rb.execHpFrac : 0.2,
@@ -4517,6 +4985,10 @@ function advanceToNextWorld() {
     completeDungeonLoop();
     return;
   }
+  ensureEventState();
+  if (typeof dlClearWorldEventBuffs === "function") dlClearWorldEventBuffs(game.eventState);
+  game.eventLootBonus = null;
+  game.goldenFleeTimer = 0;
   game.worldIndex = idx + 1;
   const newWorld = getWorld();
   PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
@@ -4838,17 +5310,54 @@ function updateWaveIntro() {
 }
 
 function spawnWave() {
+  ensureEventState();
   const isBoss = shouldSpawnWorldBoss();
   game.waveWasBoss = isBoss;
   const world = getWorld();
   const progress = getWorldProgress01();
   const breath = (game.breathWavesLeft | 0) > 0;
   if (breath) game.breathWavesLeft = Math.max(0, (game.breathWavesLeft | 0) - 1);
+  game.lastWaveWasBreath = !!breath && !isBoss;
+  game.lastWaveHadElite = false;
   const maxEnemies = world.maxEnemies || 5;
+  const ch = game.eventState && game.eventState.activeChallenge;
+
+  // Spezial-Encounters: Goldener Gegner / Mimic
+  if (!isBoss && ch && (ch.type === "golden_enemy" || ch.type === "mimic")) {
+    spawnEventSpecialEnemy(ch);
+    return;
+  }
 
   let budget = (typeof dlEncounterBudget === "function")
     ? dlEncounterBudget(world, progress, isBoss, game.loopIndex || 0, breath)
     : getWaveSize();
+
+  // Event-Challenge Budget-Mods
+  let challengeEliteChanceAdd = 0;
+  let forceMinElites = 0;
+  let maxOvershoot = null;
+  if (!isBoss && ch) {
+    const loop = game.loopIndex | 0;
+    const ng = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.events && DL_BALANCE.events.ngPlus)
+      ? DL_BALANCE.events.ngPlus : {};
+    let bMul = ch.budgetMult || 1;
+    if (ch.type === "elite_challenge" && loop >= 2) {
+      bMul += (ng.eliteChallengeBudgetAddPerLoopFrom2 || 0.05) * Math.max(0, loop - 1);
+    }
+    if (ch.type === "fate_gate" && ch.path === "danger" && loop >= 2) {
+      bMul += (ng.fateGateBudgetAddPerLoopFrom2 || 0.05) * Math.max(0, loop - 1);
+    }
+    budget = Math.max(1, budget * bMul);
+    if (ch.type === "elite_challenge") {
+      forceMinElites = ch.minElites || 1;
+      maxOvershoot = 1.45;
+    } else if (ch.type === "fate_gate") {
+      if (ch.path === "danger") {
+        challengeEliteChanceAdd = ch.eliteChanceAdd || 0.10;
+        maxOvershoot = 1.35;
+      }
+    }
+  }
 
   let roles = [];
   const planOpts = { maxEnemies, composition: world.composition || null };
@@ -4863,7 +5372,8 @@ function spawnWave() {
     if (progress >= 0.85) eliteChance += 0.05;
     eliteChance += (game.loopIndex | 0) * ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.loop)
       ? (DL_BALANCE.loop.eliteChancePerLoop || 0) : 0);
-    const allowElite = Math.random() < eliteChance || progress >= 0.7;
+    eliteChance += challengeEliteChanceAdd;
+    let allowElite = Math.random() < eliteChance || progress >= 0.7 || forceMinElites > 0;
     const plan = (typeof planEncounterRoles === "function")
       ? planEncounterRoles(budget, world.theme, world.danger, allowElite, planOpts)
       : { picks: Array.from({ length: getWaveSize() }, () => ({ tag: "basic", cost: 1 })) };
@@ -4886,6 +5396,24 @@ function spawnWave() {
       }
     }
     if (roles.length > maxEnemies) roles = roles.slice(0, maxEnemies);
+    // Elite-Challenge: mind. N Elites
+    if (forceMinElites > 0) {
+      let elites = roles.filter((r) => r.tag === "elite").length;
+      for (let i = 0; i < roles.length && elites < forceMinElites; i++) {
+        if (roles[i].tag !== "elite" && roles[i].tag !== "boss") {
+          roles[i] = { tag: "elite", cost: roles[i].cost || 3 };
+          elites++;
+        }
+      }
+      while (elites < forceMinElites && roles.length < maxEnemies) {
+        roles.push({ tag: "elite", cost: 3 });
+        elites++;
+      }
+    }
+    // Event-Overshoot: Synergy-Kappung lockerer
+    if (maxOvershoot && typeof dlSynergyMult === "function" && roles.length > 1) {
+      /* already capped in loop with default; allow higher via skip */
+    }
     game.lastEncounterIntensity = (plan.spent || budget) / Math.max(1, world.budgetMid || 5);
     const hardT = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.rhythm)
       ? (DL_BALANCE.rhythm.hardThreshold || 1.2) : 1.2;
@@ -4908,12 +5436,48 @@ function spawnWave() {
     if (e && e.isElite) eliteCount++;
   });
   if (eliteCount && game.runStats) game.runStats.elitesSeen = (game.runStats.elitesSeen || 0) + eliteCount;
+  game.lastWaveHadElite = eliteCount > 0;
+  if (ch && ch.enemyDmgAdd) {
+    game.enemies.forEach((e) => {
+      if (e && !e.isBoss) e.attack = Math.max(1, Math.floor(e.attack * (1 + ch.enemyDmgAdd)));
+    });
+  }
   if (bossEnemy) startBossIntro(bossEnemy);
   if (isBoss) addLog("⚠ WELT-BOSS: " + (bossEnemy?.name || "Unbekannt") + "! Besiege die Welle für die nächste Welt.", "boss");
   else if (eliteCount) addLog("Eliten-Kampf! " + count + " Gegner", "damage");
   else if (breath) addLog("Atemholen – schwächere Welle (" + count + ")");
   else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "damage");
   else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
+}
+
+function spawnEventSpecialEnemy(ch) {
+  onWaveSpawn(false, 1);
+  startWaveIntro();
+  game.goldenFleeTimer = 0;
+  const base = getEnemyStats(false, "basic");
+  const isMimic = ch.type === "mimic";
+  const hpM = ch.hpMult != null ? ch.hpMult : (isMimic ? 4 : 1.5);
+  const atkM = ch.atkMult != null ? ch.atkMult : (isMimic ? 1.8 : 0.75);
+  const spdM = ch.speedMult != null ? ch.speedMult : (isMimic ? 1.15 : 1.45);
+  const e = spawnEnemy(false, 0, "basic");
+  if (!e) return;
+  e.maxHp = Math.max(1, Math.floor(base.hp * hpM));
+  e.hp = e.maxHp;
+  e.attack = Math.max(1, Math.floor(base.attack * atkM));
+  e.speed = base.speed * spdM;
+  e.goldReward = isMimic ? Math.floor(base.gold * 2) : 1;
+  e.xpReward = Math.floor(base.xp * (isMimic ? 2 : 1.2));
+  if (isMimic) {
+    e.name = "Mimic";
+    e.isMimic = true;
+    e.isElite = true;
+  } else {
+    e.name = "Goldener Gegner";
+    e.isGoldenEnemy = true;
+    e.isElite = false;
+  }
+  game.lastWaveHadElite = !!isMimic;
+  addLog(isMimic ? "Mimic greift an!" : "Goldener Gegner – schnell töten!", "boss");
 }
 
 function spawnEnemy(isBoss, index, roleTag) {
@@ -5732,6 +6296,7 @@ function updateFrame(dt) {
 
   // Münzen – Auto-Einsammeln oder Maus/Touch-Bonus
   updateCoinDrops(dt);
+  if (typeof tickGoldenEnemyFlee === "function") tickGoldenEnemyFlee(dt);
 
   // Neue Welle wenn alle besiegt oder entkommen
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead);
@@ -5742,7 +6307,7 @@ function updateFrame(dt) {
       game.waveCooldown = 0;
       game.enemies = game.enemies.filter((e) => e.hp > 0 && !e.dead);
       onWaveClear();
-      safeSpawnWave();
+      if (!game.isPaused && !game.eventPaused && !game.runUpgradePaused) safeSpawnWave();
     }
   } else {
     game.waveCooldown = 0;
@@ -5770,9 +6335,13 @@ function xpNeededForLevel(lv) {
 
 function lootChanceForEnemy(e) {
   const E = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.enemy : null;
-  if (!E) return BALANCE.lootChance || 0.14;
-  if (e.isBoss) return E.lootChanceBoss != null ? E.lootChanceBoss : 1;
-  if (e.isElite) return E.lootChanceElite != null ? E.lootChanceElite : 0.65;
+  let bonus = 0;
+  if (game.eventLootBonus && (game.eventLootBonus.wavesLeft | 0) > 0) {
+    bonus += game.eventLootBonus.lootChanceAdd || 0;
+  }
+  if (!E) return Math.min(1, (BALANCE.lootChance || 0.14) + bonus);
+  if (e.isBoss) return Math.min(1, (E.lootChanceBoss != null ? E.lootChanceBoss : 1) + bonus);
+  if (e.isElite) return Math.min(1, (E.lootChanceElite != null ? E.lootChanceElite : 0.65) + bonus);
   const role = e.role || "basic";
   const map = {
     basic: E.lootChanceBasic,
@@ -5783,7 +6352,7 @@ function lootChanceForEnemy(e) {
     jump: E.lootChanceFast,
     elite: E.lootChanceElite
   };
-  return map[role] != null ? map[role] : (E.lootChance || 0.14);
+  return Math.min(1, (map[role] != null ? map[role] : (E.lootChance || 0.14)) + bonus);
 }
 
 function maybeOfferRunUpgrade() {
@@ -6015,6 +6584,14 @@ function onDeath() {
   // Run-Upgrades gehen mit dem Tod verloren
   game.runUpgradeState = typeof dlCreateEmptyRunUpgradeState === "function"
     ? dlCreateEmptyRunUpgradeState() : null;
+  hideEventOverlay();
+  game.eventPaused = false;
+  if (typeof dlClearAllEventEffects === "function" && game.eventState) {
+    dlClearAllEventEffects(game.eventState);
+  } else {
+    game.eventState = typeof dlCreateEmptyEventState === "function" ? dlCreateEmptyEventState() : null;
+  }
+  game.eventLootBonus = null;
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
@@ -6423,6 +7000,7 @@ function updateHUD() {
     $("hud-mana-fill").style.width = clampHudPct(h.mana, st.maxMana) + "%";
     $("hud-mana-text").textContent = formatHudRatio(h.mana, st.maxMana);
   }
+  if (typeof updateEventHudIcons === "function") updateEventHudIcons();
 }
 
 function updateStatus() {

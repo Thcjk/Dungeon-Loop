@@ -9,7 +9,7 @@
   <title>Dungeon Loop</title>
   <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=179">
+  <link rel="stylesheet" href="style.css?v=180">
 </head>
 <body>
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
@@ -242,8 +242,11 @@
                 <div class="hud-stat"><span class="stat-icon">⚔</span><span id="hud-enemies">0</span></div>
                 <div class="hud-stat world-name" id="hud-world">Wald</div>
               </div>
+              <div class="hud-event-icons hidden" id="hud-event-icons"></div>
             </div>
           </div>
+
+          <div class="event-feedback-toast hidden" id="event-feedback-toast"></div>
 
           <div class="controls-hint" id="controls-hint">
             <kbd>A</kbd>/<kbd>D</kbd> (<kbd>←</kbd>/<kbd>→</kbd>) Vor/Zurück &nbsp;|&nbsp;
@@ -263,6 +266,7 @@
                 <button type="button" class="btn btn-gold btn-large" id="btn-pause-upgrades">Upgrades &amp; Fähigkeiten</button>
                 <button type="button" class="btn btn-secondary btn-large" id="btn-pause-menu">Hauptmenü</button>
               </div>
+              <div id="pause-event-effects" class="pause-event-effects"></div>
               <p class="pause-hint">Einstellungen erreichst du im Hauptmenü.</p>
             </div>
           </div>
@@ -299,6 +303,16 @@
               <p class="run-upgrade-hint">Welt geschafft – wähle ein Run-Upgrade für die nächste Welt.</p>
               <div class="run-upgrade-choices" id="run-upgrade-choices"></div>
               <button type="button" class="btn btn-secondary" id="run-upgrade-reroll">Neu würfeln</button>
+            </div>
+          </div>
+
+          <div class="event-overlay hidden" id="event-overlay">
+            <div class="event-content">
+              <h2 class="event-title" id="event-title">EREIGNIS</h2>
+              <p class="event-body" id="event-body"></p>
+              <div class="event-choices" id="event-choices"></div>
+              <p class="event-key-hint"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> · <kbd>Esc</kbd> weiter</p>
+              <div class="event-feedback hidden" id="event-feedback"></div>
             </div>
           </div>
 
@@ -360,18 +374,19 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-179</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=179"></script>
-  <script src="world-config.js?v=179"></script>
-  <script src="world-render.js?v=179"></script>
-  <script src="visual-enemies.js?v=179"></script>
-  <script src="visual-fx.js?v=179"></script>
-  <script src="pack-fx.js?v=179"></script>
-  <script src="visual-sprites.js?v=179"></script>
-  <script src="hero-render.js?v=179"></script>
-  <script src="balance.js?v=179"></script>
-  <script src="run-upgrades.js?v=179"></script>
-  <script src="abilities.js?v=179"></script>
-  <script src="progression.js?v=179"></script>
-  <script src="script.js?v=179"></script>
+  <script src="asset-pack.js?v=180"></script>
+  <script src="world-config.js?v=180"></script>
+  <script src="world-render.js?v=180"></script>
+  <script src="visual-enemies.js?v=180"></script>
+  <script src="visual-fx.js?v=180"></script>
+  <script src="pack-fx.js?v=180"></script>
+  <script src="visual-sprites.js?v=180"></script>
+  <script src="hero-render.js?v=180"></script>
+  <script src="balance.js?v=180"></script>
+  <script src="events.js?v=180"></script>
+  <script src="run-upgrades.js?v=180"></script>
+  <script src="abilities.js?v=180"></script>
+  <script src="progression.js?v=180"></script>
+  <script src="script.js?v=180"></script>
 </body>
 </html>

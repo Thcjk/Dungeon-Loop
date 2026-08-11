@@ -441,7 +441,14 @@ const DL_BALANCE = {
       eliteChallengeBudgetAddPerLoopFrom2: 0.05,
       fateGateBudgetAddPerLoopFrom2: 0.05,
       rewardAddPerLoopFrom2: 0.08,
-      corruptedChanceFromLoop3: 0.20
+      corruptedChanceFromLoop3: 0.20,
+      // Datenstruktur vorbereitet – Varianten noch nicht aktiv
+      corruptedTemplates: {
+        cursed_altar: { bonusMult: 1.35, curseMult: 1.35 },
+        merchant: { priceMult: 1.25, rarityBoost: true },
+        elite_challenge: { budgetMultAdd: 0.1, rewardMultAdd: 0.1 },
+        blood_pact: { costAdd: 0.05, damageAdd: 0.05 }
+      }
     }
   },
 

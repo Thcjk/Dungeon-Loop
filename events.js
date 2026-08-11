@@ -143,8 +143,15 @@ const DL_EVENT_HUD = {
 /* ---- Config helpers ---- */
 
 function dlEventsCfg() {
-  const src = (typeof DL_BALANCE !== "undefined" && DL_BALANCE && DL_BALANCE.events)
-    ? DL_BALANCE.events : null;
+  let src = null;
+  if (typeof DL_BALANCE !== "undefined" && DL_BALANCE && DL_BALANCE.events) {
+    src = DL_BALANCE.events;
+  } else if (typeof module !== "undefined" && module.exports) {
+    try {
+      const bal = require("./balance.js");
+      if (bal && bal.DL_BALANCE && bal.DL_BALANCE.events) src = bal.DL_BALANCE.events;
+    } catch (_) {}
+  }
   if (!src) return JSON.parse(JSON.stringify(DL_EVENTS_DEFAULTS));
   const d = DL_EVENTS_DEFAULTS;
   return {
@@ -165,8 +172,8 @@ function dlEventsCfg() {
     bloodPact: Object.assign({}, d.bloodPact, src.bloodPact || {}),
     goldenEnemy: Object.assign({}, d.goldenEnemy, src.goldenEnemy || {}),
     fateGate: Object.assign({}, d.fateGate, src.fateGate || {}),
-    budgetCompensation: src.budgetCompensation,
-    ngPlus: src.ngPlus
+    budgetCompensation: src.budgetCompensation || d.budgetCompensation,
+    ngPlus: src.ngPlus || d.ngPlus
   };
 }
 
@@ -226,13 +233,15 @@ function dlCreateEmptyEventState() {
     eventHistory: [],
     lastEventType: null,
     activeChallenge: null,
+    merchantSeen: false,
     merchantBought: false,
     fateGateUsed: false,
     fountainUsed: false,
     bloodPactUsed: false,
     altarUsedThisRun: false,
     pendingEvent: null,
-    telemetry: []
+    telemetry: [],
+    eventFeedback: null
   };
 }
 
@@ -249,27 +258,32 @@ function dlMigrateEventState(raw) {
   out.worldEventCount = raw.worldEventCount | 0;
   out.wavesSinceEvent = raw.wavesSinceEvent != null ? (raw.wavesSinceEvent | 0) : 999;
   out.wavesInWorld = raw.wavesInWorld | 0;
+  out.merchantSeen = !!(raw.merchantSeen || raw.merchantBought);
   out.merchantBought = !!raw.merchantBought;
   out.fateGateUsed = !!raw.fateGateUsed;
   out.fountainUsed = !!raw.fountainUsed;
   out.bloodPactUsed = !!raw.bloodPactUsed;
   out.altarUsedThisRun = !!raw.altarUsedThisRun;
   out.lastEventType = raw.lastEventType || null;
+  out.eventFeedback = raw.eventFeedback || null;
   return out;
 }
 
 function dlClearWorldEventBuffs(state) {
   if (!state) return state;
-  state.activeEffects = (state.activeEffects || []).filter((e) => e && e.duration !== "world");
+  // Nur RUN-Dauer (Altar) behalten – WORLD/encounters/untilBoss weg
+  state.activeEffects = (state.activeEffects || []).filter((e) => e && e.duration === "run");
   state.worldEventCount = 0;
   state.wavesSinceEvent = 999;
   state.wavesInWorld = 0;
+  state.merchantSeen = false;
   state.merchantBought = false;
   state.fateGateUsed = false;
   state.fountainUsed = false;
   state.bloodPactUsed = false;
   state.activeChallenge = null;
   state.pendingEvent = null;
+  state.eventFeedback = null;
   return state;
 }
 
@@ -282,12 +296,20 @@ function dlClearAllEventEffects(state) {
   state.worldEventCount = 0;
   state.wavesSinceEvent = 999;
   state.wavesInWorld = 0;
+  state.merchantSeen = false;
   state.merchantBought = false;
   state.fateGateUsed = false;
   state.fountainUsed = false;
   state.bloodPactUsed = false;
   state.altarUsedThisRun = false;
   state.lastEventType = null;
+  state.eventFeedback = null;
+  return state;
+}
+
+function dlClearUntilBossEffects(state) {
+  if (!state || !state.activeEffects) return state;
+  state.activeEffects = state.activeEffects.filter((e) => e && e.duration !== "untilBoss" && !e.untilBoss);
   return state;
 }
 
@@ -433,7 +455,7 @@ function dlPickEventType(state, worldIndex, heroHpFrac, classKey, rng) {
       if (st.activeCurse || st.altarUsedThisRun) continue;
       if (caps.off && caps.def) continue;
     }
-    if (id === "merchant" && st.merchantBought) continue;
+    if (id === "merchant" && (st.merchantSeen || st.merchantBought)) continue;
     if (id === "healing_fountain") {
       if (st.fountainUsed) continue;
       if (hp > (fountain.hideIfHpAbove != null ? fountain.hideIfHpAbove : 0.80)) continue;
@@ -455,7 +477,7 @@ function dlPickEventType(state, worldIndex, heroHpFrac, classKey, rng) {
     // Fallback: gold-ish types only
     ["merchant", "golden_enemy", "treasure", "healing_fountain"].forEach((id) => {
       if (weights[id] > 0) {
-        if (id === "merchant" && st.merchantBought) return;
+        if (id === "merchant" && (st.merchantSeen || st.merchantBought)) return;
         if (id === "healing_fountain" && (st.fountainUsed || hp > 0.8)) return;
         entries.push({ id, w: weights[id] });
       }
@@ -463,6 +485,15 @@ function dlPickEventType(state, worldIndex, heroHpFrac, classKey, rng) {
   }
   if (!entries.length) return null;
   return dlEventPickWeighted(entries, rng);
+}
+
+function dlMarkEventAppearanceLimits(st, type) {
+  if (!st || !type) return;
+  if (type === "merchant") st.merchantSeen = true;
+  if (type === "healing_fountain") st.fountainUsed = true;
+  if (type === "blood_pact") st.bloodPactUsed = true;
+  if (type === "fate_gate") st.fateGateUsed = true;
+  if (type === "cursed_altar") st.altarUsedThisRun = true;
 }
 
 function dlTryTriggerEventAfterWave(ctx) {
@@ -475,7 +506,7 @@ function dlTryTriggerEventAfterWave(ctx) {
   if (!dlCanRollEvent(c)) return null;
   const chance = dlRollEventChance(c);
   const rng = dlEventRng(c.rng);
-  if (rng() > chance) return null;
+  if (rng() >= chance) return null;
 
   const hpFrac = c.heroHpFrac != null ? c.heroHpFrac
     : (c.heroMaxHp > 0 ? (c.heroHp || 0) / c.heroMaxHp : 1);
@@ -490,7 +521,12 @@ function dlTryTriggerEventAfterWave(ctx) {
   st.worldEventCount = (st.worldEventCount | 0) + 1;
   st.lastEventType = type;
   st.eventHistory = (st.eventHistory || []).concat([type]).slice(-12);
-  dlNoteEventTelemetry(st, { kind: "trigger", type, worldIndex: c.worldIndex | 0 });
+  st.merchantBought = false;
+  dlMarkEventAppearanceLimits(st, type);
+  dlNoteEventTelemetry(st, {
+    kind: "trigger", type, worldIndex: c.worldIndex | 0,
+    hpBefore: c.heroHp, chance
+  });
   return pending;
 }
 
@@ -534,8 +570,18 @@ function dlBuildEventPending(type, ctx) {
     title: ui.title,
     body: ui.body,
     choices: [],
-    meta: {}
+    meta: {},
+    corrupted: false
   };
+
+  // NG+3+: Corrupted-Flag vorbereiten (Varianten später)
+  const ng = cfg.ngPlus || {};
+  const loop = c.loopIndex | 0;
+  if (loop >= 3 && rng() < (ng.corruptedChanceFromLoop3 != null ? ng.corruptedChanceFromLoop3 : 0.2)) {
+    pending.corrupted = true;
+    pending.title = "CORRUPTED · " + ui.title;
+    pending.body = ui.body + " (verdorben – bald stärkere Variante)";
+  }
 
   if (type === "cursed_altar") {
     const pacts = (cfg.altar && cfg.altar.pacts) || [];
@@ -868,7 +914,6 @@ function dlResolveEventChoice(state, pending, choiceId, ctx) {
         wavesLeft: 1
       };
       st.activeChallenge = ch;
-      st.fateGateUsed = true;
       res.ok = true; res.spawnChallenge = ch;
       res.logLines.push("Sicherer Pfad gewählt.");
       dlNoteEventTelemetry(st, { kind: "resolve", type, choice: id });
@@ -888,12 +933,10 @@ function dlResolveEventChoice(state, pending, choiceId, ctx) {
       };
       const eff = {
         id: "fate_danger", type: "fate_gate", cat: "challenge",
-        duration: "encounters", encountersLeft: enc,
-        enemyDmgTakenAdd: fg.dangerEnemyDmgAdd != null ? fg.dangerEnemyDmgAdd : 0.10
+        duration: "encounters", encountersLeft: enc
       };
       dlPushEffect(st, eff);
       st.activeChallenge = ch;
-      st.fateGateUsed = true;
       res.ok = true; res.spawnChallenge = ch; res.effectsApplied.push(eff);
       res.logLines.push("Gefahr-Pfad gewählt – " + enc + " schwere Wellen.");
       dlNoteEventTelemetry(st, { kind: "resolve", type, choice: id });
@@ -1031,6 +1074,7 @@ if (typeof module !== "undefined" && module.exports) {
     dlMigrateEventState,
     dlClearWorldEventBuffs,
     dlClearAllEventEffects,
+    dlClearUntilBossEffects,
     dlGetEventBonuses,
     dlCanRollEvent,
     dlRollEventChance,
