@@ -273,37 +273,32 @@ function formatRunDuration(ms) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-function buildGameOverRichHtml(rs, rec, prevProgress) {
+function buildGameOverRichHtml(rs, rec, prevProgress, earnedGold) {
   const delta = (rs.bestProgress01 || 0) - (prevProgress || 0);
   const newBest = delta > 0.005;
-  const prevBoss = rec.bestBossHpFrac[String(rs.worldIndex)];
-  const bossNewBest = rs.bossMaxHp > 0 && (prevBoss == null || rs.bossMinHpFrac < prevBoss - 0.001);
+  const gold = Math.floor(earnedGold != null ? earnedGold : (rs.goldEarned || 0));
 
-  const lines = [];
-  lines.push("WELT · " + (rs.worldName || "?"));
-  lines.push("FORTSCHRITT · " + formatPct(rs.bestProgress01) + (newBest ? " · NEUER REKORD" : ""));
-  if (delta > 0.005) {
-    lines.push("VERGLEICH · Letzter Run " + formatPct(prevProgress || 0) + " → Jetzt " + formatPct(rs.bestProgress01) + " (+" + Math.round(delta * 100) + "%)");
-  } else if ((prevProgress || 0) > 0.01) {
-    lines.push("VERGLEICH · Vorher " + formatPct(prevProgress || 0));
+  let head = (rs.worldName || "Welt") + " · " + formatPct(rs.bestProgress01);
+  if (newBest) head += " · Rekord";
+
+  let sub = gold + " Gold · " + (rs.kills || 0) + " Kills";
+  if (rs.bossMaxHp > 0 && rs.bossMinHpFrac < 0.999) {
+    sub += " · Boss " + formatPct(rs.bossMinHpFrac);
   }
-  lines.push("ZEIT · " + formatRunDuration(rs.runDurationMs) + " · STÄRKE " + (rs.upgradePower || 100));
-  lines.push("KILLS · " + rs.kills + (rs.eliteKills ? (" · ELITEN " + rs.eliteKills) : ""));
-  lines.push("SCHADEN · " + Math.floor(rs.damageDealt || 0) + " ausgeteilt · " + Math.floor(rs.damageTaken || 0) + " erlitten");
-  lines.push("RESSOURCEN · " + Math.floor(rs.goldEarned || 0) + " Gold");
-  if (rs.bossMaxHp > 0) {
-    lines.push("BOSS · " + formatPct(rs.bossMinHpFrac) + " verbleibend" + (bossNewBest ? " · NEUER BOSS-REKORD" : ""));
-  }
-  if (rs.highestCombo > 2) lines.push("COMBO · " + rs.highestCombo);
-  return lines.join("\n");
+
+  return head + "\n" + sub;
 }
 
-function buildGameOverGoalsHtml() {
+/** Eine Zeile: nächstes sinnvolles Upgrade-Ziel */
+function buildGameOverNextHint() {
   const goals = (typeof getShortMidLongGoals === "function") ? getShortMidLongGoals() : null;
-  if (!goals) return "";
-  return "<strong>Kurz:</strong> " + goals.short +
-    "<br><strong>Mittel:</strong> " + goals.mid +
-    "<br><strong>Lang:</strong> " + goals.long;
+  if (!goals || !goals.short) return "";
+  return goals.short;
+}
+
+/** @deprecated – volle Telemetrie nur noch intern / Debug */
+function buildGameOverGoalsHtml() {
+  return "";
 }
 
 function buildRunCompareHtml(rs, rec) {

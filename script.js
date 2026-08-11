@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-173";
+const BUILD_ID = "sidescroller-v3-174";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -5543,7 +5543,7 @@ function showGameOver() {
   const earnedGold = Math.max(0, Math.floor(Number(game.lastRunGold) || 0));
   emitCombatEvent("game_over");
 
-  let deathData = game._lastDeathData || null;
+  const deathData = game._lastDeathData || null;
   const rs = deathData?.rs || game.runStats;
   const rec = deathData?.rec || (game.meta?.records || game.records);
   const prevProgress = deathData?.prevProgress ?? 0;
@@ -5552,31 +5552,18 @@ function showGameOver() {
   const summaryEl = $("gameover-summary");
   if (summaryEl) {
     summaryEl.textContent = (typeof buildGameOverRichHtml === "function" && rs)
-      ? buildGameOverRichHtml(rs, rec || {}, prevProgress)
-      : ("Level " + game.dungeonLevel + " · " + world.name + "\n" +
-         game.monstersDefeated + " Monster · " + earnedGold + " Gold");
+      ? buildGameOverRichHtml(rs, rec || {}, prevProgress, earnedGold)
+      : (world.name + " · Level " + game.dungeonLevel + "\n" + earnedGold + " Gold · " + game.monstersDefeated + " Kills");
   }
+
+  const nextEl = $("gameover-next");
+  if (nextEl) {
+    const hint = (typeof buildGameOverNextHint === "function") ? buildGameOverNextHint() : "";
+    nextEl.textContent = hint;
+    nextEl.classList.toggle("hidden", !hint);
+  }
+
   $("final-score").textContent = calcScore(earnedGold);
-
-  const compareEl = $("gameover-compare");
-  if (compareEl && rs && rec && typeof buildRunCompareHtml === "function") {
-    const cmp = buildRunCompareHtml(rs, rec);
-    compareEl.textContent = cmp;
-    compareEl.classList.toggle("hidden", !cmp);
-  }
-
-  const goalsEl = $("gameover-goals");
-  if (goalsEl && typeof buildGameOverGoalsHtml === "function") {
-    goalsEl.innerHTML = buildGameOverGoalsHtml();
-  }
-
-  $("gameover-tip").textContent = getUpgradeTip();
-  const hint = $("save-hint");
-  if (hint) {
-    hint.textContent = earnedGold
-      ? (earnedGold + " Gold gesichert · Erneut versuchen oder Upgraden.")
-      : "Gold und Upgrades bleiben permanent.";
-  }
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
@@ -6160,7 +6147,7 @@ async function saveScore() {
     player_level: game.playerLevel
   };
   saveLocalScore(entry);
-  $("save-hint").textContent = "Score lokal gespeichert!";
+  $("save-hint") && ($("save-hint").textContent = "Score lokal gespeichert!");
   loadLeaderboard();
   if (!supabase) return;
   try {
