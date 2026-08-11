@@ -7719,7 +7719,7 @@ function updateHUD() {
   $("hud-level").textContent = game.dungeonLevel;
   const loopLabel = typeof ngDisplayLabel === "function"
     ? ngDisplayLabel(game.loopIndex | 0)
-    : ("LOOP " + ((game.loopIndex | 0) + 1));
+    : ((game.loopIndex | 0) <= 0 ? "ERSTER DURCHLAUF" : ("LOOP " + (game.loopIndex | 0)));
   $("hud-world").textContent = world.name + " · " + loopLabel;
   const loopHud = $("hud-loop");
   if (loopHud) loopHud.textContent = loopLabel;
