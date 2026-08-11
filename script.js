@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-160";
+const BUILD_ID = "sidescroller-v3-161";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -653,8 +653,8 @@ const WORLDS = [
     fog2: "rgba(20,50,30,0.35)", particleColor: "#95e1a3"
   },
   {
-    name: "Verfluchte Sümpfe", min: 30, danger: 2, theme: "swamp",
-    hpMult: 1.28, atkMult: 1.2, speedMult: 1.08,
+    name: "Verfluchte Sümpfe", min: 25, danger: 2, theme: "swamp",
+    hpMult: 1.2, atkMult: 1.14, speedMult: 1.06,
     sky: "#060a06", bg: "#0a1208", hill: "#141a10",
     hill2: "#1a2214", hill3: "#202818",
     ground: "#1a1810", moss: "#354828", leaf: "#405838",
@@ -662,8 +662,8 @@ const WORLDS = [
     fog2: "rgba(30,45,20,0.35)", particleColor: "#7cba6a"
   },
   {
-    name: "Gefrorene Berge", min: 65, danger: 3, theme: "frost",
-    hpMult: 1.55, atkMult: 1.38, speedMult: 1.14,
+    name: "Gefrorene Berge", min: 50, danger: 3, theme: "frost",
+    hpMult: 1.4, atkMult: 1.28, speedMult: 1.1,
     sky: "#080c18", bg: "#0c1428", hill: "#142038",
     hill2: "#182848", hill3: "#1c3058",
     ground: "#c8d8e8", moss: "#6a8898", leaf: "#a8d8ea",
@@ -671,8 +671,8 @@ const WORLDS = [
     fog2: "rgba(200,220,255,0.2)", particleColor: "#d4e8f8"
   },
   {
-    name: "Feuerlande", min: 105, danger: 4, theme: "fire",
-    hpMult: 1.85, atkMult: 1.58, speedMult: 1.18,
+    name: "Feuerlande", min: 80, danger: 4, theme: "fire",
+    hpMult: 1.65, atkMult: 1.45, speedMult: 1.14,
     sky: "#0a0202", bg: "#180606", hill: "#3a0c08",
     hill2: "#4a1008", hill3: "#5a180a",
     ground: "#2a0804", moss: "#5a1a08", leaf: "#922b21",
@@ -680,8 +680,8 @@ const WORLDS = [
     fog2: "rgba(120,40,10,0.3)", particleColor: "#f39c12"
   },
   {
-    name: "Vergessene Ruinen", min: 150, danger: 5, theme: "ruins",
-    hpMult: 2.2, atkMult: 1.82, speedMult: 1.22,
+    name: "Vergessene Ruinen", min: 115, danger: 5, theme: "ruins",
+    hpMult: 1.95, atkMult: 1.65, speedMult: 1.18,
     sky: "#0a0814", bg: "#100c1c", hill: "#1a1430",
     hill2: "#201838", hill3: "#281c40",
     ground: "#2a2438", moss: "#4a5058", leaf: "#5a6068",
@@ -758,29 +758,29 @@ const UPGRADES = [
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – Roguelike-Loop: sterben → upgraden → gleiche Welt erneut (oft 10–20×)
+// Balance – Mitte zwischen zu leicht (#99) und zu hart (#101)
 const BALANCE = {
-  upgradeCostPow: 1.55,
-  upgradeMax: 30,
-  lootChance: 0.2,
-  xpPerLevel: 150,
-  levelScalePow: 1.042,
-  levelUpHealPct: 0.16,
-  waveCooldown: 2.0,
-  minWaveCooldown: 0.95,
-  defenseFactor: 1.38,
-  earlyEaseUntil: 16,
-  earlyHpEase: 0.14,
-  earlyAtkEase: 0.2,
-  /** Härter als v157 – Welten brauchen Upgrade-Schleifen */
-  difficultyMult: 1.08,
+  upgradeCostPow: 1.52,
+  upgradeMax: 28,
+  lootChance: 0.22,
+  xpPerLevel: 140,
+  levelScalePow: 1.038,
+  levelUpHealPct: 0.18,
+  waveCooldown: 2.05,
+  minWaveCooldown: 1.0,
+  defenseFactor: 1.45,
+  earlyEaseUntil: 18,
+  earlyHpEase: 0.15,
+  earlyAtkEase: 0.22,
+  /** Mitte: härter als v157 (0.72), weicher als v159 (1.08) */
+  difficultyMult: 0.98,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
   coinHitRadius: 28,
   coinCatchDelay: 0.14,
   coinCatchMoveMin: 28,
-  pierceFactor: 0.16
+  pierceFactor: 0.14
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -4238,14 +4238,14 @@ function getWorldDepth() {
 
 function getMetaEase() {
   const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.74, 1 - total * 0.0065);
+  return Math.max(0.68, 1 - total * 0.008);
 }
 
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const depth = getWorldDepth();
-  const ease = depth <= 8 ? 0.88 : depth <= 18 ? 0.96 : 1.05;
-  return { hp: 4.8 * ease, atk: 1.9 * ease, rew: 4.5 };
+  const ease = depth <= 8 ? 0.82 : depth <= 18 ? 0.92 : 1.0;
+  return { hp: 4.0 * ease, atk: 1.65 * ease, rew: 4.3 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4254,24 +4254,23 @@ function getEnemyStats(isBoss) {
   const danger = world.danger || 1;
   const ease = getMetaEase();
   const diff = (BALANCE.difficultyMult || 1);
-  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(28, depth * 0.85));
-  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.014, Math.min(28, depth * 0.85));
+  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(24, depth * 0.78));
+  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.016, Math.min(24, depth * 0.78));
   const boss = getBossMult(isBoss);
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
 
-  // Basis skaliert mit Welttiefe – nicht mit globalem Kill-Count (vermeidet Explosion)
-  const baseHp = 28 + depth * 4.2 + danger * 8;
-  const baseAtk = 3.5 + depth * 0.55 + danger * 1.4;
+  const baseHp = 24 + depth * 3.6 + danger * 6;
+  const baseAtk = 3.0 + depth * 0.48 + danger * 1.15;
 
   return {
     hp: Math.floor(baseHp * depthHp * world.hpMult * ease * diff * boss.hp * earlyHp),
     attack: Math.max(1, Math.floor(baseAtk * depthAtk * world.atkMult * ease * diff * boss.atk * earlyAtk)),
-    gold: Math.floor((6 + depth * 2.2 + danger * 3) * boss.rew * (1 + depth * 0.04)),
-    xp: Math.floor((12 + depth * 3.0 + danger * 4) * boss.rew),
-    speed: (isBoss ? 0.52 : 0.72) * world.speedMult + depth * 0.012,
-    attackInterval: Math.max(0.66, 1.15 - depth * 0.008 - danger * 0.02)
+    gold: Math.floor((6 + depth * 2.0 + danger * 3) * boss.rew * (1 + depth * 0.036)),
+    xp: Math.floor((12 + depth * 2.7 + danger * 4) * boss.rew),
+    speed: (isBoss ? 0.5 : 0.7) * world.speedMult + depth * 0.01,
+    attackInterval: Math.max(0.68, 1.16 - depth * 0.007 - danger * 0.018)
   };
 }
 
