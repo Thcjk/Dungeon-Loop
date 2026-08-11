@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-163";
+const BUILD_ID = "sidescroller-v3-164";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -551,7 +551,7 @@ const CLASS_BRIEFINGS = {
 };
 
 const BRIEFING_SHARED = {
-  goal: "Sterbe, upgrade, komm weiter. Alle Welten geschafft → Glückwunsch, dann ganz von vorne (ohne Upgrades).",
+  goal: "Sterbe, upgrade, komm weiter: oft 10–15 Versuche pro Welt. Alle Welten → Glückwunsch, dann wirklich von null (Gold, Upgrades, Fähigkeiten).",
   controls: [
     "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
     "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
@@ -560,7 +560,7 @@ const BRIEFING_SHARED = {
   ],
   watch: [
     "Münzen springen hoch: bewege dich darunter und fange sie in der Luft für <strong>x2 Gold</strong>.",
-    "Gold aus dem Run kannst du nach dem Tod in permanente Upgrades stecken – ein Run reicht nie.",
+    "Ein Run reicht selten – Gold in Upgrades stecken, dann dieselbe Welt erneut versuchen.",
     "Spezial-CD-Upgrades schalten nach und nach neue Fähigkeiten frei (Meilensteine).",
     "Weltwechsel passiert erst nach klarer Boss-Welle – nicht mitten im Kampf."
   ]
@@ -653,8 +653,8 @@ const WORLDS = [
     fog2: "rgba(20,50,30,0.35)", particleColor: "#95e1a3"
   },
   {
-    name: "Verfluchte Sümpfe", min: 22, danger: 2, theme: "swamp",
-    hpMult: 1.16, atkMult: 1.1, speedMult: 1.05,
+    name: "Verfluchte Sümpfe", min: 28, danger: 2, theme: "swamp",
+    hpMult: 1.2, atkMult: 1.14, speedMult: 1.06,
     sky: "#060a06", bg: "#0a1208", hill: "#141a10",
     hill2: "#1a2214", hill3: "#202818",
     ground: "#1a1810", moss: "#354828", leaf: "#405838",
@@ -662,8 +662,8 @@ const WORLDS = [
     fog2: "rgba(30,45,20,0.35)", particleColor: "#7cba6a"
   },
   {
-    name: "Gefrorene Berge", min: 45, danger: 3, theme: "frost",
-    hpMult: 1.32, atkMult: 1.22, speedMult: 1.08,
+    name: "Gefrorene Berge", min: 58, danger: 3, theme: "frost",
+    hpMult: 1.38, atkMult: 1.26, speedMult: 1.1,
     sky: "#080c18", bg: "#0c1428", hill: "#142038",
     hill2: "#182848", hill3: "#1c3058",
     ground: "#c8d8e8", moss: "#6a8898", leaf: "#a8d8ea",
@@ -671,8 +671,8 @@ const WORLDS = [
     fog2: "rgba(200,220,255,0.2)", particleColor: "#d4e8f8"
   },
   {
-    name: "Feuerlande", min: 70, danger: 4, theme: "fire",
-    hpMult: 1.52, atkMult: 1.36, speedMult: 1.12,
+    name: "Feuerlande", min: 95, danger: 4, theme: "fire",
+    hpMult: 1.58, atkMult: 1.4, speedMult: 1.14,
     sky: "#0a0202", bg: "#180606", hill: "#3a0c08",
     hill2: "#4a1008", hill3: "#5a180a",
     ground: "#2a0804", moss: "#5a1a08", leaf: "#922b21",
@@ -680,8 +680,8 @@ const WORLDS = [
     fog2: "rgba(120,40,10,0.3)", particleColor: "#f39c12"
   },
   {
-    name: "Vergessene Ruinen", min: 95, danger: 5, theme: "ruins",
-    hpMult: 1.75, atkMult: 1.52, speedMult: 1.15,
+    name: "Vergessene Ruinen", min: 135, danger: 5, theme: "ruins",
+    hpMult: 1.82, atkMult: 1.58, speedMult: 1.18,
     sky: "#0a0814", bg: "#100c1c", hill: "#1a1430",
     hill2: "#201838", hill3: "#281c40",
     ground: "#2a2438", moss: "#4a5058", leaf: "#5a6068",
@@ -758,29 +758,29 @@ const UPGRADES = [
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – leichter als vor #99, aber nicht so soft wie #99 (0.72)
+// Balance – ~10–15 Versuche/Welt; Upgrades spürbar, Start-Spezial kein One-Tap
 const BALANCE = {
-  upgradeCostPow: 1.5,
-  upgradeMax: 28,
-  lootChance: 0.22,
-  xpPerLevel: 135,
-  levelScalePow: 1.035,
-  levelUpHealPct: 0.2,
-  waveCooldown: 2.1,
-  minWaveCooldown: 1.0,
-  defenseFactor: 1.5,
-  earlyEaseUntil: 18,
-  earlyHpEase: 0.16,
-  earlyAtkEase: 0.24,
-  /** Deutlich unter vor-#99 / v161 (0.98); über #99 (0.72) */
-  difficultyMult: 0.82,
+  upgradeCostPow: 1.52,
+  upgradeMax: 30,
+  lootChance: 0.21,
+  xpPerLevel: 145,
+  levelScalePow: 1.04,
+  levelUpHealPct: 0.17,
+  waveCooldown: 2.0,
+  minWaveCooldown: 0.95,
+  defenseFactor: 1.4,
+  earlyEaseUntil: 16,
+  earlyHpEase: 0.12,
+  earlyAtkEase: 0.18,
+  /** Hart genug für lange Upgrade-Loops, unter dem alten #101-Wall (1.08) */
+  difficultyMult: 1.04,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
   coinHitRadius: 28,
   coinCatchDelay: 0.14,
   coinCatchMoveMin: 28,
-  pierceFactor: 0.13
+  pierceFactor: 0.15
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -4179,7 +4179,7 @@ function completeDungeonLoop() {
     summary.textContent =
       "Alle Welten bezwungen · Level " + game.dungeonLevel +
       " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold\n" +
-      "Neu starten = ganz von vorne (Gold & Upgrades zurückgesetzt).";
+      "Neu starten = wirklich von null (Gold, Upgrades & Fähigkeiten weg).";
   }
   addLog("Glückwunsch – Dungeon Loop geschafft!", "heal");
   showAnnouncement("victory", "GLÜCKWUNSCH", "Dungeon Loop geschafft", 3.2);
@@ -4196,7 +4196,29 @@ function hideVictoryPanel() {
   $("victory-panel")?.classList.add("hidden");
 }
 
-/** Ganz von vorne: Gold, Upgrades und Meta zurück – sonst rennst du durch. */
+/** Ganz von vorne: Gold, Upgrades, Meta & Fähigkeiten – sonst rennst du durch. */
+function wipeProgressKeepIdentity() {
+  game.totalGold = 0;
+  game.runGold = 0;
+  game.lastRunGold = 0;
+  game.upgrades = emptyUpgrades();
+  game.bestLoot = null;
+  game.meta = defaultMeta();
+  // Alle Klassen auf Start-Fähigkeit – kein Rest von alten Unlocks
+  ["warrior", "ranger", "mage"].forEach((ck) => {
+    const base = DEFAULT_UNLOCKED[ck] || [];
+    game.meta.abilities[ck] = {
+      unlocked: [...base],
+      equipped: [base[0] || null, null]
+    };
+  });
+  try { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(game.meta)); } catch (_) {}
+  syncUnlockedAbilities(game.classKey);
+  saveMeta();
+  if (game.playerName) saveLocalPlayer({ quiet: true });
+}
+
+/** Neu starten nach Sieg: kompletter Fortschritts-Reset, dann Wald Lv.1. */
 function restartFromVictory() {
   hideVictoryPanel();
   clearActiveRun();
@@ -4205,15 +4227,7 @@ function restartFromVictory() {
   game.isPaused = false;
   stopLoop();
 
-  // Fortschritt komplett resetten (Name/Klasse/Slot bleiben)
-  game.totalGold = 0;
-  game.runGold = 0;
-  game.lastRunGold = 0;
-  game.upgrades = emptyUpgrades();
-  game.meta = defaultMeta();
-  syncUnlockedAbilities(game.classKey);
-  saveMeta();
-  if (game.playerName) saveLocalPlayer({ quiet: true });
+  wipeProgressKeepIdentity();
 
   resetRun();
   try {
@@ -4237,7 +4251,7 @@ function restartFromVictory() {
   safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Ganz von vorne – Wald, Level 1. Upgrades und Gold sind zurückgesetzt.");
+  addLog("Ganz von vorne – Wald, Level 1. Gold, Upgrades und Fähigkeiten zurückgesetzt.");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
@@ -4253,15 +4267,16 @@ function getWorldDepth() {
 }
 
 function getMetaEase() {
+  // Upgrades sollen spürbar helfen (Fortschritt), Basis bleibt hart
   const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.65, 1 - total * 0.009);
+  return Math.max(0.68, 1 - total * 0.0085);
 }
 
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const depth = getWorldDepth();
-  const ease = depth <= 8 ? 0.8 : depth <= 18 ? 0.9 : 0.96;
-  return { hp: 3.6 * ease, atk: 1.5 * ease, rew: 4.2 };
+  const ease = depth <= 8 ? 0.85 : depth <= 18 ? 0.93 : 1.0;
+  return { hp: 4.4 * ease, atk: 1.8 * ease, rew: 4.4 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4270,23 +4285,23 @@ function getEnemyStats(isBoss) {
   const danger = world.danger || 1;
   const ease = getMetaEase();
   const diff = (BALANCE.difficultyMult || 1);
-  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(22, depth * 0.75));
-  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.016, Math.min(22, depth * 0.75));
+  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(26, depth * 0.82));
+  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.015, Math.min(26, depth * 0.82));
   const boss = getBossMult(isBoss);
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
 
-  const baseHp = 22 + depth * 3.2 + danger * 5;
-  const baseAtk = 2.8 + depth * 0.42 + danger * 1.05;
+  const baseHp = 26 + depth * 3.9 + danger * 7;
+  const baseAtk = 3.3 + depth * 0.52 + danger * 1.3;
 
   return {
     hp: Math.floor(baseHp * depthHp * world.hpMult * ease * diff * boss.hp * earlyHp),
     attack: Math.max(1, Math.floor(baseAtk * depthAtk * world.atkMult * ease * diff * boss.atk * earlyAtk)),
-    gold: Math.floor((6 + depth * 2.0 + danger * 3) * boss.rew * (1 + depth * 0.036)),
-    xp: Math.floor((12 + depth * 2.7 + danger * 4) * boss.rew),
-    speed: (isBoss ? 0.5 : 0.7) * world.speedMult + depth * 0.01,
-    attackInterval: Math.max(0.7, 1.18 - depth * 0.0065 - danger * 0.016)
+    gold: Math.floor((6 + depth * 2.1 + danger * 3) * boss.rew * (1 + depth * 0.038)),
+    xp: Math.floor((12 + depth * 2.8 + danger * 4) * boss.rew),
+    speed: (isBoss ? 0.52 : 0.71) * world.speedMult + depth * 0.011,
+    attackInterval: Math.max(0.66, 1.15 - depth * 0.0075 - danger * 0.018)
   };
 }
 
