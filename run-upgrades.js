@@ -6,13 +6,13 @@
 
 const DL_RUN_UPGRADE_DEFAULTS = {
   rarity: {
-    early: { common: 0.72, uncommon: 0.22, rare: 0.05, epic: 0.01, legendary: 0 },
-    mid:   { common: 0.48, uncommon: 0.30, rare: 0.16, epic: 0.05, legendary: 0.01 },
-    late:  { common: 0.30, uncommon: 0.28, rare: 0.24, epic: 0.13, legendary: 0.05 }
+    early: { common: 0.58, uncommon: 0.30, rare: 0.09, epic: 0.025, legendary: 0.005 },
+    mid:   { common: 0.40, uncommon: 0.34, rare: 0.18, epic: 0.07,  legendary: 0.01 },
+    late:  { common: 0.25, uncommon: 0.35, rare: 0.25, epic: 0.12,  legendary: 0.03 }
   },
-  milestones: [3, 6, 9, 12, 15, 18, 22, 26],
+  milestones: [4, 9, 15, 22, 30, 39, 49, 60, 72, 85, 99, 114, 130],
   baseCoinCatchMult: 2,
-  baseLifestealCap: 0.12
+  baseLifestealCap: 0.10
 };
 
 function dlRunUpgradeCfg() {
