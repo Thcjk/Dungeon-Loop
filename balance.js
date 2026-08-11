@@ -156,10 +156,10 @@ const DL_BALANCE = {
     baseHp: 38,
     baseAtk: 6,
     armor: 0,
-    goldBase: 5,
-    goldPerDepth: 1.1,
-    goldPerDanger: 1.6,
-    goldDepthFactor: 0.02,
+    goldBase: 4,
+    goldPerDepth: 0.7,
+    goldPerDanger: 1.2,
+    goldDepthFactor: 0.012,
     xpBase: 10,
     xpPerDepth: 1.8,
     xpPerDanger: 2.4,
@@ -937,9 +937,9 @@ function dlRunBalanceReport() {
     },
     powerByArchetype: powers,
     sampleRunGold: {
-      early: dlSimulateRunGold(10, 6, 1, 0, 1),
-      mid: dlSimulateRunGold(16, 18, 2, 0, 1),
-      late: dlSimulateRunGold(20, 40, 4, 0, 1)
+      early: dlSimulateRunGold(12, 5, 1, 0, 1),
+      mid: dlSimulateRunGold(14, 12, 2, 0, 1),
+      late: dlSimulateRunGold(16, 20, 4, 0, 1)
     },
     upgradeCosts: {
       attackLv1: dlUpgradeCost(attackUp, 0),

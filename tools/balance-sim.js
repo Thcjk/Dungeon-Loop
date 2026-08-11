@@ -57,6 +57,24 @@ if (runUpgrades && runUpgrades.DL_RUN_UPGRADES) {
   console.log("Run-upgrade catalog size: " + runUpgrades.DL_RUN_UPGRADES.length);
 }
 
+/* Lightweight profile matrix (prompt §49) – power scores only */
+if (runUpgrades && typeof runUpgrades.dlCreateEmptyRunUpgradeState === "function") {
+  const mk = (ids) => {
+    const st = runUpgrades.dlCreateEmptyRunUpgradeState();
+    ids.forEach((id) => runUpgrades.dlApplyRunUpgradePick(st, id));
+    return runUpgrades.dlRunUpgradePowerScore(st);
+  };
+  console.log("\nRun-upgrade RNG profiles (power score):");
+  console.log("  weak       " + mk(["sharp_blade", "tough_body", "gold_find"]));
+  console.log("  average    " + mk(["sharp_blade", "sharp_blade", "quick_hands", "tough_body", "executioner", "plating"]));
+  console.log("  strong     " + mk(["sharp_blade", "sharp_blade", "quick_hands", "berserker", "iron_skin", "glass_cannon", "boss_hunter"]));
+  console.log("  highCrit   " + mk(["weak_spot", "weak_spot", "crit_precision", "crit_precision", "chain_reaction"]));
+  console.log("  lifesteal  " + mk(["bloodlust", "vampire", "tough_body"]));
+  console.log("  tank       " + mk(["tough_body", "tough_body", "plating", "titan", "iron_skin"]));
+  console.log("  ability    " + mk(["specialist", "quick_hands", "focus"]));
+  console.log("  economy    " + mk(["gold_find", "gold_find", "elite_gold", "coin_magnet", "gold_greed"]));
+}
+
 console.log("\nPower by build archetype (start≈1.0 / scale100):");
 Object.entries(report.powerByArchetype).forEach(([k, v]) => {
   console.log("  " + k.padEnd(10) + v);
