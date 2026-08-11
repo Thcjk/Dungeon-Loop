@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-156";
+const BUILD_ID = "sidescroller-v3-157";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -654,7 +654,7 @@ const WORLDS = [
   },
   {
     name: "Verfluchte Sümpfe", min: 20, danger: 2, theme: "swamp",
-    hpMult: 1.22, atkMult: 1.14, speedMult: 1.06,
+    hpMult: 1.14, atkMult: 1.08, speedMult: 1.04,
     sky: "#060a06", bg: "#0a1208", hill: "#141a10",
     hill2: "#1a2214", hill3: "#202818",
     ground: "#1a1810", moss: "#354828", leaf: "#405838",
@@ -663,7 +663,7 @@ const WORLDS = [
   },
   {
     name: "Gefrorene Berge", min: 40, danger: 3, theme: "frost",
-    hpMult: 1.45, atkMult: 1.32, speedMult: 1.12,
+    hpMult: 1.28, atkMult: 1.18, speedMult: 1.08,
     sky: "#080c18", bg: "#0c1428", hill: "#142038",
     hill2: "#182848", hill3: "#1c3058",
     ground: "#c8d8e8", moss: "#6a8898", leaf: "#a8d8ea",
@@ -672,7 +672,7 @@ const WORLDS = [
   },
   {
     name: "Feuerlande", min: 60, danger: 4, theme: "fire",
-    hpMult: 1.72, atkMult: 1.52, speedMult: 1.18,
+    hpMult: 1.45, atkMult: 1.32, speedMult: 1.12,
     sky: "#0a0202", bg: "#180606", hill: "#3a0c08",
     hill2: "#4a1008", hill3: "#5a180a",
     ground: "#2a0804", moss: "#5a1a08", leaf: "#922b21",
@@ -681,7 +681,7 @@ const WORLDS = [
   },
   {
     name: "Vergessene Ruinen", min: 80, danger: 5, theme: "ruins",
-    hpMult: 2.05, atkMult: 1.78, speedMult: 1.24,
+    hpMult: 1.68, atkMult: 1.48, speedMult: 1.16,
     sky: "#0a0814", bg: "#100c1c", hill: "#1a1430",
     hill2: "#201838", hill3: "#281c40",
     ground: "#2a2438", moss: "#4a5058", leaf: "#5a6068",
@@ -758,27 +758,29 @@ const UPGRADES = [
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – Upgrades ~10 sollen Welt 3 öffnen; später härter
+// Balance – ca. 30% leichter; Welt 3+ mit Upgrades machbar
 const BALANCE = {
-  upgradeCostPow: 1.52,
+  upgradeCostPow: 1.5,
   upgradeMax: 25,
-  lootChance: 0.22,
-  xpPerLevel: 130,              // etwas schneller Held-Level im Run
-  levelScalePow: 1.04,          // flachere Gegner-Skalierung (vorher 1.055)
-  levelUpHealPct: 0.22,
-  waveCooldown: 2.15,
-  minWaveCooldown: 1.0,
-  defenseFactor: 1.48,          // Verteidigung wirkt stärker
-  earlyEaseUntil: 20,
-  earlyHpEase: 0.16,
-  earlyAtkEase: 0.26,
+  lootChance: 0.24,
+  xpPerLevel: 120,
+  levelScalePow: 1.032,
+  levelUpHealPct: 0.24,
+  waveCooldown: 2.2,
+  minWaveCooldown: 1.05,
+  defenseFactor: 1.58,
+  earlyEaseUntil: 22,
+  earlyHpEase: 0.18,
+  earlyAtkEase: 0.28,
+  /** Global ~28% leichter (HP/ATK der Gegner) – nicht zu stark */
+  difficultyMult: 0.72,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
   coinHitRadius: 28,
   coinCatchDelay: 0.14,
   coinCatchMoveMin: 28,
-  pierceFactor: 0.14            // weniger True-Damage durch Verteidigung
+  pierceFactor: 0.12
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -887,7 +889,7 @@ const ENEMY_AI = {
   Sandwurm:   { style: "melee",  speedMult: 0.95, atkMult: 1.2,  intervalMult: 1.1 },
   "Skarabäus-Schwarm": { style: "fast", speedMult: 1.35, atkMult: 0.8, intervalMult: 0.8 },
   Sphinx:     { style: "melee",  speedMult: 1.0,  atkMult: 1.25, intervalMult: 1.05 },
-  _boss:      { style: "boss",   speedMult: 0.92, atkMult: 1.08, intervalMult: 0.92 }
+  _boss:      { style: "boss",   speedMult: 0.88, atkMult: 1.0,  intervalMult: 0.95 }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -2112,7 +2114,7 @@ function bossSpecialAttack(e, h, st) {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.35, st.defense)));
+  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.22, st.defense)));
 
   e.attackAnim = 0.55;
   e.attackWindup = 1;
@@ -4138,36 +4140,38 @@ function tryAdvanceWorldAfterBossWave() {
 
 // Schwierigkeit skaliert mit Dungeon-Level & Welt – Meta-Upgrades helfen spürbar mit
 function getScaledLevel(lv) {
-  if (lv <= 15) return lv;
-  if (lv <= 40) return 15 + Math.pow(lv - 15, 0.76);
-  return 15 + Math.pow(25, 0.76) + Math.pow(lv - 40, 0.66);
+  if (lv <= 16) return lv;
+  if (lv <= 40) return 16 + Math.pow(lv - 16, 0.72);
+  if (lv <= 60) return 16 + Math.pow(24, 0.72) + Math.pow(lv - 40, 0.62);
+  return 16 + Math.pow(24, 0.72) + Math.pow(20, 0.62) + Math.pow(lv - 60, 0.55);
 }
 
 function getMetaEase() {
   const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
-  // Mehr Upgrades = spürbar leichtere Gegner (Boden 0.62)
-  return Math.max(0.62, 1 - total * 0.0125);
+  // Mehr Upgrades = spürbar leichtere Gegner (Boden 0.55)
+  return Math.max(0.55, 1 - total * 0.013);
 }
 
 function getDifficultyScale() {
   const lv = getScaledLevel(game.dungeonLevel);
   const world = getWorld();
   const levelMult = Math.pow(BALANCE.levelScalePow, lv);
-  return levelMult * world.hpMult * getMetaEase();
+  return levelMult * world.hpMult * getMetaEase() * (BALANCE.difficultyMult || 1);
 }
 
 function getAttackScale() {
   const lv = getScaledLevel(game.dungeonLevel);
   const world = getWorld();
-  const atkPow = BALANCE.levelScalePow - 0.022;
-  return Math.pow(atkPow, lv) * world.atkMult * getMetaEase();
+  const atkPow = BALANCE.levelScalePow - 0.018;
+  return Math.pow(atkPow, lv) * world.atkMult * getMetaEase() * (BALANCE.difficultyMult || 1);
 }
 
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  const ease = lv <= 12 ? 0.74 : lv <= 28 ? 0.86 : lv <= 45 ? 0.93 : lv <= 70 ? 0.98 : 1.04;
-  return { hp: 4.0 * ease, atk: 1.72 * ease, rew: 4.0 };
+  const ease = lv <= 12 ? 0.72 : lv <= 28 ? 0.82 : lv <= 45 ? 0.9 : lv <= 70 ? 0.96 : 1.0;
+  // ~30% weicher als v156, Bosse bleiben spürbar
+  return { hp: 3.2 * ease, atk: 1.4 * ease, rew: 4.2 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4176,24 +4180,24 @@ function getEnemyStats(isBoss) {
   const hpScale = getDifficultyScale();
   const atkScale = getAttackScale();
   const boss = getBossMult(isBoss);
-  const worldEase = world.danger === 1 ? 0.74
-    : world.danger === 2 ? 0.82
-    : world.danger === 3 ? 0.9
-    : world.danger === 4 ? 0.95
-    : 1;
-  const lvEase = lv <= 15 ? 0.74 : lv <= 28 ? 0.82 : lv <= 42 ? 0.9 : lv <= 60 ? 0.95 : 1;
+  const worldEase = world.danger === 1 ? 0.72
+    : world.danger === 2 ? 0.78
+    : world.danger === 3 ? 0.84
+    : world.danger === 4 ? 0.9
+    : 0.95;
+  const lvEase = lv <= 16 ? 0.72 : lv <= 30 ? 0.8 : lv <= 45 ? 0.86 : lv <= 65 ? 0.92 : 0.96;
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
-  const hpEase = lv <= 15 ? 0.86 : lv <= 28 ? 0.92 : lv <= 45 ? 0.96 : 1;
+  const hpEase = lv <= 16 ? 0.84 : lv <= 32 ? 0.9 : lv <= 50 ? 0.94 : 0.97;
 
   return {
-    hp: Math.floor((22 + lv * 2.7) * hpScale * boss.hp * earlyHp * hpEase),
-    attack: Math.max(1, Math.floor((2.8 + lv * 0.62) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
-    gold: Math.floor((6 + lv * 1.75) * boss.rew * (1 + lv * 0.036)),
-    xp: Math.floor((12 + lv * 2.6) * boss.rew),
-    speed: (isBoss ? 0.5 : 0.7) * world.speedMult + lv * 0.0075,
-    attackInterval: Math.max(0.7, 1.18 - lv * 0.003 - world.danger * 0.02)
+    hp: Math.floor((20 + lv * 2.35) * hpScale * boss.hp * earlyHp * hpEase),
+    attack: Math.max(1, Math.floor((2.5 + lv * 0.52) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
+    gold: Math.floor((7 + lv * 1.9) * boss.rew * (1 + lv * 0.038)),
+    xp: Math.floor((13 + lv * 2.75) * boss.rew),
+    speed: (isBoss ? 0.48 : 0.68) * world.speedMult + lv * 0.0065,
+    attackInterval: Math.max(0.75, 1.22 - lv * 0.0026 - world.danger * 0.018)
   };
 }
 
