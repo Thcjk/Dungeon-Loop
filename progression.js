@@ -266,25 +266,62 @@ function formatPct(x) {
   return Math.round(Math.max(0, Math.min(1, x || 0)) * 100) + "%";
 }
 
+function formatRunDuration(ms) {
+  const sec = Math.max(0, Math.floor((ms || 0) / 1000));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
 function buildGameOverRichHtml(rs, rec, prevProgress) {
   const delta = (rs.bestProgress01 || 0) - (prevProgress || 0);
-  const newBest = (rs.bestProgress01 || 0) >= (prevProgress || 0) && (rs.bestProgress01 || 0) > 0.01;
-  const bossLine = (rs.bossMaxHp > 0)
-    ? ("Boss-Leben: " + formatPct(rs.bossMinHpFrac) +
-      (rs.bossMinHpFrac < (rec.bestBossHpFrac[String(rs.worldIndex)] ?? 1) + 0.001
-        ? " · NEUER REKORD" : ""))
-    : "";
-  const lines = [
-    (rs.worldName || "Welt") + " · Fortschritt " + formatPct(rs.bestProgress01) +
-      (newBest ? " · NEUER REKORD" : ""),
-    delta > 0.005 ? ("Letzter Rekord +" + Math.round(delta * 100) + "%") : ("Vorher: " + formatPct(prevProgress || 0)),
-    rs.kills + " Besiegt" + (rs.eliteKills ? (" · " + rs.eliteKills + " Eliten") : "") +
-      " · " + Math.floor(rs.goldEarned || 0) + " Gold",
-    "Schaden ausgeteilt " + Math.floor(rs.damageDealt || 0) + " · Erlitten " + Math.floor(rs.damageTaken || 0),
-    bossLine,
-    "Stärke " + (rs.upgradePower || 0) + " · Durchlauf " + ((game.loopIndex | 0) + 1)
-  ].filter(Boolean);
+  const newBest = delta > 0.005;
+  const prevBoss = rec.bestBossHpFrac[String(rs.worldIndex)];
+  const bossNewBest = rs.bossMaxHp > 0 && (prevBoss == null || rs.bossMinHpFrac < prevBoss - 0.001);
+
+  const lines = [];
+  lines.push("WELT · " + (rs.worldName || "?"));
+  lines.push("FORTSCHRITT · " + formatPct(rs.bestProgress01) + (newBest ? " · NEUER REKORD" : ""));
+  if (delta > 0.005) {
+    lines.push("VERGLEICH · Letzter Run " + formatPct(prevProgress || 0) + " → Jetzt " + formatPct(rs.bestProgress01) + " (+" + Math.round(delta * 100) + "%)");
+  } else if ((prevProgress || 0) > 0.01) {
+    lines.push("VERGLEICH · Vorher " + formatPct(prevProgress || 0));
+  }
+  lines.push("ZEIT · " + formatRunDuration(rs.runDurationMs) + " · STÄRKE " + (rs.upgradePower || 100));
+  lines.push("KILLS · " + rs.kills + (rs.eliteKills ? (" · ELITEN " + rs.eliteKills) : ""));
+  lines.push("SCHADEN · " + Math.floor(rs.damageDealt || 0) + " ausgeteilt · " + Math.floor(rs.damageTaken || 0) + " erlitten");
+  lines.push("RESSOURCEN · " + Math.floor(rs.goldEarned || 0) + " Gold");
+  if (rs.bossMaxHp > 0) {
+    lines.push("BOSS · " + formatPct(rs.bossMinHpFrac) + " verbleibend" + (bossNewBest ? " · NEUER BOSS-REKORD" : ""));
+  }
+  if (rs.highestCombo > 2) lines.push("COMBO · " + rs.highestCombo);
   return lines.join("\n");
+}
+
+function buildGameOverGoalsHtml() {
+  const goals = (typeof getShortMidLongGoals === "function") ? getShortMidLongGoals() : null;
+  if (!goals) return "";
+  return "<strong>Kurz:</strong> " + goals.short +
+    "<br><strong>Mittel:</strong> " + goals.mid +
+    "<br><strong>Lang:</strong> " + goals.long;
+}
+
+function buildRunCompareHtml(rs, rec) {
+  const parts = [];
+  const progDelta = (rs.bestProgress01 || 0) - (rec.lastRunProgress || 0);
+  if (Math.abs(progDelta) > 0.005) {
+    parts.push("Fortschritt " + (progDelta > 0 ? "+" : "") + Math.round(progDelta * 100) + "%");
+  }
+  const killDelta = rs.kills - (rec.lastRunKills || 0);
+  if (killDelta !== 0) parts.push("Kills " + (killDelta > 0 ? "+" : "") + killDelta);
+  const goldDelta = Math.floor(rs.goldEarned || 0) - (rec.lastRunGold || 0);
+  if (goldDelta !== 0) parts.push("Gold " + (goldDelta > 0 ? "+" : "") + goldDelta);
+  const dmgDelta = Math.floor(rs.damageDealt || 0) - (rec.lastRunDamage || 0);
+  if (Math.abs(dmgDelta) > 10) {
+    const pct = rec.lastRunDamage > 0 ? Math.round((dmgDelta / rec.lastRunDamage) * 100) : 0;
+    if (pct !== 0) parts.push("Schaden " + (pct > 0 ? "+" : "") + pct + "%");
+  }
+  return parts.length ? parts.join(" · ") : "";
 }
 
 function getShortMidLongGoals() {
@@ -355,8 +392,12 @@ function renderBalanceDebugPanel() {
     "<button type='button' data-dbg='w1'>W1</button>" +
     "<button type='button' data-dbg='w2'>W2</button>" +
     "<button type='button' data-dbg='w3'>W3</button>" +
+    "<button type='button' data-dbg='w4'>W4</button>" +
+    "<button type='button' data-dbg='w5'>W5</button>" +
     "<button type='button' data-dbg='gold'> +500🪙</button>" +
+    "<button type='button' data-dbg='boss'>Boss</button>" +
     "<button type='button' data-dbg='god'>Unverwundbar</button>" +
+    "<button type='button' data-dbg='report'>Report</button>" +
     "</div>";
 
   el.onclick = (ev) => {
@@ -372,6 +413,13 @@ function renderBalanceDebugPanel() {
     } else if (a === "w1" || a === "w2" || a === "w3" || a === "w4" || a === "w5") {
       const idx = parseInt(a[1], 10) - 1;
       debugJumpWorld(idx);
+    } else if (a === "boss") {
+      debugSpawnBoss();
+    } else if (a === "report") {
+      if (typeof dlRunBalanceReport === "function") {
+        console.log("BALANCE REPORT", dlRunBalanceReport());
+        addLog("Balance-Report in Konsole (F12)", "heal");
+      }
     }
     renderBalanceDebugPanel();
   };
@@ -387,6 +435,13 @@ function debugJumpWorld(idx) {
   if (typeof initWorldBackground === "function") initWorldBackground();
   if (typeof safeSpawnWave === "function") safeSpawnWave();
   addLog("Debug: Sprung zu " + WORLDS[i].name, "heal");
+}
+
+function debugSpawnBoss() {
+  if (!isBalanceDebug() || !game.isRunning) return;
+  game.enemies = [];
+  if (typeof spawnEnemy === "function") spawnEnemy(true, 0, "boss");
+  addLog("Debug: Boss gespawnt", "boss");
 }
 
 function tickBalanceDebug(dt) {
