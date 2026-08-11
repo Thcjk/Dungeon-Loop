@@ -1,57 +1,59 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-178
+   Build: sidescroller-v3-179
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
-   PHILOSOPHY (Hard Grind + Run-Upgrades)
+   PHILOSOPHY (Hard Balance + Boss-only Run-Upgrades)
    - Soft gates: Skill kann etwas früher, Avg braucht Meta
    - Gegner skalieren NICHT mit Player-Power
-   - First Clear Ziel ~120 Min, ~22 Tode
+   - First Clear Ziel ~150 Min, ~32 Tode (Median)
    - ~2–4 Runs pro spürbarem Meta-Upgrade
    - Meta maxLv 8, feste Kostentabelle
+   - Run-Upgrades nur nach Boss-Kills (max 4 vor Final Boss)
    - Loop/NG+ nach First Clear
    ============================================ */
 
 const DL_BALANCE = {
-  version: 178,
-  targetFirstClearMin: 120,
-  targetFirstClearRange: [105, 145],
-  targetDeaths: [18, 28],
-  targetDeathsMedian: 22,
+  version: 179,
+  targetFirstClearMin: 150,
+  targetFirstClearRange: [140, 170],
+  targetDeaths: [26, 38],
+  targetDeathsMedian: 32,
   runsPerMeaningfulUpgrade: [2, 4],
-  /** Abgeleitet aus Todeszielen / Welt – für balance-sim & Legacy */
-  runsPerWorld: [3, 6],
+  runsPerWorld: [5, 9],
 
   /* Legacy aliases für script.js BALANCE-Proxy */
-  critDamageBase: 1.70,
-  critChanceCap: 0.45,
-  armorFactor: 1.15,
-  pierceFactor: 0.16,
-  levelUpHealPct: 0.10,
-  xpPerLevel: 110,
+  critDamageBase: 1.65,
+  critChanceCap: 0.38,
+  armorFactor: 1.12,
+  pierceFactor: 0.18,
+  levelUpHealPct: 0.06,
+  xpPerLevel: 130,
+  mageManaRegen: 5,
 
   classes: {
     warrior: {
       name: "Krieger",
-      hp: 135, attack: 18, defense: 5, crit: 0.04, critDamage: 1.70,
-      mana: 0, magicDamage: 0, range: 82, attackRate: 440, moveSpeed: 128,
+      hp: 118, attack: 15, defense: 4, crit: 0.03, critDamage: 1.65,
+      mana: 0, magicDamage: 0, range: 80, attackRate: 440, moveSpeed: 126,
       aoeFalloff: 0.74, special: "Schildschlag", specialCd: 8, specialRange: 90,
       specialMult: 2.2, attackType: "melee",
-      desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
+      baseArmorDr: 0.04,
+      desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben und Rüstung"
     },
     ranger: {
       name: "Waldläufer",
-      hp: 102, attack: 14, defense: 2, crit: 0.06, critDamage: 1.75,
-      mana: 0, magicDamage: 0, range: 225, attackRate: 360, moveSpeed: 146,
-      closeRange: 60, meleePenalty: 0.45,
+      hp: 90, attack: 11, defense: 1, crit: 0.05, critDamage: 1.70,
+      mana: 0, magicDamage: 0, range: 218, attackRate: 360, moveSpeed: 144,
+      closeRange: 65, meleePenalty: 0.52,
       proj: "projectile_arrow", projSpeed: 13,
       special: "Präzisionsschuss", specialCd: 5, attackType: "ranged",
       desc: "Bogen, große Reichweite, schwach im Nahkampf"
     },
     mage: {
       name: "Magier",
-      hp: 92, attack: 7, defense: 1, crit: 0.04, critDamage: 1.70,
-      mana: 130, magicDamage: 29, range: 205, attackRate: 300, moveSpeed: 138,
+      hp: 80, attack: 6, defense: 0, crit: 0.03, critDamage: 1.65,
+      mana: 118, magicDamage: 24, range: 200, attackRate: 300, moveSpeed: 136,
       manaPerShot: 3, proj: "projectile_fire", projSpeed: 8,
       special: "Feuerball", specialCd: 6, manaCost: 26, attackType: "magic",
       desc: "Zauber, mittlere Reichweite, braucht Mana"
@@ -59,80 +61,79 @@ const DL_BALANCE = {
   },
 
   caps: {
-    critChance: 0.45,
-    critDamage: 2.60,
-    lifesteal: 0.10,
-    lifestealEpic: 0.16,
-    damageReduction: 0.55,
-    attackSpeedBonus: 0.75,
-    cooldownReduction: 0.40,
-    moveSpeedBonus: 0.25,
-    bossDamage: 0.50
+    critChance: 0.38,
+    critDamage: 2.40,
+    lifesteal: 0.07,
+    lifestealEpic: 0.13,
+    damageReduction: 0.46,
+    attackSpeedBonus: 0.60,
+    cooldownReduction: 0.32,
+    bossDamage: 0.38,
+    moveSpeedBonus: 0.20
   },
 
   levelUpHeal: {
     bands: [
-      { maxLevel: 20, pct: 0.10 },
-      { maxLevel: 50, pct: 0.08 },
-      { maxLevel: 90, pct: 0.06 },
-      { maxLevel: Infinity, pct: 0.05 }
+      { maxLevel: 20, pct: 0.06 },
+      { maxLevel: 50, pct: 0.04 },
+      { maxLevel: 90, pct: 0.03 },
+      { maxLevel: Infinity, pct: 0.02 }
     ],
-    softCapHpPct: 0.85,
+    softCapHpPct: 0.70,
+    overSoftHealPct: 0.015,
     regenPauseAfterDamageSec: 4
   },
 
   xp: {
-    base: 110,
-    perLevel: 3.2
+    base: 130,
+    perLevel: 4.5
   },
-
-  mageManaRegen: 6,
 
   worlds: [
     {
       id: 0, name: "Dunkler Wald", min: 1, length: 22, danger: 1, theme: "forest",
       hpMult: 1.00, atkMult: 1.00, speedMult: 1.00, rewardMult: 1.00,
-      budget: { start: 2.5, p25: 3.5, p50: 4.5, p75: 5.5, preBoss: 6.5, boss: 8 },
-      budgetEarly: 2.5, budgetMid: 4.5, budgetLate: 6.5, budgetBoss: 8,
-      maxEnemies: 5,
+      budget: { start: 3.4, p25: 4.8, p50: 6.2, p75: 7.6, preBoss: 9.0, boss: 11 },
+      budgetEarly: 3.4, budgetMid: 6.2, budgetLate: 9.0, budgetBoss: 11,
+      maxEnemies: 5, eliteChance: 0.07,
       composition: { basic: 0.55, fast: 0.20, ranged: 0.10, tank: 0.10, elite: 0.05 },
       entryEase: 1.0
     },
     {
       id: 1, name: "Verfluchte Sümpfe", min: 24, length: 26, danger: 2, theme: "swamp",
-      hpMult: 1.42, atkMult: 1.30, speedMult: 1.05, rewardMult: 1.28,
-      budget: { start: 4.5, p25: 5.5, p50: 6.5, p75: 7.5, preBoss: 9, boss: 11 },
-      budgetEarly: 4.5, budgetMid: 6.5, budgetLate: 9, budgetBoss: 11,
-      maxEnemies: 6,
+      hpMult: 1.62, atkMult: 1.48, speedMult: 1.06, rewardMult: 1.30,
+      budget: { start: 6.0, p25: 7.8, p50: 9.8, p75: 11.8, preBoss: 14.0, boss: 17 },
+      budgetEarly: 6.0, budgetMid: 9.8, budgetLate: 14.0, budgetBoss: 17,
+      maxEnemies: 6, eliteChance: 0.10,
       composition: { basic: 0.35, fast: 0.15, ranged: 0.25, tank: 0.10, support: 0.08, elite: 0.07 },
-      entryEase: 0.90
+      entryEase: 0.92
     },
     {
       id: 2, name: "Gefrorene Berge", min: 52, length: 30, danger: 3, theme: "frost",
-      hpMult: 1.95, atkMult: 1.66, speedMult: 1.09, rewardMult: 1.65,
-      budget: { start: 6, p25: 7.5, p50: 9, p75: 10.5, preBoss: 12.5, boss: 15 },
-      budgetEarly: 6, budgetMid: 9, budgetLate: 12.5, budgetBoss: 15,
-      maxEnemies: 6,
+      hpMult: 2.35, atkMult: 2.00, speedMult: 1.11, rewardMult: 1.65,
+      budget: { start: 8.2, p25: 10.4, p50: 13.0, p75: 15.5, preBoss: 18.3, boss: 22 },
+      budgetEarly: 8.2, budgetMid: 13.0, budgetLate: 18.3, budgetBoss: 22,
+      maxEnemies: 6, eliteChance: 0.14,
       composition: { basic: 0.25, fast: 0.25, ranged: 0.15, tank: 0.12, jump: 0.12, elite: 0.11 },
-      entryEase: 0.90
+      entryEase: 0.92
     },
     {
       id: 3, name: "Feuerlande", min: 84, length: 34, danger: 4, theme: "fire",
-      hpMult: 2.72, atkMult: 2.12, speedMult: 1.13, rewardMult: 2.15,
-      budget: { start: 8, p25: 10, p50: 12, p75: 14, preBoss: 16.5, boss: 20 },
-      budgetEarly: 8, budgetMid: 12, budgetLate: 16.5, budgetBoss: 20,
-      maxEnemies: 7,
+      hpMult: 3.35, atkMult: 2.70, speedMult: 1.16, rewardMult: 2.05,
+      budget: { start: 10.8, p25: 13.5, p50: 16.5, p75: 19.8, preBoss: 23.2, boss: 28 },
+      budgetEarly: 10.8, budgetMid: 16.5, budgetLate: 23.2, budgetBoss: 28,
+      maxEnemies: 7, eliteChance: 0.18,
       composition: { basic: 0.20, fast: 0.15, ranged: 0.18, tank: 0.15, support: 0.15, elite: 0.17 },
-      entryEase: 0.90
+      entryEase: 0.92
     },
     {
       id: 4, name: "Vergessene Ruinen", min: 120, length: 38, danger: 5, theme: "ruins",
-      hpMult: 3.65, atkMult: 2.72, speedMult: 1.17, rewardMult: 2.80,
-      budget: { start: 10, p25: 12.5, p50: 15, p75: 17.5, preBoss: 20, boss: 24 },
-      budgetEarly: 10, budgetMid: 15, budgetLate: 20, budgetBoss: 24,
-      maxEnemies: 7,
+      hpMult: 4.65, atkMult: 3.60, speedMult: 1.21, rewardMult: 2.55,
+      budget: { start: 13.5, p25: 16.5, p50: 20.2, p75: 24.0, preBoss: 28.0, boss: 34 },
+      budgetEarly: 13.5, budgetMid: 20.2, budgetLate: 28.0, budgetBoss: 34,
+      maxEnemies: 7, eliteChance: 0.22,
       composition: { basic: 0.15, fast: 0.15, ranged: 0.18, tank: 0.15, support: 0.15, jump: 0.10, elite: 0.12 },
-      entryEase: 0.90
+      entryEase: 0.92
     }
   ],
 
@@ -147,35 +148,36 @@ const DL_BALANCE = {
   },
 
   depthScaling: {
-    hpPerProgress: 0.28,
-    atkPerProgress: 0.20,
-    budgetPerProgress: 0.55
+    hpPerProgress: 0.38,
+    atkPerProgress: 0.30,
+    budgetPerProgress: 0.75,
+    speedPerProgress: 0.05
   },
 
   enemy: {
-    baseHp: 38,
-    baseAtk: 6,
+    baseHp: 46,
+    baseAtk: 7.5,
     armor: 0,
-    goldBase: 4,
-    goldPerDepth: 0.7,
-    goldPerDanger: 1.2,
-    goldDepthFactor: 0.012,
-    xpBase: 10,
-    xpPerDepth: 1.8,
-    xpPerDanger: 2.4,
-    waveCooldown: 1.65,
-    minWaveCooldown: 0.78,
-    lootChanceBasic: 0.14,
-    lootChanceFast: 0.16,
-    lootChanceRanged: 0.16,
-    lootChanceTank: 0.22,
-    lootChanceSupport: 0.20,
-    lootChanceElite: 0.65,
+    goldBase: 3.5,
+    goldPerDepth: 0.55,
+    goldPerDanger: 1.0,
+    goldDepthFactor: 0.01,
+    xpBase: 9,
+    xpPerDepth: 1.5,
+    xpPerDanger: 2.0,
+    waveCooldown: 1.7,
+    minWaveCooldown: 0.8,
+    lootChanceBasic: 0.09,
+    lootChanceFast: 0.11,
+    lootChanceRanged: 0.12,
+    lootChanceTank: 0.17,
+    lootChanceSupport: 0.17,
+    lootChanceElite: 0.52,
     lootChanceBoss: 1.0,
-    lootChance: 0.14,
-    ttkNormal: [0.8, 1.6],
-    ttkElite: [5, 10],
-    ttkBoss: [55, 130],
+    lootChance: 0.09,
+    ttkNormal: [1.1, 1.9],
+    ttkElite: [8, 13],
+    ttkBoss: [70, 155],
     /* Legacy keys – Depth läuft über Progress-Formel / World-Mults */
     hpPerDepth: 0,
     atkPerDepth: 0,
@@ -192,246 +194,247 @@ const DL_BALANCE = {
 
   roles: {
     basic:   { cost: 1.0,  hp: 1.00, atk: 1.00, speed: 1.00, tag: "basic" },
-    fast:    { cost: 1.45, hp: 0.72, atk: 0.85, speed: 1.45, atkSpeed: 1.25, tag: "fast" },
-    ranged:  { cost: 1.75, hp: 0.78, atk: 1.15, speed: 1.00, atkSpeed: 0.85, tag: "ranged" },
-    tank:    { cost: 2.6,  hp: 2.35, atk: 1.05, speed: 0.68, armor: 0.12, tag: "tank" },
-    support: { cost: 2.4,  hp: 0.95, atk: 0.65, speed: 1.00, tag: "support" },
-    jump:    { cost: 1.9,  hp: 0.90, atk: 1.20, speed: 1.15, tag: "jump" },
-    elite:   { cost: 5.2,  hp: 3.2,  atk: 1.55, speed: 1.08, tag: "elite" },
-    boss:    { cost: 9.0,  hp: 1.0,  atk: 1.0,  tag: "boss" }
+    fast:    { cost: 1.7,  hp: 0.74, atk: 1.00, speed: 1.58, atkSpeed: 1.38, tag: "fast" },
+    ranged:  { cost: 2.1,  hp: 0.82, atk: 1.35, speed: 1.00, tag: "ranged" },
+    tank:    { cost: 3.2,  hp: 2.65, atk: 1.18, speed: 0.64, armor: 0.18, tag: "tank" },
+    support: { cost: 3.0,  hp: 1.05, atk: 0.75, speed: 1.00, tag: "support" },
+    jump:    { cost: 2.3,  hp: 0.95, atk: 1.40, speed: 1.22, tag: "jump" },
+    elite:   { cost: 6.4,  hp: 3.8,  atk: 1.85, speed: 1.12, tag: "elite" },
+    boss:    { cost: 10,   hp: 1,    atk: 1,    tag: "boss" }
   },
 
-  elite: { hpMult: 3.2, atkMult: 1.55, rewardMult: 3.0, cost: 5.2, sizeScale: 1.2 },
+  elite: { hpMult: 3.8, atkMult: 1.85, rewardMult: 3.5, cost: 6.4, sizeScale: 1.22 },
 
   synergy: {
     pairs: [
-      { a: "tank", b: "ranged", mult: 1.20 },
-      { a: "tank", b: "support", mult: 1.25 },
-      { a: "fast", b: "ranged", mult: 1.12 },
-      { a: "elite", b: "support", mult: 1.30 },
-      { a: "elite", b: "ranged", mult: 1.20 }
+      { a: "tank", b: "ranged", mult: 1.28 },
+      { a: "tank", b: "support", mult: 1.32 },
+      { a: "fast", b: "ranged", mult: 1.20 },
+      { a: "elite", b: "support", mult: 1.38 },
+      { a: "elite", b: "ranged", mult: 1.28 },
+      { a: "jump", b: "ranged", mult: 1.22 },
+      { a: "tank", b: "elite", mult: 1.28 }
     ],
-    twoRanged: 1.10,
-    threeFast: 1.15,
-    maxOvershoot: 1.15
+    threeFast: 1.22,
+    maxOvershoot: 1.08
   },
 
   synergyPairs: [
-    { a: "tank", b: "ranged", add: 0.8 },
-    { a: "tank", b: "support", add: 1.0 },
-    { a: "fast", b: "ranged", add: 0.5 },
-    { a: "elite", b: "support", add: 1.2 },
-    { a: "elite", b: "ranged", add: 0.8 }
+    { a: "tank", b: "ranged", add: 1.0 },
+    { a: "tank", b: "support", add: 1.2 },
+    { a: "fast", b: "ranged", add: 0.7 },
+    { a: "elite", b: "support", add: 1.4 },
+    { a: "elite", b: "ranged", add: 1.0 },
+    { a: "jump", b: "ranged", add: 0.8 },
+    { a: "tank", b: "elite", add: 1.0 }
   ],
 
   rhythm: {
-    hardThreshold: 1.2,
-    breathBudgetMult: 0.60,
-    breathChance: 0.30,
+    hardThreshold: 1.25,
+    breathBudgetMult: 0.50,
+    breathChance: 0.15,
     breathWaves: 1
   },
 
   bosses: [
-    { world: 0, hp: 900,  atk: 13, fightSec: [55, 80],  gold: 250 },
-    { world: 1, hp: 1850, atk: 18, fightSec: [60, 90],  gold: 420 },
-    { world: 2, hp: 3300, atk: 25, fightSec: [70, 100], gold: 700 },
-    { world: 3, hp: 5400, atk: 34, fightSec: [75, 110], gold: 1050 },
-    { world: 4, hp: 8400, atk: 44, fightSec: [90, 130], gold: 1500 }
+    { world: 0, hp: 1250,  atk: 16, fightSec: [70, 100],  gold: 210 },
+    { world: 1, hp: 2650,  atk: 23, fightSec: [80, 110],  gold: 360 },
+    { world: 2, hp: 4800,  atk: 31, fightSec: [90, 120],  gold: 590 },
+    { world: 3, hp: 8000,  atk: 42, fightSec: [100, 135], gold: 880 },
+    { world: 4, hp: 12800, atk: 56, fightSec: [115, 155], gold: 1200 }
   ],
 
-  boss: { hpMultEarly: 1, hpMultMid: 1, hpMultLate: 1, atkMult: 1, rewardMult: 4.2 },
+  boss: { hpMultEarly: 1, hpMultMid: 1, hpMultLate: 1, atkMult: 1, rewardMult: 4 },
 
   bossAttackPct: {
-    light: [0.08, 0.12],
-    normal: [0.13, 0.18],
-    heavy: [0.22, 0.30],
-    ultimate: [0.35, 0.40]
+    light: [0.10, 0.14],
+    normal: [0.17, 0.22],
+    heavy: [0.27, 0.34],
+    ultimate: [0.40, 0.46]
   },
 
   economy: {
     upgradeMax: 8,
-    costTable: [120, 190, 310, 500, 790, 1220, 1850, 2750],
-    costPow: 1.57,
+    costTable: [170, 300, 500, 820, 1300, 2050, 3150, 4700],
+    costPow: 1.6,
     costSoftLv: 8,
-    costLinear: 0.3,
-    avgGoldPerRunTarget: [90, 160],
+    costLinear: 0.32,
+    avgGoldPerRunTarget: [75, 120],
     goldByWorld: {
-      0: [90, 160],
-      boss0: [180, 300],
-      1: [250, 450],
-      2: [450, 750],
-      3: [700, 1150],
-      4: [1000, 1600]
+      0: [75, 120],
+      boss0: [160, 240],
+      1: [210, 350],
+      2: [360, 580],
+      3: [560, 880],
+      4: [800, 1200]
     },
-    coinCatchAvg: [0.45, 0.60],
-    coinCatchSkilled: [0.70, 0.85],
-    coinBonusMult: 2.0,
     pityGoldAfterEmptyRuns: 3,
-    pitySteps: [1.25, 1.40],
-    pityGoldMult: 1.25,
-    maxPityMult: 1.50,
+    pitySteps: [1.18, 1.30],
+    maxPityMult: 1.42,
     minRunGoldFloor: 50,
     minRunGoldUpgradeFrac: 0.12,
-    loopGoldMult: 0.18
+    loopGoldMult: 0.17
   },
 
   loop: {
-    enemyHpPerLoop: 0.22,
-    enemyAtkPerLoop: 0.15,
-    goldPerLoop: 0.18,
-    budgetPerLoop: 0.07,
-    budgetMultPerLoop: 0.07,
-    eliteChancePerLoop: 0.02,
-    bossHpPerLoop: 0.10,
-    bossAtkPerLoop: 0.05
+    enemyHpPerLoop: 0.28,
+    enemyAtkPerLoop: 0.20,
+    goldPerLoop: 0.17,
+    budgetMultPerLoop: 0.10,
+    budgetPerLoop: 0.10,
+    eliteChancePerLoop: 0.03,
+    bossHpPerLoop: 0.14,
+    bossAtkPerLoop: 0.08
   },
 
   powerTargets: {
     start: 1.00,
     world: [
-      { meta: [1.00, 1.12], run: [1.00, 1.12], total: [1.05, 1.22] },
-      { meta: [1.12, 1.30], run: [1.12, 1.30], total: [1.30, 1.60] },
-      { meta: [1.28, 1.48], run: [1.25, 1.45], total: [1.60, 2.00] },
-      { meta: [1.45, 1.70], run: [1.38, 1.62], total: [2.00, 2.60] },
-      { meta: [1.65, 1.95], run: [1.50, 1.80], total: [2.50, 3.40] }
+      { meta: [1.00, 1.10], run: [1.00, 1.00], total: [1.00, 1.12] },
+      { meta: [1.10, 1.28], run: [1.08, 1.18], total: [1.20, 1.45] },
+      { meta: [1.25, 1.45], run: [1.15, 1.30], total: [1.45, 1.85] },
+      { meta: [1.40, 1.65], run: [1.25, 1.45], total: [1.80, 2.35] },
+      { meta: [1.55, 1.90], run: [1.35, 1.60], total: [2.20, 3.00] }
     ]
   },
 
   simulationTargets: {
-    firstClearMin: [105, 145],
-    firstClearMedian: 120,
-    deaths: [18, 28],
-    deathsByWorld: [[3, 5], [3, 5], [4, 6], [4, 6], [4, 7]],
-    bossAttempts: [[1, 3], [2, 4], [2, 5], [3, 5], [3, 6]],
-    firstRunWorld1Progress: { average: [0.30, 0.45], skilled: [0.50, 0.75] }
+    firstClearMin: [140, 170],
+    firstClearMedian: 150,
+    deaths: [26, 38],
+    deathsByWorld: [[5, 7], [5, 8], [5, 8], [6, 9], [6, 10]],
+    bossAttempts: [[2, 4], [2, 5], [3, 5], [3, 6], [4, 7]],
+    firstRunWorld1Progress: { average: [0.15, 0.30], skilled: [0.35, 0.55] }
   },
 
   runUpgrades: {
-    /** einmal pro Welt (nicht bei jedem Level) – weniger Unterbrechung im Kampf */
-    mode: "perWorld",
-    milestones: [4, 9, 15, 22, 30, 39, 49, 60, 72, 85, 99, 114, 130],
+    mode: "afterBoss",
+    maxPicksBeforeFinal: 4,
     choicesPerPick: 3,
     freeRerolls: 1,
-    targetPicksFirstClear: [5, 5],
-    targetRunPower: [80, 140],
-    maxStrongRngPower: 180,
-    rarity: {
-      early: { common: 0.50, uncommon: 0.32, rare: 0.12, epic: 0.05, legendary: 0.01 },
-      mid:   { common: 0.35, uncommon: 0.32, rare: 0.22, epic: 0.09,  legendary: 0.02 },
-      late:   { common: 0.22, uncommon: 0.30, rare: 0.28, epic: 0.15,  legendary: 0.05 }
+    targetPicksFirstClear: [4, 4],
+    targetRunPower: [65, 90],
+    maxStrongRngPower: 130,
+    rarityByWorld: {
+      0: { common: 0.65, uncommon: 0.28, rare: 0.06, epic: 0.01, legendary: 0 },
+      1: { common: 0.45, uncommon: 0.38, rare: 0.14, epic: 0.03, legendary: 0 },
+      2: { common: 0.25, uncommon: 0.40, rare: 0.27, epic: 0.07, legendary: 0.01 },
+      3: { common: 0.12, uncommon: 0.30, rare: 0.37, epic: 0.17, legendary: 0.04 }
     },
     powerBudget: {
-      common: [4, 7], uncommon: [7, 11], rare: [11, 17], epic: [17, 25], legendary: [25, 35]
-    }
+      common: [8, 12], uncommon: [12, 18], rare: [18, 26], epic: [26, 38], legendary: [38, 50]
+    },
+    milestones: []
   }
 };
 
 /**
  * Meta-Upgrade-Katalog – maxLv 8, tabellen-/flat-/pct-Boni.
  * bonus = Fallback-Inkrement; levels = per-level %-Punkte (table) oder ungenutzt.
+ * Kosten über economy.costTable via dlUpgradeCost.
  */
 const DL_UPGRADES = [
   /* OFFENSE */
   {
     key: "upgrade_attack", cat: "offense", tier: "minor", label: "Angriff",
-    baseCost: 120, bonus: 0.05, bonusMode: "table",
-    levels: [5, 5, 6, 6, 7, 7, 8, 8],
-    bonusText: "+ATK %", tip: "Basis-Schaden %. Krieger & Waldläufer.",
+    baseCost: 170, bonus: 0.04, bonusMode: "table",
+    levels: [4, 4, 5, 5, 5, 6, 6, 7],
+    bonusText: "+ATK %", tip: "Basis-Schaden %. Krieger & Waldläufer. Max +42 %.",
     forClass: "warrior,ranger", maxLv: 8
   },
   {
     key: "upgrade_magic", cat: "offense", tier: "minor", label: "Magieschaden",
-    baseCost: 120, bonus: 0.05, bonusMode: "table",
-    levels: [5, 5, 6, 6, 7, 7, 8, 8],
-    bonusText: "+Magie %", tip: "Zauber-Schaden %. Nur Magier.",
+    baseCost: 170, bonus: 0.04, bonusMode: "table",
+    levels: [4, 4, 5, 5, 5, 6, 6, 7],
+    bonusText: "+Magie %", tip: "Zauber-Schaden %. Nur Magier. Max +42 %.",
     forClass: "mage", maxLv: 8
   },
   {
     key: "upgrade_atkspd", cat: "offense", tier: "major", label: "Angriffsgeschwindigkeit",
-    baseCost: 120, bonus: 0.04, bonusMode: "table",
-    levels: [4, 4, 5, 5, 6, 6, 7, 7],
-    bonusText: "+AtkSpd %", tip: "Schneller angreifen (max +44 %).",
+    baseCost: 170, bonus: 0.03, bonusMode: "table",
+    levels: [3, 3, 4, 4, 4, 5, 5, 6],
+    bonusText: "+AtkSpd %", tip: "Schneller angreifen (max +34 %).",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_crit", cat: "offense", tier: "major", label: "Krit-Chance",
-    baseCost: 120, bonus: 0.025, bonusMode: "flat",
+    baseCost: 170, bonus: 0.0175, bonusMode: "flat",
     levels: null,
-    bonusText: "+2.5% Krit", tip: "Kritische Treffer. Stark mit Krit-Schaden.",
+    bonusText: "+1.75% Krit", tip: "Kritische Treffer. Stark mit Krit-Schaden.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_critdmg", cat: "offense", tier: "major", label: "Krit-Schaden",
-    baseCost: 120, bonus: 0.08, bonusMode: "flat",
+    baseCost: 170, bonus: 0.055, bonusMode: "flat",
     levels: null,
-    bonusText: "+0.08x Krit-DMG", tip: "Krits knallen härter. Synergie mit Krit.",
+    bonusText: "+0.055x Krit-DMG", tip: "Krits knallen härter. Synergie mit Krit.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_bossdmg", cat: "offense", tier: "major", label: "Boss-Schaden",
-    baseCost: 120, bonus: 0.05, bonusMode: "pctOfBase",
-    levels: [5, 5, 5, 5, 5, 5, 5, 5],
-    bonusText: "+5% vs Boss", tip: "Spezialisiert auf Welt-Bosse.",
+    baseCost: 170, bonus: 0.035, bonusMode: "pctOfBase",
+    levels: [3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5],
+    bonusText: "+3.5% vs Boss", tip: "Spezialisiert auf Welt-Bosse. Max +28 %.",
     forClass: "all", maxLv: 8
   },
 
   /* DEFENSE */
   {
     key: "upgrade_health", cat: "defense", tier: "minor", label: "Leben",
-    baseCost: 120, bonus: 0.07, bonusMode: "pctOfBase",
-    levels: [7, 7, 7, 7, 7, 7, 7, 7],
-    bonusText: "+7% LP", tip: "Mehr max HP %. Fast immer gut.",
+    baseCost: 170, bonus: 0.055, bonusMode: "pctOfBase",
+    levels: [5.5, 5.5, 5.5, 5.5, 5.5, 5.5, 5.5, 5.5],
+    bonusText: "+5.5% LP", tip: "Mehr max HP %. Fast immer gut. Max +44 %.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_defense", cat: "defense", tier: "minor", label: "Rüstung",
-    baseCost: 120, bonus: 0.03, bonusMode: "flat",
+    baseCost: 170, bonus: 0.0225, bonusMode: "flat",
     levels: null,
-    bonusText: "+3% DR", tip: "Damage Reduction vor DR-Formel.",
+    bonusText: "+2.25% DR", tip: "Damage Reduction vor DR-Formel. Max 18 %.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_regen", cat: "defense", tier: "major", label: "Regeneration",
-    baseCost: 120, bonus: 0.0010, bonusMode: "flat",
+    baseCost: 170, bonus: 0.0007, bonusMode: "flat",
     levels: null,
     bonusText: "+% HP/s", tip: "Heilung als Anteil maxHP/s. Pausiert 4s nach Schaden.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_lifesteal", cat: "defense", tier: "keystone", label: "Lebensraub",
-    baseCost: 120, bonus: 0.01, bonusMode: "flat",
+    baseCost: 170, bonus: 0.0065, bonusMode: "flat",
     levels: null,
-    bonusText: "+1% Lebensraub", tip: "Meta-Lifesteal max 8 %, Hardcap 10 %.",
+    bonusText: "+0.65% Lebensraub", tip: "Meta-Lifesteal max 5.2 %, Hardcap 7 %.",
     forClass: "all", maxLv: 8
   },
 
   /* ECONOMY */
   {
     key: "upgrade_gold", cat: "economy", tier: "major", label: "Gold-Fund",
-    baseCost: 120, bonus: 0.07, bonusMode: "pctOfBase",
-    levels: [7, 7, 7, 7, 7, 7, 7, 7],
-    bonusText: "+7% Gold", tip: "Mehr Gold pro Run – stark im Grind.",
+    baseCost: 170, bonus: 0.05, bonusMode: "pctOfBase",
+    levels: [5, 5, 5, 5, 5, 5, 5, 5],
+    bonusText: "+5% Gold", tip: "Mehr Gold pro Run – stark im Grind.",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_xp", cat: "economy", tier: "minor", label: "XP-Bonus",
-    baseCost: 120, bonus: 0.05, bonusMode: "pctOfBase",
-    levels: [5, 5, 5, 5, 5, 5, 5, 5],
-    bonusText: "+5% XP", tip: "Schneller Held-Level im Run.",
+    baseCost: 170, bonus: 0.035, bonusMode: "pctOfBase",
+    levels: [3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5],
+    bonusText: "+3.5% XP", tip: "Schneller Held-Level im Run.",
     forClass: "all", maxLv: 8
   },
 
   /* UTILITY */
   {
     key: "upgrade_cooldown", cat: "utility", tier: "keystone", label: "Spezial-CD",
-    baseCost: 120, bonus: 0.04, bonusMode: "pctOfBase",
-    levels: [4, 4, 4, 4, 4, 4, 4, 4],
-    bonusText: "-4% CD", tip: "Cooldown-Reduction (max 32 %, Cap 40 %).",
+    baseCost: 170, bonus: 0.03, bonusMode: "pctOfBase",
+    levels: [3, 3, 3, 3, 3, 3, 3, 3],
+    bonusText: "-3% CD", tip: "Cooldown-Reduction (max 24 %, Cap 32 %).",
     forClass: "all", maxLv: 8
   },
   {
     key: "upgrade_mana", cat: "utility", tier: "minor", label: "Mana",
-    baseCost: 120, bonus: 10, bonusMode: "flat",
+    baseCost: 170, bonus: 10, bonusMode: "flat",
     levels: null,
     bonusText: "+10 Mana", tip: "Nur Magier – mehr Zauber pro Run.",
     forClass: "mage", maxLv: 8
@@ -465,17 +468,22 @@ function dlWorldProgress(dungeonLevel, worldDef) {
 
 function dlDepthHpMult(p) {
   const ds = DL_BALANCE.depthScaling || {};
-  return 1 + (ds.hpPerProgress || 0.28) * Math.max(0, Math.min(1, p || 0));
+  return 1 + (ds.hpPerProgress != null ? ds.hpPerProgress : 0.38) * Math.max(0, Math.min(1, p || 0));
 }
 
 function dlDepthAtkMult(p) {
   const ds = DL_BALANCE.depthScaling || {};
-  return 1 + (ds.atkPerProgress || 0.20) * Math.max(0, Math.min(1, p || 0));
+  return 1 + (ds.atkPerProgress != null ? ds.atkPerProgress : 0.30) * Math.max(0, Math.min(1, p || 0));
+}
+
+function dlDepthSpeedMult(p) {
+  const ds = DL_BALANCE.depthScaling || {};
+  return 1 + (ds.speedPerProgress != null ? ds.speedPerProgress : 0.05) * Math.max(0, Math.min(1, p || 0));
 }
 
 function dlDepthBudgetMult(p) {
   const ds = DL_BALANCE.depthScaling || {};
-  return 1 + (ds.budgetPerProgress || 0.55) * Math.max(0, Math.min(1, p || 0));
+  return 1 + (ds.budgetPerProgress != null ? ds.budgetPerProgress : 0.75) * Math.max(0, Math.min(1, p || 0));
 }
 
 /** Intensity aus Depth-Scaling (Budget-Kurve als Proxy) */
@@ -533,7 +541,7 @@ function dlEncounterBudget(worldDef, progress, isBoss, loopIndex, breath) {
 
   if (breath) {
     const r = DL_BALANCE.rhythm || {};
-    budget *= (r.breathBudgetMult != null ? r.breathBudgetMult : 0.6);
+    budget *= (r.breathBudgetMult != null ? r.breathBudgetMult : 0.5);
   }
   return Math.max(2, budget);
 }
@@ -556,11 +564,9 @@ function dlSynergyMult(tags) {
   (syn.pairs || []).forEach((p) => {
     if (set.has(p.a) && set.has(p.b)) mult *= p.mult;
   });
-  const rangedCount = list.filter((t) => t === "ranged").length;
   const fastCount = list.filter((t) => t === "fast").length;
-  if (rangedCount >= 2) mult *= (syn.twoRanged || 1);
   if (fastCount >= 3) mult *= (syn.threeFast || 1);
-  const maxO = syn.maxOvershoot || 1.15;
+  const maxO = syn.maxOvershoot || 1.08;
   return Math.min(maxO, mult);
 }
 
@@ -575,14 +581,14 @@ function dlUpgradeCost(up, level) {
   const table = (DL_BALANCE.economy && DL_BALANCE.economy.costTable) || [];
   if (lv >= dlUpgradeMax(up)) return Infinity;
   if (table[lv] != null) return table[lv];
-  const base = (up && up.baseCost) || 120;
-  const pow = (DL_BALANCE.economy && DL_BALANCE.economy.costPow) || 1.57;
+  const base = (up && up.baseCost) || 170;
+  const pow = (DL_BALANCE.economy && DL_BALANCE.economy.costPow) || 1.6;
   return Math.floor(base * Math.pow(pow, lv));
 }
 
 /**
  * TOTALER Bonus bei gegebener Stufe.
- * %-Upgrades → Fraction (0.52 = +52 %).
+ * %-Upgrades → Fraction (0.42 = +42 %).
  * Regen → aktuelle Rate (Fraction maxHP/s) auf diesem Level.
  */
 function dlEffectiveBonus(up, level) {
@@ -593,12 +599,12 @@ function dlEffectiveBonus(up, level) {
   const mode = up.bonusMode || null;
 
   if (key === "upgrade_regen") {
-    return 0.0010 + 0.0005 * (lv - 1);
+    return 0.0007 + 0.00035 * (lv - 1);
   }
-  if (key === "upgrade_crit") return 0.025 * lv;
-  if (key === "upgrade_critdmg") return 0.08 * lv;
-  if (key === "upgrade_defense") return 0.03 * lv;
-  if (key === "upgrade_lifesteal") return 0.01 * lv;
+  if (key === "upgrade_crit") return 0.0175 * lv;
+  if (key === "upgrade_critdmg") return 0.055 * lv;
+  if (key === "upgrade_defense") return 0.0225 * lv;
+  if (key === "upgrade_lifesteal") return 0.0065 * lv;
   if (key === "upgrade_mana") return 10 * lv;
 
   if (mode === "table" && Array.isArray(up.levels)) {
@@ -637,7 +643,7 @@ function dlEffectiveBonus(up, level) {
 }
 
 function dlXpNeeded(level) {
-  const xp = DL_BALANCE.xp || { base: 110, perLevel: 3.2 };
+  const xp = DL_BALANCE.xp || { base: 130, perLevel: 4.5 };
   const lv = Math.max(1, Math.floor(level || 1));
   return xp.base + lv * xp.perLevel;
 }
@@ -648,23 +654,25 @@ function dlLevelUpHealPct(playerLevel) {
   for (let i = 0; i < bands.length; i++) {
     if (lv <= bands[i].maxLevel) return bands[i].pct;
   }
-  return DL_BALANCE.levelUpHealPct || 0.05;
+  return DL_BALANCE.levelUpHealPct || 0.06;
 }
 
 /**
- * Level-Up-Heilung mit Soft-Cap 85 %.
- * War HP bereits >= softCap: normale Heal, nie über 100 %.
+ * Level-Up-Heilung mit Soft-Cap 70 %.
+ * Bereits >= softCap: nur overSoftHealPct; sonst Band-Heal hin zum Soft-Cap.
  */
 function dlApplyLevelUpHeal(currentHp, maxHp, playerLevel) {
   const maxH = Math.max(1, maxHp || 1);
   let hp = Math.max(0, currentHp || 0);
-  const pct = dlLevelUpHealPct(playerLevel);
-  const soft = (DL_BALANCE.levelUpHeal && DL_BALANCE.levelUpHeal.softCapHpPct) || 0.85;
+  const soft = (DL_BALANCE.levelUpHeal && DL_BALANCE.levelUpHeal.softCapHpPct) || 0.70;
+  const overSoft = (DL_BALANCE.levelUpHeal && DL_BALANCE.levelUpHeal.overSoftHealPct) || 0.015;
   const softHp = maxH * soft;
-  const heal = Math.floor(maxH * pct);
+
   if (hp >= softHp) {
-    hp = Math.min(maxH, hp + heal);
+    hp = Math.min(maxH, hp + Math.floor(maxH * overSoft));
   } else {
+    const pct = dlLevelUpHealPct(playerLevel);
+    const heal = Math.floor(maxH * pct);
     hp = Math.min(softHp, hp + heal);
   }
   return Math.max(0, Math.min(maxH, hp));
@@ -695,12 +703,12 @@ function dlPlayerPowerScore(stats, scale100) {
   const atk = Math.max(1, s.attack || 1);
   const mag = Math.max(0, s.magicDamage || 0);
   const dpsProxy = Math.max(atk, mag) * (s.atkSpeedMult || 1);
-  const critCap = caps.critChance != null ? caps.critChance : 0.45;
-  const critEV = 1 + Math.min(critCap, s.crit || 0) * ((s.critDamage || DL_BALANCE.critDamageBase || 1.7) - 1);
-  const dr = Math.min(caps.damageReduction || 0.55, s.defense || 0);
+  const critCap = caps.critChance != null ? caps.critChance : 0.38;
+  const critEV = 1 + Math.min(critCap, s.crit || 0) * ((s.critDamage || DL_BALANCE.critDamageBase || 1.65) - 1);
+  const dr = Math.min(caps.damageReduction || 0.46, s.defense || 0);
   const ehp = (s.maxHp || 100) * (1 + dr) * (1 + (s.regen || 0) * 80);
-  const special = 1 + Math.min(caps.lifesteal || 0.1, s.lifesteal || 0) * 2
-    + Math.min(caps.bossDamage || 0.5, s.bossDamage || 0) * 0.4;
+  const special = 1 + Math.min(caps.lifesteal || 0.07, s.lifesteal || 0) * 2
+    + Math.min(caps.bossDamage || 0.38, s.bossDamage || 0) * 0.4;
   const raw = dpsProxy * critEV * 2.2 + ehp * 0.35;
   const norm = (raw / 120) * special;
   if (scale100) return Math.round(100 * norm);
@@ -750,40 +758,55 @@ function dlRunSanityChecks(ctx) {
   const ups = DL_UPGRADES;
   if (!ups.length) warnings.push("Keine Upgrades definiert");
 
-  const sampleGold = ((B.economy.avgGoldPerRunTarget || [90, 160])[0]
-    + (B.economy.avgGoldPerRunTarget || [90, 160])[1]) / 2;
+  const sampleGold = ((B.economy.avgGoldPerRunTarget || [75, 120])[0]
+    + (B.economy.avgGoldPerRunTarget || [75, 120])[1]) / 2;
 
   ups.filter((u) => u.tier === "minor").slice(0, 3).forEach((u) => {
     const c1 = dlUpgradeCost(u, 0);
-    if (c1 > sampleGold * 2.2) warnings.push(u.key + ": Stufe 1 zu teuer im Vergleich zum Run-Gold");
+    if (c1 > sampleGold * 2.8) warnings.push(u.key + ": Stufe 1 zu teuer im Vergleich zum Run-Gold");
     const c5 = dlUpgradeCost(u, 5);
-    if (c5 / sampleGold > 12) warnings.push(u.key + ": Stufe 6 braucht mehr als 12 Durchschnitts-Runs");
+    // Hard economy: late meta levels are intentionally multi-run sinks
+    if (c5 / sampleGold > 28) warnings.push(u.key + ": Stufe 6 braucht ungewöhnlich viele Runs");
   });
 
   const ls = ups.find((u) => u.key === "upgrade_lifesteal");
   if (ls) {
     const total = dlEffectiveBonus(ls, dlUpgradeMax(ls));
-    const cap = (B.caps && B.caps.lifesteal) || 0.10;
+    const cap = (B.caps && B.caps.lifesteal) || 0.07;
     if (total > cap + 0.001) warnings.push("Lebensraub-Meta über Cap: " + total.toFixed(3));
   }
 
   const cr = ups.find((u) => u.key === "upgrade_crit");
   if (cr && ctx && ctx.baseCrit != null) {
     const total = (ctx.baseCrit || 0) + dlEffectiveBonus(cr, dlUpgradeMax(cr));
-    const cap = (B.caps && B.caps.critChance) || B.critChanceCap || 0.45;
+    const cap = (B.caps && B.caps.critChance) || B.critChanceCap || 0.38;
     if (total > cap + 0.05) warnings.push("Krit-Chance über dem Maximum möglich: " + total.toFixed(2));
   }
 
   const atk = ups.find((u) => u.key === "upgrade_attack");
   if (atk) {
     const t = dlEffectiveBonus(atk, 8);
-    if (Math.abs(t - 0.52) > 0.001) warnings.push("Angriff max sollte 0.52 sein, ist " + t);
+    if (Math.abs(t - 0.42) > 0.001) warnings.push("Angriff max sollte 0.42 sein, ist " + t);
   }
   const as = ups.find((u) => u.key === "upgrade_atkspd");
   if (as) {
     const t = dlEffectiveBonus(as, 8);
-    if (Math.abs(t - 0.44) > 0.001) warnings.push("AtkSpd max sollte 0.44 sein, ist " + t);
+    if (Math.abs(t - 0.34) > 0.001) warnings.push("AtkSpd max sollte 0.34 sein, ist " + t);
   }
+  const boss = ups.find((u) => u.key === "upgrade_bossdmg");
+  if (boss) {
+    const t = dlEffectiveBonus(boss, 8);
+    if (Math.abs(t - 0.28) > 0.001) warnings.push("Boss-DMG max sollte 0.28 sein, ist " + t);
+  }
+  const def = ups.find((u) => u.key === "upgrade_defense");
+  if (def) {
+    const t = dlEffectiveBonus(def, 8);
+    if (Math.abs(t - 0.18) > 0.001) warnings.push("Defense max sollte 0.18 sein, ist " + t);
+  }
+
+  const ru = B.runUpgrades || {};
+  if (ru.mode !== "afterBoss") warnings.push("runUpgrades.mode sollte afterBoss sein");
+  if (ru.maxPicksBeforeFinal !== 4) warnings.push("runUpgrades.maxPicksBeforeFinal sollte 4 sein");
 
   let prev = 0;
   B.worlds.forEach((w) => {
@@ -891,30 +914,43 @@ function dlSimulatePowerFromLevels(levelMap) {
   return dlPlayerPowerScore({
     attack: atk,
     maxHp: hp,
-    defense: Math.min(caps.damageReduction || 0.55, def),
-    crit: Math.min(caps.critChance || 0.45, crit),
-    critDamage: Math.min(caps.critDamage || 2.6, critDmg),
-    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.75), atkSpd),
-    bossDamage: Math.min(caps.bossDamage || 0.5, bossDmg),
-    lifesteal: Math.min(caps.lifesteal || 0.1, lifesteal),
+    defense: Math.min(caps.damageReduction || 0.46, def),
+    crit: Math.min(caps.critChance || 0.38, crit),
+    critDamage: Math.min(caps.critDamage || 2.4, critDmg),
+    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.60), atkSpd),
+    bossDamage: Math.min(caps.bossDamage || 0.38, bossDmg),
+    lifesteal: Math.min(caps.lifesteal || 0.07, lifesteal),
     regen
   }, true);
 }
 
+/**
+ * First-clear Zeit-Heuristik (~150 Min Average inkl. Death-Retries).
+ * skillFactor > 1 = langsamer / mehr Tode; < 1 = schneller.
+ */
 function dlEstimateFirstClearMinutes(skillFactor) {
   const sf = Math.max(0.6, skillFactor || 1);
   let totalLevels = 0;
   DL_BALANCE.worlds.forEach((w) => { totalLevels += w.length; });
-  const deaths = DL_BALANCE.targetDeaths || [18, 28];
+  const deaths = DL_BALANCE.targetDeaths || [26, 38];
   const avgDeaths = ((deaths[0] + deaths[1]) / 2) * sf;
-  const avgSecPerLevel = 22 * sf;
-  const upgradePauseMin = 14 * sf;
-  const deathRetryMin = avgDeaths * 2.2;
-  return Math.round((totalLevels * avgSecPerLevel) / 60 + upgradePauseMin + deathRetryMin);
+  // Calibrated so average (sf=1) ≈ targetFirstClearMin (~150)
+  const avgSecPerLevel = 23 * sf;
+  const bossFightMin = 16 * sf;
+  const upgradePauseMin = 10 * sf;
+  const deathRetryMin = avgDeaths * 1.95;
+  const runUpgradePauseMin = 4 * sf;
+  return Math.round(
+    (totalLevels * avgSecPerLevel) / 60
+    + bossFightMin
+    + upgradePauseMin
+    + deathRetryMin
+    + runUpgradePauseMin
+  );
 }
 
 function dlRunBalanceReport() {
-  const warnings = dlRunSanityChecks({ baseCrit: 0.06 });
+  const warnings = dlRunSanityChecks({ baseCrit: 0.05 });
   const powers = {};
   Object.keys(DL_BUILD_ARCHETYPES).forEach((name) => {
     powers[name] = dlSimulatePowerFromLevels(DL_BUILD_ARCHETYPES[name]);
@@ -955,7 +991,11 @@ function dlRunBalanceReport() {
       healthMax: dlEffectiveBonus(healthUp, 8),
       lifestealMax: dlEffectiveBonus(lsUp, 8)
     },
-    minRunGoldFloorExample: dlMinRunGoldFloor(120),
+    runUpgrades: {
+      mode: (DL_BALANCE.runUpgrades && DL_BALANCE.runUpgrades.mode) || null,
+      maxPicksBeforeFinal: (DL_BALANCE.runUpgrades && DL_BALANCE.runUpgrades.maxPicksBeforeFinal) || 0
+    },
+    minRunGoldFloorExample: dlMinRunGoldFloor(170),
     warnings
   };
 }
@@ -991,6 +1031,7 @@ if (typeof module !== "undefined" && module.exports) {
     dlGetBossDef,
     dlDepthHpMult,
     dlDepthAtkMult,
+    dlDepthSpeedMult,
     dlDepthBudgetMult,
     dlMinRunGoldFloor,
     dlSimulatePowerFromLevels,
