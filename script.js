@@ -653,8 +653,8 @@ const WORLDS = [
     fog2: "rgba(20,50,30,0.35)", particleColor: "#95e1a3"
   },
   {
-    name: "Verfluchte Sümpfe", min: 25, danger: 2, theme: "swamp",
-    hpMult: 1.2, atkMult: 1.14, speedMult: 1.06,
+    name: "Verfluchte Sümpfe", min: 22, danger: 2, theme: "swamp",
+    hpMult: 1.16, atkMult: 1.1, speedMult: 1.05,
     sky: "#060a06", bg: "#0a1208", hill: "#141a10",
     hill2: "#1a2214", hill3: "#202818",
     ground: "#1a1810", moss: "#354828", leaf: "#405838",
@@ -662,8 +662,8 @@ const WORLDS = [
     fog2: "rgba(30,45,20,0.35)", particleColor: "#7cba6a"
   },
   {
-    name: "Gefrorene Berge", min: 50, danger: 3, theme: "frost",
-    hpMult: 1.4, atkMult: 1.28, speedMult: 1.1,
+    name: "Gefrorene Berge", min: 45, danger: 3, theme: "frost",
+    hpMult: 1.32, atkMult: 1.22, speedMult: 1.08,
     sky: "#080c18", bg: "#0c1428", hill: "#142038",
     hill2: "#182848", hill3: "#1c3058",
     ground: "#c8d8e8", moss: "#6a8898", leaf: "#a8d8ea",
@@ -671,8 +671,8 @@ const WORLDS = [
     fog2: "rgba(200,220,255,0.2)", particleColor: "#d4e8f8"
   },
   {
-    name: "Feuerlande", min: 80, danger: 4, theme: "fire",
-    hpMult: 1.65, atkMult: 1.45, speedMult: 1.14,
+    name: "Feuerlande", min: 70, danger: 4, theme: "fire",
+    hpMult: 1.52, atkMult: 1.36, speedMult: 1.12,
     sky: "#0a0202", bg: "#180606", hill: "#3a0c08",
     hill2: "#4a1008", hill3: "#5a180a",
     ground: "#2a0804", moss: "#5a1a08", leaf: "#922b21",
@@ -680,8 +680,8 @@ const WORLDS = [
     fog2: "rgba(120,40,10,0.3)", particleColor: "#f39c12"
   },
   {
-    name: "Vergessene Ruinen", min: 115, danger: 5, theme: "ruins",
-    hpMult: 1.95, atkMult: 1.65, speedMult: 1.18,
+    name: "Vergessene Ruinen", min: 95, danger: 5, theme: "ruins",
+    hpMult: 1.75, atkMult: 1.52, speedMult: 1.15,
     sky: "#0a0814", bg: "#100c1c", hill: "#1a1430",
     hill2: "#201838", hill3: "#281c40",
     ground: "#2a2438", moss: "#4a5058", leaf: "#5a6068",
@@ -758,29 +758,29 @@ const UPGRADES = [
   { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – Mitte zwischen zu leicht (#99) und zu hart (#101)
+// Balance – leichter als vor #99, aber nicht so soft wie #99 (0.72)
 const BALANCE = {
-  upgradeCostPow: 1.52,
+  upgradeCostPow: 1.5,
   upgradeMax: 28,
   lootChance: 0.22,
-  xpPerLevel: 140,
-  levelScalePow: 1.038,
-  levelUpHealPct: 0.18,
-  waveCooldown: 2.05,
+  xpPerLevel: 135,
+  levelScalePow: 1.035,
+  levelUpHealPct: 0.2,
+  waveCooldown: 2.1,
   minWaveCooldown: 1.0,
-  defenseFactor: 1.45,
+  defenseFactor: 1.5,
   earlyEaseUntil: 18,
-  earlyHpEase: 0.15,
-  earlyAtkEase: 0.22,
-  /** Mitte: härter als v157 (0.72), weicher als v159 (1.08) */
-  difficultyMult: 0.98,
+  earlyHpEase: 0.16,
+  earlyAtkEase: 0.24,
+  /** Deutlich unter vor-#99 / v161 (0.98); über #99 (0.72) */
+  difficultyMult: 0.82,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
   coinHitRadius: 28,
   coinCatchDelay: 0.14,
   coinCatchMoveMin: 28,
-  pierceFactor: 0.14
+  pierceFactor: 0.13
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -4238,14 +4238,14 @@ function getWorldDepth() {
 
 function getMetaEase() {
   const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.68, 1 - total * 0.008);
+  return Math.max(0.65, 1 - total * 0.009);
 }
 
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const depth = getWorldDepth();
-  const ease = depth <= 8 ? 0.82 : depth <= 18 ? 0.92 : 1.0;
-  return { hp: 4.0 * ease, atk: 1.65 * ease, rew: 4.3 };
+  const ease = depth <= 8 ? 0.8 : depth <= 18 ? 0.9 : 0.96;
+  return { hp: 3.6 * ease, atk: 1.5 * ease, rew: 4.2 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4254,15 +4254,15 @@ function getEnemyStats(isBoss) {
   const danger = world.danger || 1;
   const ease = getMetaEase();
   const diff = (BALANCE.difficultyMult || 1);
-  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(24, depth * 0.78));
-  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.016, Math.min(24, depth * 0.78));
+  const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(22, depth * 0.75));
+  const depthAtk = Math.pow(BALANCE.levelScalePow - 0.016, Math.min(22, depth * 0.75));
   const boss = getBossMult(isBoss);
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
 
-  const baseHp = 24 + depth * 3.6 + danger * 6;
-  const baseAtk = 3.0 + depth * 0.48 + danger * 1.15;
+  const baseHp = 22 + depth * 3.2 + danger * 5;
+  const baseAtk = 2.8 + depth * 0.42 + danger * 1.05;
 
   return {
     hp: Math.floor(baseHp * depthHp * world.hpMult * ease * diff * boss.hp * earlyHp),
@@ -4270,7 +4270,7 @@ function getEnemyStats(isBoss) {
     gold: Math.floor((6 + depth * 2.0 + danger * 3) * boss.rew * (1 + depth * 0.036)),
     xp: Math.floor((12 + depth * 2.7 + danger * 4) * boss.rew),
     speed: (isBoss ? 0.5 : 0.7) * world.speedMult + depth * 0.01,
-    attackInterval: Math.max(0.68, 1.16 - depth * 0.007 - danger * 0.018)
+    attackInterval: Math.max(0.7, 1.18 - depth * 0.0065 - danger * 0.016)
   };
 }
 
