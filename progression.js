@@ -270,19 +270,19 @@ function buildGameOverRichHtml(rs, rec, prevProgress) {
   const delta = (rs.bestProgress01 || 0) - (prevProgress || 0);
   const newBest = (rs.bestProgress01 || 0) >= (prevProgress || 0) && (rs.bestProgress01 || 0) > 0.01;
   const bossLine = (rs.bossMaxHp > 0)
-    ? ("Boss HP: " + formatPct(rs.bossMinHpFrac) +
+    ? ("Boss-Leben: " + formatPct(rs.bossMinHpFrac) +
       (rs.bossMinHpFrac < (rec.bestBossHpFrac[String(rs.worldIndex)] ?? 1) + 0.001
-        ? " · NEW BEST" : ""))
+        ? " · NEUER REKORD" : ""))
     : "";
   const lines = [
-    (rs.worldName || "Welt") + " · Progress " + formatPct(rs.bestProgress01) +
-      (newBest ? " · NEW BEST" : ""),
+    (rs.worldName || "Welt") + " · Fortschritt " + formatPct(rs.bestProgress01) +
+      (newBest ? " · NEUER REKORD" : ""),
     delta > 0.005 ? ("Letzter Rekord +" + Math.round(delta * 100) + "%") : ("Vorher: " + formatPct(prevProgress || 0)),
-    rs.kills + " Kills" + (rs.eliteKills ? (" · " + rs.eliteKills + " Elites") : "") +
+    rs.kills + " Besiegt" + (rs.eliteKills ? (" · " + rs.eliteKills + " Eliten") : "") +
       " · " + Math.floor(rs.goldEarned || 0) + " Gold",
-    "Schaden " + Math.floor(rs.damageDealt || 0) + " · Erlitten " + Math.floor(rs.damageTaken || 0),
+    "Schaden ausgeteilt " + Math.floor(rs.damageDealt || 0) + " · Erlitten " + Math.floor(rs.damageTaken || 0),
     bossLine,
-    "Power " + (rs.upgradePower || 0) + " · Loop " + ((game.loopIndex | 0) + 1)
+    "Stärke " + (rs.upgradePower || 0) + " · Durchlauf " + ((game.loopIndex | 0) + 1)
   ].filter(Boolean);
   return lines.join("\n");
 }
@@ -302,12 +302,12 @@ function getShortMidLongGoals() {
     ? getNextCdAbilityUnlock(game.classKey, getSpecialCdLevel())
     : null;
   const world = getWorld();
-  const long = "Boss: " + world.name;
+  const long = "Weltboss: " + world.name;
   return {
     short: short ? (short.left > 0
       ? ("Noch " + short.left + " Gold für " + short.label)
       : ("Jetzt kaufen: " + short.label)) : "Alle Upgrades max",
-    mid: mid ? ("Freischalten: " + mid.name + " (Spezial-CD)") : "Fähigkeiten ausbauen / Build schärfen",
+    mid: mid ? ("Freischalten: " + mid.name + " (Spezial-CD)") : "Fähigkeiten ausbauen / Build verbessern",
     long
   };
 }
@@ -340,23 +340,23 @@ function renderBalanceDebugPanel() {
     : [];
   const goals = getShortMidLongGoals();
   el.innerHTML =
-    "<strong>BALANCE DEBUG</strong>" +
-    "<div>Power " + power + " · Loop " + ((game.loopIndex | 0) + 1) + "</div>" +
-    "<div>World " + (world.name || "?") + " · Prog " + formatPct(progress) + " · Int " + intensity.toFixed(2) + "</div>" +
+    "<strong>BALANCE-DEBUG</strong>" +
+    "<div>Stärke " + power + " · Durchlauf " + ((game.loopIndex | 0) + 1) + "</div>" +
+    "<div>Welt " + (world.name || "?") + " · Fortschritt " + formatPct(progress) + " · Intensität " + intensity.toFixed(2) + "</div>" +
     "<div>Gold " + (typeof getSpendableGold === "function" ? getSpendableGold() : 0) +
-    " · PityRuns " + (game.emptyUpgradeRuns | 0) + "</div>" +
-    "<div>ATK " + Math.floor(st.attack || 0) + " MAG " + Math.floor(st.magicDamage || 0) +
-    " AS " + ((st.atkSpeedMult || 1)).toFixed(2) + " Crit " + Math.round((st.crit || 0) * 100) + "%</div>" +
-    "<div>HP " + Math.floor(st.maxHp || 0) + " DEF " + (st.defense || 0).toFixed?.(1) +
-    " LS " + Math.round((st.lifesteal || 0) * 1000) / 10 + "%</div>" +
-    "<div class='dbg-goals'>S: " + goals.short + "<br>M: " + goals.mid + "<br>L: " + goals.long + "</div>" +
-    (warnings.length ? ("<div class='dbg-warn'>" + warnings.join("<br>") + "</div>") : "<div>Sanity OK</div>") +
+    " · Läufe ohne Upgrade " + (game.emptyUpgradeRuns | 0) + "</div>" +
+    "<div>Angriff " + Math.floor(st.attack || 0) + " Magie " + Math.floor(st.magicDamage || 0) +
+    " Tempo " + ((st.atkSpeedMult || 1)).toFixed(2) + " Krit " + Math.round((st.crit || 0) * 100) + "%</div>" +
+    "<div>Leben " + Math.floor(st.maxHp || 0) + " Rüstung " + (st.defense || 0).toFixed?.(1) +
+    " Lebensraub " + Math.round((st.lifesteal || 0) * 1000) / 10 + "%</div>" +
+    "<div class='dbg-goals'>Kurz: " + goals.short + "<br>Mittel: " + goals.mid + "<br>Lang: " + goals.long + "</div>" +
+    (warnings.length ? ("<div class='dbg-warn'>" + warnings.join("<br>") + "</div>") : "<div>Checks OK</div>") +
     "<div class='dbg-actions'>" +
     "<button type='button' data-dbg='w1'>W1</button>" +
     "<button type='button' data-dbg='w2'>W2</button>" +
     "<button type='button' data-dbg='w3'>W3</button>" +
     "<button type='button' data-dbg='gold'> +500🪙</button>" +
-    "<button type='button' data-dbg='god'>God</button>" +
+    "<button type='button' data-dbg='god'>Unverwundbar</button>" +
     "</div>";
 
   el.onclick = (ev) => {
@@ -386,7 +386,7 @@ function debugJumpWorld(idx) {
   game.projectiles = [];
   if (typeof initWorldBackground === "function") initWorldBackground();
   if (typeof safeSpawnWave === "function") safeSpawnWave();
-  addLog("DEBUG: Sprung zu " + WORLDS[i].name, "heal");
+  addLog("Debug: Sprung zu " + WORLDS[i].name, "heal");
 }
 
 function tickBalanceDebug(dt) {
