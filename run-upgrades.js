@@ -301,6 +301,7 @@ function dlCreateEmptyRunUpgradeState() {
     powerScore: 0,
     buildTags: {},
     claimedMilestones: [],
+    claimedWorlds: [],
     focusTimer: 0,
     warMachineStacks: 0,
     lastWarriorUsed: false,

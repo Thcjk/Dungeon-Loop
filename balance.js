@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-177
+   Build: sidescroller-v3-178
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY (Hard Grind + Run-Upgrades)
@@ -13,7 +13,7 @@
    ============================================ */
 
 const DL_BALANCE = {
-  version: 177,
+  version: 178,
   targetFirstClearMin: 120,
   targetFirstClearRange: [105, 145],
   targetDeaths: [18, 28],
@@ -307,16 +307,18 @@ const DL_BALANCE = {
   },
 
   runUpgrades: {
+    /** einmal pro Welt (nicht bei jedem Level) – weniger Unterbrechung im Kampf */
+    mode: "perWorld",
     milestones: [4, 9, 15, 22, 30, 39, 49, 60, 72, 85, 99, 114, 130],
     choicesPerPick: 3,
     freeRerolls: 1,
-    targetPicksFirstClear: [11, 13],
-    targetRunPower: [130, 175],
-    maxStrongRngPower: 210,
+    targetPicksFirstClear: [5, 5],
+    targetRunPower: [80, 140],
+    maxStrongRngPower: 180,
     rarity: {
-      early: { common: 0.58, uncommon: 0.30, rare: 0.09, epic: 0.025, legendary: 0.005 },
-      mid:   { common: 0.40, uncommon: 0.34, rare: 0.18, epic: 0.07,  legendary: 0.01 },
-      late:  { common: 0.25, uncommon: 0.35, rare: 0.25, epic: 0.12,  legendary: 0.03 }
+      early: { common: 0.50, uncommon: 0.32, rare: 0.12, epic: 0.05, legendary: 0.01 },
+      mid:   { common: 0.35, uncommon: 0.32, rare: 0.22, epic: 0.09,  legendary: 0.02 },
+      late:   { common: 0.22, uncommon: 0.30, rare: 0.28, epic: 0.15,  legendary: 0.05 }
     },
     powerBudget: {
       common: [4, 7], uncommon: [7, 11], rare: [11, 17], epic: [17, 25], legendary: [25, 35]

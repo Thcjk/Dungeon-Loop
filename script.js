@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-177";
+const BUILD_ID = "sidescroller-v3-178";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -3235,6 +3235,9 @@ function migrateRunData(data) {
   if (!Array.isArray(out.runUpgradeState.claimedMilestones)) {
     out.runUpgradeState.claimedMilestones = [];
   }
+  if (!Array.isArray(out.runUpgradeState.claimedWorlds)) {
+    out.runUpgradeState.claimedWorlds = [];
+  }
   if (!out.runUpgradeState.stacks) out.runUpgradeState.stacks = {};
   if (!Array.isArray(out.runUpgradeState.upgrades)) out.runUpgradeState.upgrades = [];
   return out;
@@ -4070,7 +4073,9 @@ function startRun() {
   $("btn-restart").disabled = false;
   $("btn-pause").textContent = "Pause (P)";
   if (typeof resetRunStatsForNewRun === "function") resetRunStatsForNewRun();
-  safeSpawnWave();
+  // Run-Upgrade einmal pro Welt – vor der ersten Welle (kein Mid-Fight-Interrupt)
+  const offered = maybeOfferWorldRunUpgrade();
+  if (!offered) safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
   addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Stirb → Upgrade → neuer Rekord!");
@@ -4080,7 +4085,7 @@ function startRun() {
   saveActiveRun(true);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      beginRunLoop();
+      if (!game.runUpgradePaused) beginRunLoop();
       if (canvas) canvas.focus();
     });
   });
@@ -4485,6 +4490,8 @@ function tryAdvanceWorldAfterBossWave() {
   showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
   playWorldMusic(newWorld);
   emitCombatEvent("world_change");
+  // Ein Run-Upgrade beim Weltwechsel (zwischen den Wellen)
+  maybeOfferWorldRunUpgrade();
   return true;
 }
 
@@ -5724,25 +5731,42 @@ function lootChanceForEnemy(e) {
 }
 
 function maybeOfferRunUpgrade() {
-  if (!game.runUpgradeState || typeof dlPendingRunMilestones !== "function") return;
-  if (game.runUpgradePaused || game.runUpgradeDraft) return;
-  const claimed = game.runUpgradeState.claimedMilestones || [];
-  const pending = dlPendingRunMilestones(game.playerLevel, claimed);
-  if (!pending.length) return;
-  const milestone = pending[0];
+  // Legacy no-op: Level-Meilensteine unterbrechen den Kampf nicht mehr.
+  // Auswahl nur einmal pro Welt → maybeOfferWorldRunUpgrade()
+}
+
+/** Ein Run-Upgrade pro Welt – beim Betreten (Start / Weltwechsel), nicht mitten im Kampf. */
+function maybeOfferWorldRunUpgrade() {
+  if (!game.runUpgradeState) return false;
+  if (game.runUpgradePaused || game.runUpgradeDraft) return false;
+  if (game.isDead || game.loopCompleted) return false;
+  const worldIdx = clampWorldIndex(game.worldIndex | 0);
+  if (!Array.isArray(game.runUpgradeState.claimedWorlds)) {
+    game.runUpgradeState.claimedWorlds = [];
+  }
+  const claimed = game.runUpgradeState.claimedWorlds;
+  if (claimed.indexOf(worldIdx) >= 0) return false;
+
   const progress = typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0;
+  const worldProgress = Math.min(1, worldIdx / Math.max(1, (WORLDS.length - 1)));
+  const rarityProgress = Math.max(progress, worldProgress);
   const choices = (typeof dlSmartDraftRunUpgrades === "function")
-    ? dlSmartDraftRunUpgrades(game.runUpgradeState, progress, 3)
+    ? dlSmartDraftRunUpgrades(game.runUpgradeState, rarityProgress, 3)
     : [];
   if (!choices.length) {
-    // Nichts anbietbar – Milestone trotzdem claimen, damit kein Softlock
-    game.runUpgradeState.claimedMilestones = claimed.concat([milestone]);
-    return;
+    game.runUpgradeState.claimedWorlds = claimed.concat([worldIdx]);
+    return false;
   }
-  game.runUpgradeDraft = { choices, milestone, rerolled: false };
+  game.runUpgradeDraft = {
+    choices,
+    worldIndex: worldIdx,
+    worldName: (getWorld() && getWorld().name) || ("Welt " + (worldIdx + 1)),
+    rerolled: false
+  };
   game.runUpgradePaused = true;
   game.isPaused = true;
   showRunUpgradeOverlay();
+  return true;
 }
 
 function showRunUpgradeOverlay() {
@@ -5752,7 +5776,9 @@ function showRunUpgradeOverlay() {
   const rerollBtn = $("run-upgrade-reroll");
   if (!overlay || !grid || !game.runUpgradeDraft) return;
   const draft = game.runUpgradeDraft;
-  if (title) title.textContent = "RUN-UPGRADE · Level " + draft.milestone;
+  if (title) {
+    title.textContent = "RUN-UPGRADE · " + (draft.worldName || ("Welt " + ((draft.worldIndex | 0) + 1)));
+  }
   grid.innerHTML = "";
   draft.choices.forEach((def) => {
     const btn = document.createElement("button");
@@ -5787,15 +5813,17 @@ function hideRunUpgradeOverlay() {
 
 function pickRunUpgrade(id) {
   if (!game.runUpgradeDraft || !game.runUpgradeState) return;
-  const milestone = game.runUpgradeDraft.milestone;
+  const worldIdx = game.runUpgradeDraft.worldIndex;
   const before = heroStats();
   const ratio = before.maxHp > 0 ? game.hero.hp / before.maxHp : 1;
   if (typeof dlApplyRunUpgradePick === "function") {
     dlApplyRunUpgradePick(game.runUpgradeState, id);
   }
-  const claimed = game.runUpgradeState.claimedMilestones || [];
-  if (claimed.indexOf(milestone) < 0) {
-    game.runUpgradeState.claimedMilestones = claimed.concat([milestone]);
+  if (!Array.isArray(game.runUpgradeState.claimedWorlds)) {
+    game.runUpgradeState.claimedWorlds = [];
+  }
+  if (worldIdx != null && game.runUpgradeState.claimedWorlds.indexOf(worldIdx) < 0) {
+    game.runUpgradeState.claimedWorlds = game.runUpgradeState.claimedWorlds.concat([worldIdx]);
   }
   const after = heroStats();
   game.hero.hp = Math.max(1, Math.min(after.maxHp, Math.floor(after.maxHp * ratio)));
@@ -5806,10 +5834,9 @@ function pickRunUpgrade(id) {
   game.isPaused = false;
   hideRunUpgradeOverlay();
   markRunSaveDirty();
-  // Weitere pending Milestones?
-  maybeOfferRunUpgrade();
-  if (!game.runUpgradePaused && game.isRunning && !game.isDead) {
+  if (game.isRunning && !game.isDead) {
     $("btn-pause").textContent = "Pause (P)";
+    if (countAliveEnemies() === 0) safeSpawnWave();
     ensureGameLoop();
   }
 }
@@ -5818,7 +5845,12 @@ function rerollRunUpgradeDraft() {
   if (!game.runUpgradeDraft || !game.runUpgradeState) return;
   if (game.runUpgradeDraft.rerolled || (game.runUpgradeState.rerolls | 0) <= 0) return;
   const prevIds = game.runUpgradeDraft.choices.map((c) => c.id);
-  const progress = typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0;
+  const worldIdx = game.runUpgradeDraft.worldIndex | 0;
+  const worldProgress = Math.min(1, worldIdx / Math.max(1, (WORLDS.length - 1)));
+  const progress = Math.max(
+    typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0,
+    worldProgress
+  );
   const next = (typeof dlRerollRunDraft === "function")
     ? dlRerollRunDraft(game.runUpgradeState, prevIds, progress)
     : (typeof dlSmartDraftRunUpgrades === "function"
@@ -5871,7 +5903,6 @@ function onEnemyKill(e) {
     spawnBurst(game.hero.x + game.hero.w / 2, game.hero.y, "#2ecc71", 10, 3);
     emitCombatEvent("level_up");
     addLog("Level Up! Held " + game.playerLevel, "heal");
-    maybeOfferRunUpgrade();
   }
   if (Math.random() < lootChanceForEnemy(e)) generateLoot();
   markRunSaveDirty();
