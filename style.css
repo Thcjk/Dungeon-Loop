@@ -478,33 +478,33 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 8px 10px;
   pointer-events: none;
-  font-size: 0.72rem;
-  letter-spacing: 0.5px;
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
 }
 
 /* Klares HUD-Panel: die verzierten Pack-Rahmen wurden stark verzerrt und
    haben Labels überdeckt. Funktion unverändert, nur lesbare Darstellung. */
 .hud-card {
-  background: rgba(12, 14, 18, 0.72);
-  border: 1px solid rgba(198, 160, 90, 0.45);
+  background: rgba(12, 14, 18, 0.78);
+  border: 1px solid rgba(198, 160, 90, 0.4);
   border-radius: 3px;
-  padding: 8px 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  padding: 6px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .hud-bar {
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
-.hud-label { color: #c9b896; font-weight: bold; font-size: 0.62rem; text-shadow: 0 1px 2px #000; }
+.hud-label { color: #c9b896; font-weight: bold; font-size: 0.58rem; text-shadow: 0 1px 2px #000; }
 .pack-bar-track {
   position: relative;
-  height: 9px;
+  height: 8px;
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(0, 0, 0, 0.8);
   border-radius: 2px;
@@ -524,22 +524,22 @@ body {
   display: none;
 }
 .bar-fill { display: none; }
-.hud-val { color: #fff; font-size: 0.62rem; min-width: 58px; text-align: right; font-weight: bold; text-shadow: 0 1px 2px #000; }
-
-.hud-card-title {
-  font-size: 0.55rem;
-  color: var(--gold);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
+.hud-val {
+  color: #fff;
+  font-size: 0.58rem;
+  min-width: 44px;
+  text-align: right;
   font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-shadow: 0 1px 2px #000;
 }
 
 .hud-player {
-  min-width: 220px;
+  min-width: 168px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .hud-stats {
@@ -1265,7 +1265,7 @@ kbd {
   .sidebar-log { min-height: 160px; }
   .controls-hint { font-size: 0.55rem; padding: 6px 8px; }
   .hud { padding: 8px 10px; }
-  .hud-player { min-width: 180px; }
+  .hud-player { min-width: 156px; }
   .ability-list { max-height: 220px; }
   .input { font-size: 1rem; min-height: 48px; }
 }

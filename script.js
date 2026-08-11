@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-174";
+const BUILD_ID = "sidescroller-v3-175";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -5887,24 +5887,39 @@ function render() {
 // HUD & UI
 // ============================================
 
+function formatHudInt(n) {
+  return Math.max(0, Math.floor(Number(n) || 0));
+}
+
+function formatHudRatio(current, max) {
+  const c = formatHudInt(current);
+  const m = Math.max(1, formatHudInt(max));
+  return c + "/" + m;
+}
+
+function clampHudPct(current, max) {
+  const m = Math.max(1, Number(max) || 1);
+  return Math.min(100, Math.max(0, (Number(current) || 0) / m * 100));
+}
+
 function updateHUD() {
   if (!game.hero) return;
   const st = heroStats(), h = game.hero;
   const world = getWorld();
-  $("hud-hp-fill").style.width = (h.hp / st.maxHp * 100) + "%";
-  $("hud-hp-text").textContent = Math.floor(h.hp) + " / " + st.maxHp;
-  const xpNeed = game.playerLevel * BALANCE.xpPerLevel;
-  $("hud-xp-fill").style.width = (game.runXp / xpNeed * 100) + "%";
-  $("hud-xp-text").textContent = Math.floor(game.runXp / xpNeed * 100) + "%";
-  $("hud-gold").textContent = game.runGold;
+  $("hud-hp-fill").style.width = clampHudPct(h.hp, st.maxHp) + "%";
+  $("hud-hp-text").textContent = formatHudRatio(h.hp, st.maxHp);
+  const xpNeed = Math.max(1, game.playerLevel * BALANCE.xpPerLevel);
+  $("hud-xp-fill").style.width = clampHudPct(game.runXp, xpNeed) + "%";
+  $("hud-xp-text").textContent = formatHudRatio(game.runXp, xpNeed);
+  $("hud-gold").textContent = formatHudInt(game.runGold);
   $("hud-level").textContent = game.dungeonLevel;
   $("hud-world").textContent = world.name + " ☠" + world.danger;
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
   const hudEn = $("hud-enemies");
   if (hudEn) hudEn.textContent = alive;
   if (game.classKey === "mage") {
-    $("hud-mana-fill").style.width = (h.mana / st.maxMana * 100) + "%";
-    $("hud-mana-text").textContent = Math.floor(h.mana) + " / " + st.maxMana;
+    $("hud-mana-fill").style.width = clampHudPct(h.mana, st.maxMana) + "%";
+    $("hud-mana-text").textContent = formatHudRatio(h.mana, st.maxMana);
   }
 }
 
