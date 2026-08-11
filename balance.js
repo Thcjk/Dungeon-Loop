@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-183
+   Build: sidescroller-v3-184
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY (Hard Balance + Boss-only Run-Upgrades)
@@ -14,7 +14,7 @@
    ============================================ */
 
 const DL_BALANCE = {
-  version: 183,
+  version: 184,
   targetFirstClearMin: 150,
   targetFirstClearRange: [140, 170],
   targetDeaths: [26, 38],

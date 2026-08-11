@@ -1700,3 +1700,177 @@ body {
   background: linear-gradient(180deg, rgba(80, 60, 28, 0.45), rgba(40, 32, 18, 0.55));
 }
 .upgrade-btn.mastery .upgrade-name { color: #e0c07a; }
+
+/* ---- NG+ Info Layer ---- */
+.settings-section-title {
+  grid-column: 1 / -1;
+  margin: 0.75rem 0 0.2rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: #c4b07a;
+  text-transform: uppercase;
+}
+.ng-info-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 12, 0.78);
+  padding: 0.75rem;
+}
+.ng-info-overlay.hidden { display: none; }
+.ng-info-overlay.corruption-theme {
+  background: rgba(28, 6, 14, 0.82);
+}
+.ng-info-content {
+  width: min(420px, 96%);
+  max-height: 92%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  border: 2px solid #5a4a2e;
+  background:
+    linear-gradient(180deg, rgba(28, 24, 18, 0.97), rgba(14, 12, 10, 0.98)),
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.015) 3px, rgba(255,255,255,0.015) 4px);
+  box-shadow: 0 0 0 1px #1a140c, 0 12px 28px rgba(0,0,0,0.55);
+  color: #d7d0c0;
+  image-rendering: pixelated;
+}
+.ng-info-wide { width: min(520px, 96%); }
+.ng-scroll { overflow-y: auto; max-height: 58vh; padding-right: 0.25rem; }
+.ng-info-head { margin-bottom: 0.25rem; }
+.ng-info-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: #c4b07a;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.ng-info-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  color: #f2e6c8;
+  letter-spacing: 0.04em;
+}
+.ng-feature-body { margin: 0.25rem 0; font-size: 0.86rem; line-height: 1.4; color: #bdb5a5; }
+.ng-feature-block {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #4a3c24;
+  background: rgba(40, 32, 18, 0.55);
+}
+.ng-feature-block.corr {
+  border-color: #7a2a3a;
+  background: rgba(60, 16, 28, 0.45);
+}
+.ng-feature-label { color: #e0c07a; margin-bottom: 0.3rem; font-size: 0.84rem; }
+.ng-example-list { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; color: #cfc6b4; }
+.ng-example-list li { margin: 0.15rem 0; }
+.ng-note { margin: 0.4rem 0 0; font-size: 0.8rem; color: #c4b07a; }
+.ng-stat-grid { display: grid; gap: 0.28rem; margin: 0.4rem 0; }
+.ng-stat-row {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr auto;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.82rem;
+  padding: 0.22rem 0.35rem;
+  background: rgba(255,255,255,0.03);
+  border-left: 2px solid #4a5560;
+}
+.ng-stat-row.warn { border-left-color: #c0392b; }
+.ng-stat-row.pos { border-left-color: #27ae60; }
+.ng-stat-val { font-weight: 700; color: #f0e6d0; }
+.ng-stat-row.warn .ng-stat-val { color: #f0a090; }
+.ng-stat-row.pos .ng-stat-val { color: #8fd9a8; }
+.ng-ico { width: 1.1rem; text-align: center; }
+.ng-systems { margin-top: 0.45rem; font-size: 0.8rem; }
+.ng-systems-title { color: #c4b07a; margin: 0.4rem 0 0.2rem; letter-spacing: 0.05em; font-size: 0.75rem; text-transform: uppercase; }
+.ng-systems ul { margin: 0; padding-left: 0; list-style: none; }
+.ng-systems li { margin: 0.18rem 0; color: #cfc6b4; }
+.ng-systems li.pos { color: #8fd9a8; }
+.ng-systems li.locked { color: #8a8478; }
+.ng-systems em { color: #a89a78; font-style: normal; display: block; font-size: 0.75rem; }
+.ng-info-actions { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.35rem; }
+.ng-keep-reset { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin-top: 0.5rem; }
+.ng-keep-reset.compact { grid-template-columns: 1fr; font-size: 0.78rem; }
+.ng-keep, .ng-reset {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #3a3428;
+  background: rgba(20, 18, 14, 0.65);
+  font-size: 0.8rem;
+}
+.ng-keep { border-color: #2e5a3a; }
+.ng-reset { border-color: #5a2e2e; }
+.ng-keep h3, .ng-reset h3 { margin: 0 0 0.3rem; font-size: 0.78rem; letter-spacing: 0.04em; }
+.ng-keep ul, .ng-reset ul { margin: 0; padding-left: 1rem; }
+.ng-roadmap { list-style: none; margin: 0; padding: 0; }
+.ng-roadmap li {
+  display: grid;
+  grid-template-columns: 1.4rem 4.2rem 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.1rem 0.4rem;
+  padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid #2e2a22;
+  font-size: 0.8rem;
+}
+.ng-roadmap li.locked { opacity: 0.72; }
+.ng-road-mark { grid-row: 1 / 3; align-self: center; }
+.ng-road-loop { color: #c4b07a; font-weight: 700; }
+.ng-road-name { color: #f0e6d0; }
+.ng-road-blurb { grid-column: 2 / 4; color: #9a9284; font-size: 0.74rem; }
+.ng-tip-overlay {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 45;
+  max-width: min(280px, 88%);
+}
+.ng-tip-overlay.hidden { display: none; }
+.ng-tip-content {
+  padding: 0.7rem 0.8rem;
+  border: 2px solid #5a4a2e;
+  background: rgba(16, 14, 12, 0.94);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+}
+.ng-tip-kicker { font-size: 0.68rem; letter-spacing: 0.1em; color: #c4b07a; }
+.ng-tip-title { margin: 0.15rem 0 0.35rem; font-size: 0.95rem; color: #f2e6c8; }
+.ng-tip-body { margin: 0 0 0.55rem; font-size: 0.8rem; line-height: 1.35; color: #cfc6b4; }
+.ng-enc-flash {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  text-align: center;
+  padding: 0.55rem 0.9rem;
+  border: 2px solid #5a4a2e;
+  background: rgba(12, 10, 8, 0.88);
+  pointer-events: none;
+  min-width: 180px;
+}
+.ng-enc-flash.hidden { display: none; }
+.ng-enc-flash-kicker { font-size: 0.68rem; letter-spacing: 0.12em; color: #c4b07a; }
+.ng-enc-flash-title { font-size: 1rem; color: #f2e6c8; font-weight: 700; }
+.ng-enc-flash-body { font-size: 0.78rem; color: #bdb5a5; }
+.victory-keep-reset { margin: 0.4rem 0; }
+.gameover-loop-info {
+  white-space: pre-line;
+  font-size: 0.82rem;
+  color: #c4b07a;
+  margin: 0.35rem 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #4a3c24;
+  background: rgba(30, 24, 14, 0.5);
+}
+.gameover-loop-info.hidden { display: none; }
+.elite-mod-label {
+  font-size: 9px;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  fill: #f2e6c8;
+}

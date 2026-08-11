@@ -33,6 +33,16 @@ function ngCreateEmptyLoopMeta() {
     loopStats: {},
     badges: [],
     selectPrepared: true,
+    discovery: (typeof ngInfoCreateDiscovery === "function") ? ngInfoCreateDiscovery() : {
+      seenNgPlusIntro: false,
+      seenLoopIntroductions: {},
+      discoveredEliteModifiers: {},
+      discoveredEncounterModifiers: {},
+      discoveredCorruptions: {},
+      discoveredBossEvolutions: {},
+      seenBossEvolutionInfo: false,
+      seenEndgameInfo: false
+    },
     highscores: {
       highestLoop: 0,
       fastestLoopMs: {},
@@ -61,6 +71,9 @@ function ngMigrateLoopMeta(raw, loopsCleared) {
   base.badges = Array.isArray(src.badges) ? src.badges.slice() : [];
   base.selectPrepared = true;
   base.highscores = Object.assign({}, base.highscores, src.highscores || {});
+  base.discovery = (typeof ngInfoMigrateDiscovery === "function")
+    ? ngInfoMigrateDiscovery(src.discovery)
+    : Object.assign({}, base.discovery, src.discovery || {});
   return base;
 }
 
@@ -87,7 +100,9 @@ function ngMigrateRunLoopState(raw) {
 function ngDisplayLabel(loopIndex) {
   const L = Math.max(0, loopIndex | 0);
   const ui = ngCfg().uiLabel || "LOOP";
-  return ui + " " + (L + 1);
+  // First Clear = ERSTER DURCHLAUF; NG+1 = LOOP 1 (loopIndex 1)
+  if (L <= 0) return "ERSTER DURCHLAUF";
+  return ui + " " + L;
 }
 
 function ngUnlockFeaturesForLoop(meta, loopIndex) {

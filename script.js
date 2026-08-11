@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-183";
+const BUILD_ID = "sidescroller-v3-184";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -918,7 +918,10 @@ let audioPrefs = {
   musicEnabled: true, sfxEnabled: true,
   musicVolume: 0.32, sfxVolume: 0.55,
   screenShake: true, particles: true,
-  seenTutorial: false
+  seenTutorial: false,
+  explainMechanics: true,
+  shortLoopIntro: true,
+  autoCorruptionIntro: false
 };
 let saveToastTimer = 0;
 
@@ -2887,7 +2890,7 @@ function bindEvents() {
     applySettingsFromUI();
     showMenuPanel("home");
   });
-  ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles"].forEach((id) => {
+  ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles","setting-explain-mechanics","setting-short-loop-intro","setting-auto-corruption"].forEach((id) => {
     const el = $(id);
     if (el) el.addEventListener("change", () => applySettingsFromUI());
   });
@@ -2907,6 +2910,7 @@ function bindEvents() {
     hidePauseMenu();
     showUpgrades();
   });
+  bind("btn-pause-loopinfo", () => { openLoopCodex(); });
   bind("btn-pause-menu", () => {
     hidePauseMenu();
     returnToMainMenu();
@@ -2917,6 +2921,17 @@ function bindEvents() {
   bind("btn-gameover-upgrade", goToUpgrades);
   bind("btn-victory-restart", restartFromVictory);
   bind("btn-victory-loop", continueLoopFromVictory);
+  bind("btn-victory-roadmap", () => openLoopRoadmap());
+  bind("btn-menu-roadmap", () => { unlockAudio(); openLoopRoadmap(); });
+  bind("btn-ngplus-intro-next", () => {
+    hideNgPlusIntro();
+    showVictoryPanelContent();
+  });
+  bind("btn-loop-info-start", () => finishLoopInfoAndStart());
+  bind("btn-corruption-enter", () => dismissCorruptionIntro());
+  bind("btn-ng-tip-ok", () => hideNgTip());
+  bind("btn-loop-codex-close", () => hideLoopCodex());
+  bind("btn-loop-roadmap-close", () => hideLoopRoadmap());
   bind("btn-open-upgrades", toggleUpgrades);
   bind("btn-close-upgrades", hideUpgrades);
   bind("btn-reload-leaderboard", () => {});
@@ -3495,6 +3510,9 @@ function syncSettingsUI() {
   setCheck("setting-sfx-enabled", audioPrefs.sfxEnabled !== false);
   setCheck("setting-screen-shake", audioPrefs.screenShake !== false);
   setCheck("setting-particles", audioPrefs.particles !== false);
+  setCheck("setting-explain-mechanics", audioPrefs.explainMechanics !== false);
+  setCheck("setting-short-loop-intro", audioPrefs.shortLoopIntro !== false);
+  setCheck("setting-auto-corruption", !!audioPrefs.autoCorruptionIntro);
   updateAudioToggleUI();
 }
 
@@ -3515,6 +3533,9 @@ function applySettingsFromUI() {
   audioPrefs.sfxEnabled = chk("setting-sfx-enabled", true);
   audioPrefs.screenShake = chk("setting-screen-shake", true);
   audioPrefs.particles = chk("setting-particles", true);
+  audioPrefs.explainMechanics = chk("setting-explain-mechanics", true);
+  audioPrefs.shortLoopIntro = chk("setting-short-loop-intro", true);
+  audioPrefs.autoCorruptionIntro = chk("setting-auto-corruption", false);
   saveAudioPrefs();
   updateAudioToggleUI();
   if (musicTrack) musicTrack.volume = audioPrefs.musicVolume;
@@ -4673,11 +4694,17 @@ function startRun() {
   ensureRunLoopState();
   if ((game.loopIndex | 0) > 0) {
     rollCorruptionForCurrentWorld(true);
+    if ($("corruption-overlay") && !$("corruption-overlay").classList.contains("hidden")) {
+      game._spawnAfterCorruption = true;
+    } else {
+      safeSpawnWave();
+    }
+  } else {
+    safeSpawnWave();
   }
-  safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Boss besiegen → Run-Upgrade → nächste Welt!");
+  addLog("Run gestartet – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Durchlauf " + ((game.loopIndex | 0) + 1))) + ". Boss besiegen → Run-Upgrade → nächste Welt!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
@@ -4828,6 +4855,11 @@ function togglePause() {
   if (game.eventPaused) return;
   const vic = $("victory-panel");
   if (vic && !vic.classList.contains("hidden")) return;
+  if (game._corruptionBlocking) return;
+  const loopInfo = $("loop-info-overlay");
+  if (loopInfo && !loopInfo.classList.contains("hidden")) return;
+  const ngIntro = $("ngplus-intro-overlay");
+  if (ngIntro && !ngIntro.classList.contains("hidden")) return;
   game.isPaused = !game.isPaused;
   $("btn-pause").textContent = game.isPaused ? "Weiter (P)" : "Pause (P)";
   if (game.isPaused) {
@@ -5192,6 +5224,9 @@ function advanceToNextWorld() {
     game.runLoopState.corruptionsSurvived = (game.runLoopState.corruptionsSurvived | 0) + 1;
   }
   rollCorruptionForCurrentWorld(true);
+  if ($("corruption-overlay") && !$("corruption-overlay").classList.contains("hidden")) {
+    game._spawnAfterCorruption = true;
+  }
 }
 
 /** Glückwunsch – Welten geschafft. Nächster Durchlauf oder Neu starten. */
@@ -5210,7 +5245,6 @@ function completeDungeonLoop() {
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
   const loopIdx = game.loopIndex | 0;
-  const clearedLoop = loopIdx + 1;
   ensureLoopMeta();
   let bonusGold = 0;
   if (typeof ngPayLoopClearBonus === "function") {
@@ -5220,14 +5254,55 @@ function completeDungeonLoop() {
     });
     bonusGold = pay.paid || bonusGold;
   }
+  game._victoryBonusGold = bonusGold;
   if (game.meta) {
-    game.meta.loopsCleared = Math.max(game.meta.loopsCleared || 0, clearedLoop);
+    game.meta.loopsCleared = Math.max(game.meta.loopsCleared || 0, loopIdx + 1);
     game.meta.loopMeta = game.loopMeta;
     saveMeta();
   }
   if (game.playerName) saveLocalPlayer({ quiet: true });
   clearActiveRun();
 
+  $("btn-start-run").disabled = false;
+  $("btn-pause").disabled = true;
+  updateTotalGold();
+  renderUpgradeButtons();
+  updateRunButtons();
+  tryMenuMusic();
+
+  const disc = typeof ngInfoEnsure === "function" ? ngInfoEnsure(game.loopMeta) : null;
+  if (loopIdx <= 0 && disc && !disc.seenNgPlusIntro) {
+    showNgPlusIntro();
+    return;
+  }
+  showVictoryPanelContent();
+}
+
+function showNgPlusIntro() {
+  const overlay = $("ngplus-intro-overlay");
+  const body = $("ngplus-intro-body");
+  if (!overlay || typeof ngInfoBuildNgPlusIntroHtml !== "function") {
+    showVictoryPanelContent();
+    return;
+  }
+  if (body) body.innerHTML = ngInfoBuildNgPlusIntroHtml();
+  overlay.classList.remove("hidden");
+}
+
+function hideNgPlusIntro() {
+  $("ngplus-intro-overlay")?.classList.add("hidden");
+  ensureLoopMeta();
+  if (typeof ngInfoEnsure === "function") {
+    const d = ngInfoEnsure(game.loopMeta);
+    d.seenNgPlusIntro = true;
+    if (game.meta) game.meta.loopMeta = game.loopMeta;
+    saveMeta();
+  }
+}
+
+function showVictoryPanelContent() {
+  const loopIdx = game.loopIndex | 0;
+  const bonusGold = game._victoryBonusGold | 0;
   const preview = typeof ngNextLoopPreview === "function" ? ngNextLoopPreview(loopIdx) : null;
   const rs = game.runLoopState || {};
   const panel = $("victory-panel");
@@ -5236,12 +5311,12 @@ function completeDungeonLoop() {
   if (lead) {
     lead.textContent = loopIdx <= 0
       ? "LOOP CLEARED – First Clear!"
-      : ("LOOP CLEARED – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + clearedLoop)));
+      : ("LOOP CLEARED – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + loopIdx)));
   }
   const summary = $("victory-summary");
   if (summary) {
     const lines = [
-      "Zeit · Kills " + game.monstersDefeated + " · Gold " + earnedGold + (bonusGold ? (" · Bonus +" + bonusGold) : ""),
+      "Kills " + game.monstersDefeated + " · Gold " + (game.lastRunGold | 0) + (bonusGold ? (" · Bonus +" + bonusGold) : ""),
       "Elites mit Mods: " + (rs.elitesWithMods | 0) + " · Corruptions Survived: " + (rs.corruptionsSurvived | 0) +
         " · Deaths: " + (rs.deathsThisLoop | 0),
       preview
@@ -5250,20 +5325,18 @@ function completeDungeonLoop() {
     ];
     summary.textContent = lines.join("\n");
   }
+  const keep = $("victory-keep-reset");
+  if (keep && typeof ngInfoBuildVictoryKeepHtml === "function") {
+    keep.innerHTML = ngInfoBuildVictoryKeepHtml();
+  }
   const nextEl = $("victory-next-preview");
   if (nextEl && preview) {
     nextEl.classList.remove("hidden");
     nextEl.textContent = preview.label + ": " + (preview.feature || "Mehr Druck.");
   }
-  addLog("Glückwunsch – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("Loop " + clearedLoop)) + " geschafft!" + (bonusGold ? (" +" + bonusGold + " Bonus-Gold") : ""), "heal");
-  showAnnouncement("victory", "LOOP CLEARED", typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + clearedLoop), 3.2);
+  addLog("Glückwunsch – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("Loop " + loopIdx)) + " geschafft!" + (bonusGold ? (" +" + bonusGold + " Bonus-Gold") : ""), "heal");
+  showAnnouncement("victory", "LOOP CLEARED", typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + loopIdx), 3.2);
   emitCombatEvent("world_change");
-  $("btn-start-run").disabled = false;
-  $("btn-pause").disabled = true;
-  updateTotalGold();
-  renderUpgradeButtons();
-  updateRunButtons();
-  tryMenuMusic();
 }
 
 function hideVictoryPanel() {
@@ -5295,13 +5368,12 @@ function wipeProgressKeepIdentity() {
   if (game.playerName) saveLocalPlayer({ quiet: true });
 }
 
-/** Nächster Loop – Upgrades/Gold bleiben, Gegner härter. */
+/** Nächster Loop – zuerst Info-Screen, dann Start. */
 function continueLoopFromVictory() {
   hideVictoryPanel();
   clearActiveRun();
   game.loopCompleted = false;
   game.isDead = false;
-  game.isPaused = false;
   game.loopIndex = (game.loopIndex | 0) + 1;
   ensureLoopMeta();
   game.loopMeta.highestLoopReached = Math.max(game.loopMeta.highestLoopReached | 0, game.loopIndex | 0);
@@ -5310,7 +5382,6 @@ function continueLoopFromVictory() {
   }
   stopLoop();
   resetRun();
-  // Temporäre Systeme resetten
   game.runUpgradeState = typeof dlCreateEmptyRunUpgradeState === "function"
     ? dlCreateEmptyRunUpgradeState() : null;
   game.eventState = typeof dlCreateEmptyEventState === "function"
@@ -5318,16 +5389,46 @@ function continueLoopFromVictory() {
   game.runLoopState = typeof ngCreateRunLoopState === "function"
     ? ngCreateRunLoopState() : { activeCorruption: [], activeEncounterModifier: null };
   game.clearedBossWorlds = [];
+  game._pendingLoopStart = true;
+  game.isPaused = true;
+  $("gameover-panel")?.classList.add("hidden");
+  $("game-frame")?.classList.remove("hidden");
+  showLoopInfoScreen(game.loopIndex | 0);
+  saveMeta();
+}
+
+function showLoopInfoScreen(loopIndex) {
+  const overlay = $("loop-info-overlay");
+  const body = $("loop-info-body");
+  const btn = $("btn-loop-info-start");
+  ensureLoopMeta();
+  const seen = typeof ngInfoHasSeenLoop === "function" && ngInfoHasSeenLoop(game.loopMeta, loopIndex);
+  const compact = !!(seen && audioPrefs.shortLoopIntro !== false);
+  if (!overlay || typeof ngInfoBuildLoopIntroHtml !== "function") {
+    finishLoopInfoAndStart();
+    return;
+  }
+  if (body) body.innerHTML = ngInfoBuildLoopIntroHtml(loopIndex, { compact });
+  if (btn) btn.textContent = compact ? "START" : "LOOP STARTEN";
+  overlay.classList.remove("hidden");
+  game.isPaused = true;
+}
+
+function finishLoopInfoAndStart() {
+  $("loop-info-overlay")?.classList.add("hidden");
+  ensureLoopMeta();
+  if (typeof ngInfoMarkLoopSeen === "function") {
+    ngInfoMarkLoopSeen(game.loopMeta, game.loopIndex | 0);
+  }
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
   try { createHero(); } catch (err) {
     console.error(err);
     addLog("Loop-Start fehlgeschlagen – Strg+F5.");
     return;
   }
-  // Corruption für Welt 1
-  rollCorruptionForCurrentWorld(true);
+  game._pendingLoopStart = false;
+  game.isPaused = false;
   game.isRunning = true;
-  $("gameover-panel")?.classList.add("hidden");
-  $("game-frame")?.classList.remove("hidden");
   $("btn-start-run").disabled = true;
   $("btn-pause").disabled = false;
   $("btn-restart").disabled = false;
@@ -5336,11 +5437,16 @@ function continueLoopFromVictory() {
   updateTotalGold();
   renderUpgradeButtons();
   renderAbilityPanel();
-  showLoopStartOverlay(game.loopIndex | 0);
-  safeSpawnWave();
+  rollCorruptionForCurrentWorld(true);
+  if (!$("corruption-overlay") || $("corruption-overlay").classList.contains("hidden")) {
+    safeSpawnWave();
+    beginRunLoop();
+  } else {
+    game._spawnAfterCorruption = true;
+  }
   game.combatReady = true;
   playWorldMusic(getWorld());
-  const label = typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("LOOP " + ((game.loopIndex | 0) + 1));
+  const label = typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("LOOP " + (game.loopIndex | 0));
   addLog(label + " gestartet – Meta bleibt, Run-Power neu!", "boss");
   updateClassHint();
   updateRunButtons();
@@ -5348,7 +5454,6 @@ function continueLoopFromVictory() {
   markRunSaveDirty();
   saveActiveRun(true);
   saveMeta();
-  beginRunLoop();
   if (canvas) canvas.focus();
 }
 
@@ -5363,45 +5468,180 @@ function rollCorruptionForCurrentWorld(showOverlay) {
   if (list && list.length && showOverlay) showCorruptionOverlay(list);
 }
 
-function showLoopStartOverlay(loopIndex) {
-  const overlay = $("loop-start-overlay");
-  const title = $("loop-start-title");
-  const body = $("loop-start-body");
-  if (!overlay) {
-    showAnnouncement("world", typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIndex) : ("LOOP " + (loopIndex + 1)),
-      typeof dlLoopFeatureBlurb === "function" ? dlLoopFeatureBlurb(loopIndex) : "", 2.8);
-    return;
-  }
-  if (title) title.textContent = typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIndex) : ("LOOP " + (loopIndex + 1));
-  if (body) body.textContent = typeof dlLoopFeatureBlurb === "function" ? dlLoopFeatureBlurb(loopIndex) : "Härtere Gegner.";
-  overlay.classList.remove("hidden");
-  clearTimeout(overlay._t);
-  overlay._t = setTimeout(() => overlay.classList.add("hidden"), 2800);
-  overlay.onclick = () => overlay.classList.add("hidden");
-}
-
 function showCorruptionOverlay(list) {
   const overlay = $("corruption-overlay");
   const title = $("corruption-title");
   const body = $("corruption-body");
   if (!list || !list.length) return;
+  ensureLoopMeta();
   const first = list[0];
-  const eff = first.effects || {};
-  const name = eff.title || String(first.id || "KORRUPTION").toUpperCase();
-  const desc = eff.desc || "Die Welt ist korrumpiert.";
-  const extra = list.length > 1 ? (" + " + ((list[1].effects && list[1].effects.title) || list[1].id)) : "";
+  const info = (typeof NG_CORRUPTION_INFO !== "undefined" && NG_CORRUPTION_INFO[first.id]) || null;
+  const name = (info && info.name) || (first.effects && first.effects.title) || String(first.id || "KORRUPTION").toUpperCase();
+  const detail = (info && info.detail) || (first.effects && first.effects.desc) || "Die Welt ist korrumpiert.";
+  let extra = "";
+  if (list.length > 1) {
+    const s = list[1];
+    const i2 = (typeof NG_CORRUPTION_INFO !== "undefined" && NG_CORRUPTION_INFO[s.id]) || null;
+    extra = "\n+ " + ((i2 && i2.name) || s.id);
+  }
+  const known = typeof ngInfoIsCorruptionKnown === "function" && ngInfoIsCorruptionKnown(game.loopMeta, first.id);
+  // Discover now (first sight) but tip may still show
+  list.forEach((c) => {
+    if (typeof ngInfoDiscoverCorruption === "function") ngInfoDiscoverCorruption(game.loopMeta, c.id);
+  });
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+
   if (!overlay) {
-    showAnnouncement("world", "KORRUPTION", name + extra, 2.8);
-    addLog("Korruption: " + name + " – " + desc, "boss");
+    showAnnouncement("world", "KORRUPTION", name, 2.8);
+    addLog("Korruption: " + name + " – " + detail, "boss");
     return;
   }
-  if (title) title.textContent = "KORRUPTION";
-  if (body) body.textContent = name + extra + "\n" + desc;
+  if (title) title.textContent = name + (list.length > 1 ? " +" : "");
+  if (body) body.textContent = detail + extra;
   overlay.classList.remove("hidden");
-  clearTimeout(overlay._t);
-  overlay._t = setTimeout(() => overlay.classList.add("hidden"), 3000);
-  overlay.onclick = () => overlay.classList.add("hidden");
+  game.isPaused = true;
+  game._corruptionBlocking = true;
   addLog("Korruption: " + name, "boss");
+
+  if (known && audioPrefs.autoCorruptionIntro) {
+    clearTimeout(overlay._t);
+    overlay._t = setTimeout(() => dismissCorruptionIntro(), 900);
+  }
+}
+
+function dismissCorruptionIntro() {
+  const overlay = $("corruption-overlay");
+  if (overlay) {
+    clearTimeout(overlay._t);
+    overlay.classList.add("hidden");
+  }
+  game._corruptionBlocking = false;
+  if (!game._pendingLoopStart) game.isPaused = false;
+  if (game._spawnAfterCorruption) {
+    game._spawnAfterCorruption = false;
+    safeSpawnWave();
+    beginRunLoop();
+  }
+  saveMeta();
+}
+
+function showEncounterFlash(mod) {
+  if (!mod) return;
+  const flash = $("ng-enc-flash");
+  const title = $("ng-enc-flash-title");
+  const body = $("ng-enc-flash-body");
+  const info = (typeof NG_ENCOUNTER_INFO !== "undefined" && NG_ENCOUNTER_INFO[mod.id]) || null;
+  const name = (info && info.name) || String(mod.id || "").toUpperCase();
+  const short = (info && info.short) || "Diese Welle ist modifiziert.";
+  if (!flash) {
+    showAnnouncement("world", "MODIFIZIERTE WELLE", name, 2.0);
+    return;
+  }
+  if (title) title.textContent = name;
+  if (body) body.textContent = short;
+  flash.classList.remove("hidden");
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => flash.classList.add("hidden"), 2000);
+}
+
+function queueNgTip(kicker, title, body) {
+  if (audioPrefs.explainMechanics === false) return;
+  if (!game._ngTipQueue) game._ngTipQueue = [];
+  game._ngTipQueue.push({ kicker, title, body });
+  if (!game._ngTipShowing) showNextNgTip();
+}
+
+function showNextNgTip() {
+  const q = game._ngTipQueue || [];
+  if (!q.length) {
+    game._ngTipShowing = false;
+    return;
+  }
+  game._ngTipShowing = true;
+  const tip = q.shift();
+  const overlay = $("ng-tip-overlay");
+  if (!overlay) { game._ngTipShowing = false; return; }
+  const k = $("ng-tip-kicker");
+  const t = $("ng-tip-title");
+  const b = $("ng-tip-body");
+  if (k) k.textContent = tip.kicker || "NEUE MECHANIK";
+  if (t) t.textContent = tip.title || "";
+  if (b) b.textContent = tip.body || "";
+  overlay.classList.remove("hidden");
+}
+
+function hideNgTip() {
+  $("ng-tip-overlay")?.classList.add("hidden");
+  game._ngTipShowing = false;
+  showNextNgTip();
+  saveMeta();
+}
+
+function openLoopCodex() {
+  ensureLoopMeta();
+  const overlay = $("loop-codex-overlay");
+  const body = $("loop-codex-body");
+  if (!overlay || typeof ngInfoBuildCodexHtml !== "function") return;
+  if (body) body.innerHTML = ngInfoBuildCodexHtml(game.loopMeta, game.loopIndex | 0, game.runLoopState);
+  overlay.classList.remove("hidden");
+}
+
+function hideLoopCodex() {
+  $("loop-codex-overlay")?.classList.add("hidden");
+}
+
+function openLoopRoadmap() {
+  ensureLoopMeta();
+  const overlay = $("loop-roadmap-overlay");
+  const body = $("loop-roadmap-body");
+  if (!overlay || typeof ngInfoBuildRoadmapHtml !== "function") return;
+  if (body) body.innerHTML = ngInfoBuildRoadmapHtml(game.loopMeta);
+  overlay.classList.remove("hidden");
+}
+
+function hideLoopRoadmap() {
+  $("loop-roadmap-overlay")?.classList.add("hidden");
+}
+
+function maybeDiscoverEliteMods(enemy) {
+  if (!enemy || !enemy.eliteMods || !enemy.eliteMods.length) return;
+  ensureLoopMeta();
+  if (audioPrefs.explainMechanics === false) return;
+  enemy.eliteMods.forEach((id) => {
+    if (typeof ngInfoDiscoverElite !== "function") return;
+    const first = ngInfoDiscoverElite(game.loopMeta, id);
+    if (!first) return;
+    const info = (typeof NG_ELITE_INFO !== "undefined" && NG_ELITE_INFO[id]) || null;
+    queueNgTip(
+      "NEUER ELITE-MODIFIKATOR",
+      (info && info.name) || String(id).toUpperCase(),
+      (info && info.detail) || (info && info.short) || "Neuer Elite-Modifikator."
+    );
+  });
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+}
+
+function maybeDiscoverEncounterMod(mod) {
+  if (!mod || !mod.id) return;
+  ensureLoopMeta();
+  showEncounterFlash(mod);
+  if (typeof ngInfoDiscoverEncounter === "function") {
+    const first = ngInfoDiscoverEncounter(game.loopMeta, mod.id);
+    if (first && audioPrefs.explainMechanics !== false) {
+      const info = (typeof NG_ENCOUNTER_INFO !== "undefined" && NG_ENCOUNTER_INFO[mod.id]) || null;
+      queueNgTip(
+        "NEUER ENCOUNTER-MODIFIKATOR",
+        (info && info.name) || String(mod.id).toUpperCase(),
+        (info && info.detail) || (info && info.short) || "Modifizierte Welle."
+      );
+    }
+  }
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+}
+
+/** Legacy stub – ersetzt durch Loop-Info-Screen */
+function showLoopStartOverlay(loopIndex) {
+  showLoopInfoScreen(loopIndex);
 }
 
 /** Neu starten nach Sieg: kompletter Fortschritts-Reset, dann Wald Lv.1. */
@@ -5492,6 +5732,7 @@ function ensureLoopMeta() {
       : {};
   }
   game.loopMeta = game.meta.loopMeta;
+  if (typeof ngInfoEnsure === "function") ngInfoEnsure(game.loopMeta);
   return game.loopMeta;
 }
 
@@ -5673,6 +5914,7 @@ function spawnWave() {
       budget *= (1 + rolled.effects.budget);
     }
     if (rolled) {
+      maybeDiscoverEncounterMod(rolled);
       addLog("Welle mutiert: " + String(rolled.id).toUpperCase(), "boss");
     }
   } else {
@@ -5916,6 +6158,7 @@ function spawnEnemy(isBoss, index, roleTag) {
       const mods = ngPickEliteModifiers(n, role);
       ngApplyEliteModifiers(enemy, mods, game.loopIndex | 0);
       if (game.runLoopState) game.runLoopState.elitesWithMods = (game.runLoopState.elitesWithMods | 0) + 1;
+      maybeDiscoverEliteMods(enemy);
     }
   }
 
@@ -6603,6 +6846,22 @@ function updateFrame(dt) {
     /** Boss-Spezialangriff in Intervallen */
     if (e.isBoss) {
       if (typeof updateBossNgPlus === "function") updateBossNgPlus(e, h, st, dt);
+      if (e.ngPlusVariant && !e._bossEvoTipShown) {
+        e._bossEvoTipShown = true;
+        ensureLoopMeta();
+        const d = typeof ngInfoEnsure === "function" ? ngInfoEnsure(game.loopMeta) : null;
+        if (d && !d.discoveredBossEvolutions.basic) {
+          d.discoveredBossEvolutions.basic = true;
+          if (audioPrefs.explainMechanics !== false) {
+            queueNgTip(
+              "BOSS-EVOLUTION",
+              "Neues Angriffsmuster",
+              "Dieser Boss nutzt NG+-Muster. Neue Spezialangriffe erscheinen etwa alle 12–18 Sekunden."
+            );
+          }
+          if (game.meta) game.meta.loopMeta = game.loopMeta;
+        }
+      }
       e.bossSpecialTimer = (e.bossSpecialTimer || 0) + dt;
       const specialIv = e.bossEnraged ? 4.2 : (e.bossPhase >= 3 ? 4.6 : 5.5);
       if (e.bossSpecialTimer >= specialIv) {
@@ -7058,11 +7317,35 @@ function showGameOver() {
   const prevProgress = deathData?.prevProgress ?? 0;
 
   $("gameover-panel").classList.remove("hidden");
+  const titleEl = $("gameover-title");
+  if (titleEl) {
+    titleEl.textContent = (game.loopIndex | 0) > 0
+      ? ((typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("LOOP " + (game.loopIndex | 0))) + " – RUN BEENDET")
+      : "SPIEL VORBEI";
+  }
   const summaryEl = $("gameover-summary");
   if (summaryEl) {
     summaryEl.textContent = (typeof buildGameOverRichHtml === "function" && rs)
       ? buildGameOverRichHtml(rs, rec || {}, prevProgress, earnedGold)
       : (world.name + " · Level " + game.dungeonLevel + "\n" + earnedGold + " Gold · " + game.monstersDefeated + " Kills");
+  }
+
+  const loopInfoEl = $("gameover-loop-info");
+  if (loopInfoEl) {
+    if ((game.loopIndex | 0) > 0) {
+      loopInfoEl.classList.remove("hidden");
+      loopInfoEl.textContent =
+        "Erreichte Welt: " + (world.name || "?") + "\n" +
+        "Gold gesichert: " + earnedGold + "\n" +
+        "Run-Upgrades verloren · Event-Effekte verloren\n" +
+        "Loop-Fortschritt dieser Run zurückgesetzt.\n\n" +
+        "Dein Loop bleibt freigeschaltet.\n" +
+        "Neuer Versuch startet wieder in Welt 1 von " +
+        (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Loop " + (game.loopIndex | 0))) + ".";
+    } else {
+      loopInfoEl.classList.add("hidden");
+      loopInfoEl.textContent = "";
+    }
   }
 
   const nextEl = $("gameover-next");
@@ -7226,6 +7509,18 @@ function render() {
     ctx.fillStyle = "#111"; ctx.fillRect(barX, barY, barW, 4);
     ctx.fillStyle = e.isBoss ? "#f1c40f" : "#e74c3c";
     ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), 4);
+    if (e.isElite && e.eliteMods && e.eliteMods.length) {
+      const label = typeof ngInfoEliteLabel === "function"
+        ? ngInfoEliteLabel(e.eliteMods)
+        : ("ELITE – " + e.eliteMods.join("/").toUpperCase());
+      ctx.font = "bold 9px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillRect(vb.x + vb.w / 2 - ctx.measureText(label).width / 2 - 3, barY - 12, ctx.measureText(label).width + 6, 11);
+      ctx.fillStyle = "#f2e6c8";
+      ctx.fillText(label, vb.x + vb.w / 2, barY - 3);
+      ctx.textAlign = "left";
+    }
     if (e.attackWindup > 0.4) {
       ctx.fillStyle = "rgba(231,76,60," + (e.attackWindup * 0.7) + ")";
       ctx.font = "bold 9px Courier New";
