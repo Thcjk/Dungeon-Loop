@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-153";
+const BUILD_ID = "sidescroller-v3-154";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -514,6 +514,56 @@ const CLASSES = {
     special: "Feuerball", specialCd: 6, manaCost: 28,
     desc: "Zauber, mittlere Reichweite, braucht Mana"
   }
+};
+
+/** Kurz-Anleitung vor dem ersten Run – Inhalt je Klasse */
+const CLASS_BRIEFINGS = {
+  warrior: {
+    title: "Krieger – Aufbruch",
+    lead: "Schild voran. Du hältst die Linie und schlägst zu, wenn’s eng wird.",
+    role: "Nahkämpfer mit viel Leben. Du musst nah ran – dafür überstehst du mehr Treffer.",
+    tips: [
+      "Maus auf Gegner = Schwertschlag in Reichweite. Bleib nah, aber nicht mittendrin eingekeilt.",
+      "Spezial <kbd>W</kbd>/<kbd>S</kbd>: Schildschlag und weitere Nahkampf-Fähigkeiten gegen Gruppen.",
+      "Upgrade zuerst Leben & Rüstung, dann Angriff – du bist der Tank der drei Helden."
+    ]
+  },
+  ranger: {
+    title: "Waldläufer – Aufbruch",
+    lead: "Abstand halten, Krits suchen, nicht im Nahkampf stecken bleiben.",
+    role: "Fernkampf mit Bogen. Hohe Reichweite und Krit-Chance – Nahkampf schwächt dich.",
+    tips: [
+      "Maus auf Gegner = schießen. Bleib auf Distanz; zu nah kostet spürbar Schaden.",
+      "Spezial <kbd>W</kbd>/<kbd>S</kbd>: Präzisionsschuss und Pfeil-Burst für starke Momente.",
+      "Upgrade Krit & Angriff früh. Bewege dich seitlich, während du zielst."
+    ]
+  },
+  mage: {
+    title: "Magier – Aufbruch",
+    lead: "Mana im Blick behalten. Zauber treffen hart – ohne Mana bist du schwach.",
+    role: "Magieschaden auf Distanz. Wenig Leben, dafür starke Zauber und Spezialfähigkeiten.",
+    tips: [
+      "Maus auf Gegner = Feuerzauber. Jeder Schuss kostet Mana – nicht dauerfeuern ohne Plan.",
+      "Spezial <kbd>W</kbd>/<kbd>S</kbd>: Feuerball und weitere Zauber (brauchen oft Mana).",
+      "Upgrade Magieschaden & Mana zuerst. Weiche aus – ein Fehler kostet dich den Run."
+    ]
+  }
+};
+
+const BRIEFING_SHARED = {
+  goal: "Überlebe Wellen im Sidescroller, sammle Gold und werde stärker. Alle ~20 Level erscheint ein Welt-Boss – besiegst du die Boss-Welle, öffnet sich die nächste Welt. Stirbst du, behältst du Gold & permanente Upgrades und startest den Loop neu.",
+  controls: [
+    "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
+    "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
+    "<kbd>W</kbd>/<kbd>S</kbd> oder <kbd>↑</kbd>/<kbd>↓</kbd> – Spezialfähigkeiten",
+    "<kbd>U</kbd> – Upgrades & Fähigkeiten · <kbd>Esc</kbd>/<kbd>P</kbd> – Pause · <kbd>F</kbd> – Vollbild"
+  ],
+  watch: [
+    "Münzen springen hoch: bewege dich darunter und fange sie in der Luft für <strong>x2 Gold</strong>.",
+    "Gold aus dem Run kannst du nach dem Tod in permanente Upgrades stecken – ein Run reicht nie.",
+    "Spezial-CD-Upgrades schalten nach und nach neue Fähigkeiten frei (Meilensteine).",
+    "Weltwechsel passiert erst nach klarer Boss-Welle – nicht mitten im Kampf."
+  ]
 };
 
 const NORMAL_MONSTERS = ["Goblin","Skelett","Schleim","Bandit","Wolf","Spinne"];
@@ -2084,10 +2134,12 @@ function bindEvents() {
   bind("btn-new-slot-back", () => showMenuPanel("home"));
   bind("btn-new-back", () => showMenuPanel("new-slot"));
   bind("btn-load-back", () => showMenuPanel("home"));
-  bind("btn-start-new", () => { startNewGameFromMenu(); });
+  bind("btn-start-new", () => { openNewGameBriefing(); });
+  bind("btn-briefing-back", () => showMenuPanel("new"));
+  bind("btn-briefing-go", () => { startNewGameFromMenu(); });
   bind("btn-to-menu", () => { returnToMainMenu(); });
-  bind("btn-load-player", () => { unlockAudio(); startNewGameFromMenu(); });
-  bind("btn-new-game", () => { startNewGameFromSetup(); });
+  bind("btn-load-player", () => { unlockAudio(); openNewGameBriefing(); });
+  bind("btn-new-game", () => { openNewGameBriefing(); });
   bind("btn-start-run", continueOrStartRun);
   bind("btn-pause", togglePause);
   bind("btn-pause-resume", () => { if (game.isPaused) togglePause(); });
@@ -2568,7 +2620,7 @@ function formatSaveDate(ts) {
 }
 
 function showMenuPanel(which) {
-  const panels = ["home", "new-slot", "new", "load", "settings", "credits"];
+  const panels = ["home", "new-slot", "new", "briefing", "load", "settings", "credits"];
   panels.forEach((key) => {
     const el = $("menu-" + key);
     if (!el) return;
@@ -2591,7 +2643,51 @@ function showMenuPanel(which) {
     startHeroCardLoop();
     renderSetupAbilityHint();
   }
+  if (which === "briefing") {
+    renderClassBriefing(getSelectedClassFromUI() || game.classKey);
+  }
   if (which === "settings") syncSettingsUI();
+}
+
+function fillBriefingList(el, items) {
+  if (!el) return;
+  el.innerHTML = (items || []).map((t) => "<li>" + t + "</li>").join("");
+}
+
+function renderClassBriefing(classKey) {
+  const ck = normalizeClassKey(classKey || game.classKey || "warrior");
+  const cls = CLASSES[ck];
+  const brief = CLASS_BRIEFINGS[ck] || CLASS_BRIEFINGS.warrior;
+  const panel = $("menu-briefing");
+  if (panel) {
+    panel.classList.remove("warrior", "ranger", "mage");
+    panel.classList.add(ck);
+  }
+  const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+  const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+  setText("briefing-title", brief.title);
+  setText("briefing-lead", brief.lead);
+  setHtml("briefing-goal", BRIEFING_SHARED.goal);
+  fillBriefingList($("briefing-controls"), BRIEFING_SHARED.controls);
+  setText("briefing-class-heading", (cls?.name || "Held") + " – so spielst du");
+  setText("briefing-role", brief.role);
+  fillBriefingList($("briefing-tips"), brief.tips);
+  fillBriefingList($("briefing-watch"), BRIEFING_SHARED.watch);
+}
+
+/** Name prüfen, dann Anleitungs-Panel statt Sofort-Start */
+function openNewGameBriefing() {
+  unlockAudio();
+  const name = $("player-name").value.trim();
+  if (!name) {
+    const hint = $("load-hint");
+    if (hint) hint.textContent = "Bitte einen Namen eingeben.";
+    return;
+  }
+  const classKey = getSelectedClassFromUI();
+  game.classKey = classKey;
+  selectClass(classKey);
+  showMenuPanel("briefing");
 }
 
 function updateContinueButton() {

@@ -86,6 +86,72 @@ body {
 }
 .menu-actions--row .btn-large { flex: 1; min-width: 160px; }
 
+/* Kurz-Anleitung vor Run-Start */
+.briefing-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1.25rem;
+  margin: 0 0 1.1rem;
+}
+.briefing-block {
+  padding: 0.65rem 0.75rem 0.75rem;
+  border-left: 3px solid var(--panel-edge);
+  background: linear-gradient(90deg, rgba(40, 30, 20, 0.45), transparent 85%);
+}
+.briefing-block--class { grid-column: 1 / -1; }
+.briefing-heading {
+  color: var(--gold);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 0.35rem;
+}
+.briefing-role {
+  color: var(--text);
+  font-size: 0.88rem;
+  margin: 0 0 0.45rem;
+  line-height: 1.4;
+}
+.briefing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+.briefing-list li {
+  position: relative;
+  padding-left: 0.85rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.briefing-list li::before {
+  content: "·";
+  position: absolute;
+  left: 0.15rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+.briefing-list kbd {
+  display: inline-block;
+  padding: 0.05rem 0.28rem;
+  border: 1px solid var(--panel-edge);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-family: Georgia, serif;
+  border-radius: 2px;
+}
+#menu-briefing.warrior .briefing-block--class { border-left-color: var(--warrior); }
+#menu-briefing.ranger .briefing-block--class { border-left-color: var(--ranger); }
+#menu-briefing.mage .briefing-block--class { border-left-color: var(--mage); }
+
+@media (max-width: 720px) {
+  .briefing-body { grid-template-columns: 1fr; }
+}
+
 /* Hauptmenü-Marke rechts */
 .menu-brand {
   position: relative;
