@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-171
+   Build: sidescroller-v3-172
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY
@@ -13,7 +13,7 @@
    ============================================ */
 
 const DL_BALANCE = {
-  version: 166,
+  version: 172,
   targetFirstClearMin: 120,
   targetFirstClearRange: [90, 150],
   runsPerMeaningfulUpgrade: [1, 3],
@@ -59,33 +59,33 @@ const DL_BALANCE = {
 
   /* ---------- ENEMY BASE (feste Welt-Stats, kein Player-Scaling) ---------- */
   enemy: {
-    baseHp: 30,
-    hpPerDepth: 3.4,
-    hpPerDanger: 5.5,
-    baseAtk: 3.6,
-    atkPerDepth: 0.42,
-    atkPerDanger: 1.1,
-    depthPowHp: 1.028,
-    depthPowAtk: 1.018,
+    baseHp: 28,
+    hpPerDepth: 3.1,
+    hpPerDanger: 5.0,
+    baseAtk: 3.4,
+    atkPerDepth: 0.38,
+    atkPerDanger: 1.0,
+    depthPowHp: 1.026,
+    depthPowAtk: 1.016,
     depthPowCap: 22,
-    earlyEaseUntil: 12,
-    earlyHpEase: 0.10,
-    earlyAtkEase: 0.14,
+    earlyEaseUntil: 14,
+    earlyHpEase: 0.12,
+    earlyAtkEase: 0.16,
     difficultyMult: 1.0,
-    goldBase: 8,
-    goldPerDepth: 2.2,
-    goldPerDanger: 3.2,
-    goldDepthFactor: 0.035,
-    xpBase: 11,
-    xpPerDepth: 2.4,
-    xpPerDanger: 3.5,
-    waveCooldown: 1.9,
-    minWaveCooldown: 0.9,
-    lootChance: 0.2,
+    goldBase: 9,
+    goldPerDepth: 2.4,
+    goldPerDanger: 3.4,
+    goldDepthFactor: 0.038,
+    xpBase: 12,
+    xpPerDepth: 2.5,
+    xpPerDanger: 3.6,
+    waveCooldown: 1.85,
+    minWaveCooldown: 0.85,
+    lootChance: 0.22,
     /** TTK-Ziele (Sekunden) für Sanity – Orientierung */
-    ttkNormal: [0.6, 2.2],
-    ttkElite: [3.5, 8],
-    ttkBoss: [18, 45]
+    ttkNormal: [0.5, 2.0],
+    ttkElite: [3.0, 7.5],
+    ttkBoss: [16, 42]
   },
 
   boss: {
@@ -133,16 +133,17 @@ const DL_BALANCE = {
   /* ---------- ECONOMY ---------- */
   economy: {
     upgradeMax: 24,
-    /** Kosten: base * pow^lv, ab softLv linear */
-    costPow: 1.38,
+    costPow: 1.36,
     costSoftLv: 8,
-    costLinear: 0.28,
-    /** Ziel: spürbares Upgrade nach 1–3 Runs */
+    costLinear: 0.26,
+    /** Ziel: spürbares Upgrade nach 1–3 Runs (~350–650 Gold/Run avg) */
+    avgGoldPerRunTarget: [320, 680],
     pityGoldAfterEmptyRuns: 3,
-    pityGoldMult: 1.15,
-    maxPityMult: 1.45,
-    /** Loop-Gold */
-    loopGoldMult: 0.12
+    pityGoldMult: 1.12,
+    maxPityMult: 1.4,
+    loopGoldMult: 0.14,
+    /** Mindest-Gold pro Run (Anti-Farm: kein wertloser Tod) */
+    minRunGoldFloor: 12
   },
 
   /* ---------- LOOP / NG+ ---------- */
@@ -424,4 +425,98 @@ function dlUpgradesAsLegacy() {
     softCap: u.softCap,
     maxLv: u.maxLv
   }));
+}
+
+/** Erwartete Gold pro Kill (Orientierung für Sim) */
+function dlEstimateGoldPerKill(depth, danger, loopIndex) {
+  const E = DL_BALANCE.enemy;
+  const loop = dlLoopEnemyMult(loopIndex || 0);
+  const goldBase = E.goldBase + depth * E.goldPerDepth + danger * E.goldPerDanger;
+  return Math.floor(goldBase * loop.gold * (1 + depth * E.goldDepthFactor));
+}
+
+/** Simuliert Run-Gold bei gegebener Tiefe & Killrate */
+function dlSimulateRunGold(kills, depth, danger, loopIndex, pityMult) {
+  const perKill = dlEstimateGoldPerKill(depth, danger, loopIndex);
+  const base = kills * perKill;
+  const floor = DL_BALANCE.economy.minRunGoldFloor || 12;
+  return Math.max(floor, Math.floor(base * (pityMult || 1)));
+}
+
+/** Archetyp-Build für Simulations-Vergleich */
+const DL_BUILD_ARCHETYPES = {
+  beginner: { attack: 0, health: 2, defense: 1, gold: 1, atkspd: 0, crit: 0 },
+  average:  { attack: 3, health: 3, defense: 2, gold: 2, atkspd: 2, crit: 2, bossdmg: 1 },
+  skilled:  { attack: 5, health: 4, defense: 3, gold: 2, atkspd: 4, crit: 4, bossdmg: 2, regen: 2 },
+  tank:     { attack: 1, health: 8, defense: 6, regen: 4, lifesteal: 2 },
+  crit:     { attack: 3, health: 2, crit: 8, critdmg: 6, atkspd: 4 },
+  economy:  { attack: 1, health: 2, gold: 8, xp: 4 }
+};
+
+function dlSimulatePowerFromLevels(levelMap) {
+  const ups = {};
+  Object.keys(levelMap || {}).forEach((k) => {
+    ups["upgrade_" + k] = levelMap[k];
+  });
+  let atk = 20, hp = 120, def = 5, crit = 0.06, critDmg = 1.85;
+  DL_UPGRADES.forEach((u) => {
+    const lv = ups[u.key] || 0;
+    const eff = dlEffectiveBonus(u, lv);
+    if (u.key === "upgrade_attack") atk += eff;
+    if (u.key === "upgrade_health") hp += eff;
+    if (u.key === "upgrade_defense") def += eff;
+    if (u.key === "upgrade_crit") crit += eff;
+    if (u.key === "upgrade_critdmg") critDmg += eff;
+  });
+  return dlPlayerPowerScore({ attack: atk, maxHp: hp, defense: def, crit, critDamage: critDmg, atkSpeedMult: 1 + (ups.upgrade_atkspd ? dlEffectiveBonus(DL_UPGRADES.find(x => x.key === "upgrade_atkspd"), ups.upgrade_atkspd) : 0) });
+}
+
+/**
+ * Grobe First-Clear-Zeit-Schätzung (Minuten) – nur für Dev/Sanity.
+ * skillFactor: 1.0 = average, 0.75 = skilled, 1.35 = beginner
+ */
+function dlEstimateFirstClearMinutes(skillFactor) {
+  const sf = Math.max(0.6, skillFactor || 1);
+  let totalLevels = 0;
+  DL_BALANCE.worlds.forEach((w) => { totalLevels += w.length; });
+  const avgSecPerLevel = 42 * sf;
+  const upgradePauseMin = 18 * sf;
+  return Math.round((totalLevels * avgSecPerLevel) / 60 + upgradePauseMin);
+}
+
+/** Vollständige Sanity + Sim-Ausgabe für tools/balance-sim.js */
+function dlRunBalanceReport() {
+  const warnings = dlRunSanityChecks({ baseCrit: 0.06 });
+  const powers = {};
+  Object.keys(DL_BUILD_ARCHETYPES).forEach((name) => {
+    powers[name] = dlSimulatePowerFromLevels(DL_BUILD_ARCHETYPES[name]);
+  });
+  return {
+    version: DL_BALANCE.version,
+    targetClearMin: DL_BALANCE.targetFirstClearMin,
+    estimateMinutes: {
+      beginner: dlEstimateFirstClearMinutes(1.35),
+      average: dlEstimateFirstClearMinutes(1.0),
+      skilled: dlEstimateFirstClearMinutes(0.75)
+    },
+    powerByArchetype: powers,
+    sampleRunGold: {
+      early: dlSimulateRunGold(12, 4, 1, 0, 1),
+      mid: dlSimulateRunGold(22, 14, 2, 0, 1),
+      late: dlSimulateRunGold(28, 28, 4, 0, 1)
+    },
+    upgradeCosts: {
+      attackLv1: dlUpgradeCost(DL_UPGRADES.find(u => u.key === "upgrade_attack"), 0),
+      healthLv1: dlUpgradeCost(DL_UPGRADES.find(u => u.key === "upgrade_health"), 0),
+      lifestealLv1: dlUpgradeCost(DL_UPGRADES.find(u => u.key === "upgrade_lifesteal"), 0)
+    },
+    warnings
+  };
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    DL_BALANCE, DL_UPGRADES, dlRunBalanceReport, dlRunSanityChecks,
+    dlPlayerPowerScore, dlEffectiveBonus, dlUpgradeCost, dlEstimateFirstClearMinutes
+  };
 }

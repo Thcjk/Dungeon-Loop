@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-171";
+const BUILD_ID = "sidescroller-v3-172";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -866,6 +866,8 @@ const game = {
   lastEncounterIntensity: 1,
   /** Pity: Runs ohne Upgrade-Kauf */
   emptyUpgradeRuns: 0,
+  /** Upgrade in diesem Run-Zyklus gekauft? */
+  upgradeBoughtThisRun: false,
   /** Boss-Near-Miss Tracking */
   activeBossMaxHp: 0,
   activeBossMinHpFrac: 1,
@@ -3957,6 +3959,8 @@ function startRun() {
   }
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
+  game.upgradeBoughtThisRun = false;
+  game._lastDeathData = null;
   hidePauseMenu();
   $("gameover-panel").classList.add("hidden");
   $("game-frame").classList.remove("hidden");
@@ -5497,8 +5501,16 @@ function onEnemyKill(e) {
 function onDeath() {
   game.isDead = true;
   stopMusic();
-  // Gold aus dem Run sichern – Betrag merken, bevor runGold genullt wird
-  const earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
+  if (!game.upgradeBoughtThisRun) {
+    game.emptyUpgradeRuns = (game.emptyUpgradeRuns | 0) + 1;
+  }
+  // Gold aus dem Run sichern – Mindest-Belohnung gegen wertlose Runs
+  let earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
+  const floor = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.economy.minRunGoldFloor)
+    ? DL_BALANCE.economy.minRunGoldFloor : 12;
+  if (earnedGold < floor && game.monstersDefeated > 0) {
+    earnedGold = Math.max(floor, Math.floor(game.monstersDefeated * 4));
+  }
   game.lastRunGold = earnedGold;
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
@@ -5508,6 +5520,9 @@ function onDeath() {
   clearActiveRun();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
   if (game.runStats) game.runStats.goldEarned = Math.max(game.runStats.goldEarned || 0, earnedGold);
+  if (typeof finalizeRunRecordsOnDeath === "function") {
+    game._lastDeathData = finalizeRunRecordsOnDeath("hp");
+  }
   addLog("Game Over! +" + earnedGold + " Gold gesichert.", "death");
   let deathT = 0;
   function deathFrame(now) {
@@ -5528,17 +5543,40 @@ function showGameOver() {
   const world = getWorld();
   const earnedGold = Math.max(0, Math.floor(Number(game.lastRunGold) || 0));
   emitCombatEvent("game_over");
+
+  let deathData = game._lastDeathData || null;
+  const rs = deathData?.rs || game.runStats;
+  const rec = deathData?.rec || (game.meta?.records || game.records);
+  const prevProgress = deathData?.prevProgress ?? 0;
+
   $("gameover-panel").classList.remove("hidden");
-  $("gameover-summary").textContent =
-    "Level " + game.dungeonLevel + " · " + world.name + "\n" +
-    game.monstersDefeated + " Monster besiegt · " + earnedGold + " Gold";
+  const summaryEl = $("gameover-summary");
+  if (summaryEl) {
+    summaryEl.textContent = (typeof buildGameOverRichHtml === "function" && rs)
+      ? buildGameOverRichHtml(rs, rec || {}, prevProgress)
+      : ("Level " + game.dungeonLevel + " · " + world.name + "\n" +
+         game.monstersDefeated + " Monster · " + earnedGold + " Gold");
+  }
   $("final-score").textContent = calcScore(earnedGold);
+
+  const compareEl = $("gameover-compare");
+  if (compareEl && rs && rec && typeof buildRunCompareHtml === "function") {
+    const cmp = buildRunCompareHtml(rs, rec);
+    compareEl.textContent = cmp;
+    compareEl.classList.toggle("hidden", !cmp);
+  }
+
+  const goalsEl = $("gameover-goals");
+  if (goalsEl && typeof buildGameOverGoalsHtml === "function") {
+    goalsEl.innerHTML = buildGameOverGoalsHtml();
+  }
+
   $("gameover-tip").textContent = getUpgradeTip();
   const hint = $("save-hint");
   if (hint) {
     hint.textContent = earnedGold
-      ? (earnedGold + " Gold wurden deinem Konto gutgeschrieben.")
-      : "Gold und Upgrades bleiben permanent. Der Run startet neu.";
+      ? (earnedGold + " Gold gesichert · Erneut versuchen oder Upgraden.")
+      : "Gold und Upgrades bleiben permanent.";
   }
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
@@ -5546,6 +5584,7 @@ function showGameOver() {
   renderSetupAbilityHint();
   updateRunButtons();
   tryMenuMusic();
+  if (typeof renderBalanceDebugPanel === "function") renderBalanceDebugPanel();
 }
 
 function formatDamageNumber(val) {
@@ -6050,6 +6089,8 @@ async function buyUpgrade(k) {
   spendGold(cost);
   game.upgrades[k] = (game.upgrades[k] || 0) + 1;
   game.emptyUpgradeRuns = 0;
+  game.upgradeBoughtThisRun = true;
+  game.upgradeBoughtThisRun = false;
   const up = UPGRADES.find((u) => u.key === k);
   const eff = (typeof getUpgradeEff === "function") ? getUpgradeEff(k) : game.upgrades[k] * up.bonus;
   addLog("Upgrade: " + up.label + " Stufe " + game.upgrades[k] + " – spürbar stärker!", "heal");
