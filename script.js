@@ -772,8 +772,8 @@ const BALANCE = {
   earlyEaseUntil: 18,
   earlyHpEase: 0.15,
   earlyAtkEase: 0.22,
-  /** Härter als v157 (0.72), weicher als v159 (1.08) */
-  difficultyMult: 0.9,
+  /** Mitte: härter als v157 (0.72), weicher als v159 (1.08) */
+  difficultyMult: 0.98,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
