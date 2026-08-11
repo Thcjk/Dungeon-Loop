@@ -9,7 +9,7 @@
   <title>Dungeon Loop</title>
   <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=165">
+  <link rel="stylesheet" href="style.css?v=166">
 </head>
 <body>
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
@@ -274,21 +274,23 @@
               <p class="gameover-summary" id="gameover-summary"></p>
               <p class="gameover-score">Score: <strong id="final-score">0</strong></p>
               <p class="gameover-tip" id="gameover-tip"></p>
+              <div class="gameover-goals" id="gameover-goals"></div>
               <div class="gameover-actions">
-                <button type="button" class="btn btn-primary btn-large" id="btn-gameover-run">Neuen Run starten</button>
-                <button type="button" class="btn btn-gold btn-large" id="btn-gameover-upgrade">Upgraden</button>
+                <button type="button" class="btn btn-primary btn-large" id="btn-gameover-run">Retry</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-gameover-upgrade">Upgrade</button>
               </div>
-              <p class="hint" id="save-hint">Gold und Upgrades bleiben permanent. Der Run startet neu.</p>
+              <p class="hint" id="save-hint">Gold und Upgrades bleiben. Schnell weiter!</p>
             </div>
           </div>
 
           <div class="victory-overlay hidden" id="victory-panel">
             <div class="victory-content">
               <h2 class="victory-title">GLÜCKWUNSCH</h2>
-              <p class="victory-lead">Dungeon Loop geschafft</p>
+              <p class="victory-lead" id="victory-lead">First Clear!</p>
               <p class="victory-summary" id="victory-summary"></p>
-              <p class="victory-hint">Neu starten setzt wirklich alles zurück – Gold, Upgrades und Fähigkeiten.</p>
+              <p class="victory-hint">Loop weiter = Upgrades behalten, härtere Gegner. Neu starten = alles weg.</p>
               <div class="victory-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Loop</button>
                 <button type="button" class="btn btn-gold btn-large" id="btn-victory-restart">Neu starten</button>
               </div>
             </div>
@@ -351,16 +353,18 @@
 
   </main>
 
-  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-163</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=163"></script>
-  <script src="world-config.js?v=163"></script>
-  <script src="world-render.js?v=163"></script>
-  <script src="visual-enemies.js?v=163"></script>
-  <script src="visual-fx.js?v=163"></script>
-  <script src="pack-fx.js?v=163"></script>
-  <script src="visual-sprites.js?v=163"></script>
-  <script src="hero-render.js?v=163"></script>
-  <script src="abilities.js?v=165"></script>
-  <script src="script.js?v=165"></script>
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-166</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=166"></script>
+  <script src="world-config.js?v=166"></script>
+  <script src="world-render.js?v=166"></script>
+  <script src="visual-enemies.js?v=166"></script>
+  <script src="visual-fx.js?v=166"></script>
+  <script src="pack-fx.js?v=166"></script>
+  <script src="visual-sprites.js?v=166"></script>
+  <script src="hero-render.js?v=166"></script>
+  <script src="balance.js?v=166"></script>
+  <script src="abilities.js?v=166"></script>
+  <script src="progression.js?v=166"></script>
+  <script src="script.js?v=166"></script>
 </body>
 </html>
