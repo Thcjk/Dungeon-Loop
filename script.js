@@ -4,24 +4,17 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-167";
+const BUILD_ID = "sidescroller-v3-168";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
 
-/* Einmaliger kompletter Neustart: alle alten lokalen Spielstaende und
-   Weltdaten werden geloescht, damit keine alte Darstellung zurueckkommt. */
+/* Spielstände NIEMALS bei Updates löschen.
+   Frühere Wipe-Logik ist deaktiviert – nur Versionsmarkierung ohne Datenverlust. */
 const DATA_WIPE_KEY = "dungeon_loop_wipe_version";
-const DATA_WIPE_VERSION = "5";
-(function wipeLegacyData() {
+const DATA_WIPE_VERSION = "keep-saves";
+(function markSavePolicy() {
   try {
-    if (localStorage.getItem(DATA_WIPE_KEY) === DATA_WIPE_VERSION) return;
-    const stale = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.indexOf("dungeon_loop") === 0) stale.push(key);
-    }
-    stale.forEach((key) => localStorage.removeItem(key));
     localStorage.setItem(DATA_WIPE_KEY, DATA_WIPE_VERSION);
   } catch (_) {}
 })();
@@ -551,7 +544,7 @@ const CLASS_BRIEFINGS = {
 };
 
 const BRIEFING_SHARED = {
-  goal: "Roguelite-Loop: Run → Tod → Upgrade → neuer Rekord. First Clear ~2h. Skill hilft – Upgrades machen Bosse realistisch.",
+  goal: "Sterben gehört dazu: Run → Tod → Upgrade → neuer Rekord. Erster Durchlauf aller Welten ca. 1,5–2,5 Stunden. Skill hilft – Upgrades machen Bosse machbar.",
   controls: [
     "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
     "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
@@ -561,7 +554,7 @@ const BRIEFING_SHARED = {
   watch: [
     "Münzen springen hoch: bewege dich darunter und fange sie in der Luft für <strong>x2 Gold</strong>.",
     "Ein Run reicht selten – Gold farmen, upgraden, dieselbe Welt erneut. Späte Upgrades werden teurer, bleiben aber bezahlbar.",
-    "Je mehr du upgradest, desto besser farmst und kämpfst du – kein Softlock bei Stufe 10+.",
+    "Je mehr du upgradest, desto besser farmst und kämpfst du – du kannst nicht endlos steckenbleiben.",
     "Weltwechsel passiert erst nach klarer Boss-Welle – nicht mitten im Kampf."
   ]
 };
@@ -3934,7 +3927,7 @@ function startRun() {
   safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Run gestartet – Loop " + ((game.loopIndex | 0) + 1) + ". Stirb → Upgrade → neuer Rekord!");
+  addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Stirb → Upgrade → neuer Rekord!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
@@ -4273,7 +4266,7 @@ function tryAdvanceWorldAfterBossWave() {
   return true;
 }
 
-/** Glückwunsch – Spiel fertig. Nur Neustart von Anfang an. */
+/** Glückwunsch – Welten geschafft. Nächster Durchlauf oder Neu starten. */
 function completeDungeonLoop() {
   if (game.loopCompleted) return;
   game.loopCompleted = true;
@@ -4287,7 +4280,11 @@ function completeDungeonLoop() {
   game.lastRunGold = earnedGold;
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
-  saveMeta();
+  const clearedLoop = (game.loopIndex | 0) + 1;
+  if (game.meta) {
+    game.meta.loopsCleared = Math.max(game.meta.loopsCleared || 0, clearedLoop);
+    saveMeta();
+  }
   if (game.playerName) saveLocalPlayer({ quiet: true });
   clearActiveRun();
 
@@ -4296,12 +4293,18 @@ function completeDungeonLoop() {
   const summary = $("victory-summary");
   if (summary) {
     summary.textContent =
-      "Alle Welten bezwungen · Level " + game.dungeonLevel +
+      "Durchlauf " + clearedLoop + " geschafft · Level " + game.dungeonLevel +
       " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold\n" +
-      "Neu starten = wirklich von null (Gold, Upgrades & Fähigkeiten weg).";
+      "Durchlauf " + (clearedLoop + 1) + ": härter, Upgrades bleiben. Oder Neu starten = von null.";
   }
-  addLog("Glückwunsch – Dungeon Loop geschafft!", "heal");
-  showAnnouncement("victory", "GLÜCKWUNSCH", "Dungeon Loop geschafft", 3.2);
+  const lead = $("victory-lead");
+  if (lead) {
+    lead.textContent = clearedLoop <= 1
+      ? "Erster Durchlauf geschafft!"
+      : ("Durchlauf " + clearedLoop + " geschafft!");
+  }
+  addLog("Glückwunsch – Durchlauf " + clearedLoop + " geschafft!", "heal");
+  showAnnouncement("victory", "GLÜCKWUNSCH", "Durchlauf " + clearedLoop, 3.2);
   emitCombatEvent("world_change");
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
@@ -4349,7 +4352,7 @@ function continueLoopFromVictory() {
   resetRun();
   try { createHero(); } catch (err) {
     console.error(err);
-    addLog("Loop-Start fehlgeschlagen – Strg+F5.");
+    addLog("Durchlauf-Start fehlgeschlagen – Strg+F5.");
     return;
   }
   game.isRunning = true;
@@ -4366,7 +4369,7 @@ function continueLoopFromVictory() {
   safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Loop " + ((game.loopIndex | 0) + 1) + " – Upgrades bleiben, Gegner härter!");
+  addLog("Durchlauf " + ((game.loopIndex | 0) + 1) + " – Upgrades bleiben, Gegner härter!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
@@ -4600,7 +4603,7 @@ function spawnWave() {
   if (eliteCount && game.runStats) game.runStats.elitesSeen = (game.runStats.elitesSeen || 0) + eliteCount;
   if (bossEnemy) startBossIntro(bossEnemy);
   if (isBoss) addLog("⚠ WELT-BOSS: " + (bossEnemy?.name || "Unbekannt") + "! Besiege die Welle für die nächste Welt.", "boss");
-  else if (eliteCount) addLog("Elite-Encounter! " + count + " Gegner", "damage");
+  else if (eliteCount) addLog("Eliten-Kampf! " + count + " Gegner", "damage");
   else if (breath) addLog("Atemholen – schwächere Welle (" + count + ")");
   else if (world.danger >= 3) addLog("Gefahr " + world.danger + "/5 – " + count + " Gegner!", "damage");
   else addLog(count + " Gegner (Lv." + game.dungeonLevel + ")");
@@ -4650,7 +4653,7 @@ function spawnEnemy(isBoss, index, roleTag) {
   }
 
   const enemy = {
-    id: ++enemyId, name: isElite ? ("Elite-" + name) : name, sprite: spKey, isBoss, isElite, index: idx,
+    id: ++enemyId, name: isElite ? ("Elite " + name) : name, sprite: spKey, isBoss, isElite, index: idx,
     role,
     x: CW + COMBAT_LAYOUT.introOffscreen + idx * 62 + Math.random() * 18,
     walkingIn: true,
@@ -5963,7 +5966,7 @@ function renderUpgradeButtons() {
       const maxed = lv >= max;
       const relevant = isUpgradeRelevant(up);
       let tipText = up.tip || "";
-      if (up.tier) tipText = "[" + up.tier + "] " + tipText;
+      if (up.tier) tipText = "[" + ({ minor: "klein", major: "groß", keystone: "Schlüssel" }[up.tier] || up.tier) + "] " + tipText;
       if (up.key === "upgrade_cooldown" && !maxed) {
         const next = getNextCdAbilityUnlock(game.classKey, lv);
         const nextCd = getNextAbilityUnlockCdLevel(lv);
@@ -5999,7 +6002,7 @@ async function buyUpgrade(k) {
   game.emptyUpgradeRuns = 0;
   const up = UPGRADES.find((u) => u.key === k);
   const eff = (typeof getUpgradeEff === "function") ? getUpgradeEff(k) : game.upgrades[k] * up.bonus;
-  addLog("Upgrade: " + up.label + " Stufe " + game.upgrades[k] + " (effektiv spürbar)", "heal");
+  addLog("Upgrade: " + up.label + " Stufe " + game.upgrades[k] + " – spürbar stärker!", "heal");
   if (game.hero && !game.isDead) {
     refreshHeroFromUpgrades();
   }

@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-166
+   Build: sidescroller-v3-168
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY
@@ -172,19 +172,19 @@ const DL_BALANCE = {
 const DL_UPGRADES = [
   /* OFFENSE */
   { key: "upgrade_attack", cat: "offense", tier: "minor", label: "Angriff",
-    baseCost: 85, bonus: 5, bonusText: "+ATK", tip: "Basis-Schaden. Krieger & Waldläufer.",
+    baseCost: 85, bonus: 5, bonusText: "+Angriff", tip: "Basis-Schaden. Krieger & Waldläufer.",
     forClass: "warrior,ranger", diminish: 0.92, softCap: 12 },
   { key: "upgrade_magic", cat: "offense", tier: "minor", label: "Magieschaden",
-    baseCost: 90, bonus: 5.5, bonusText: "+MAG", tip: "Zauber-Schaden. Nur Magier.",
+    baseCost: 90, bonus: 5.5, bonusText: "+Magie", tip: "Zauber-Schaden. Nur Magier.",
     forClass: "mage", diminish: 0.92, softCap: 12 },
   { key: "upgrade_atkspd", cat: "offense", tier: "major", label: "Angriffsgeschwindigkeit",
-    baseCost: 120, bonus: 0.04, bonusText: "+4% AS", tip: "Schneller angreifen (Diminish nach Stufe 8).",
+    baseCost: 120, bonus: 0.04, bonusText: "+4% Angriffsgeschwindigkeit", tip: "Schneller angreifen (ab Stufe 8 etwas weniger Zuwachs).",
     forClass: "all", diminish: 0.88, softCap: 10, maxLv: 12 },
   { key: "upgrade_crit", cat: "offense", tier: "major", label: "Krit-Chance",
     baseCost: 115, bonus: 0.018, bonusText: "+1.8% Krit", tip: "Kritische Treffer. Stark mit Krit-Schaden.",
     forClass: "all", diminish: 0.9, softCap: 10, maxLv: 14 },
   { key: "upgrade_critdmg", cat: "offense", tier: "major", label: "Krit-Schaden",
-    baseCost: 130, bonus: 0.08, bonusText: "+8% Krit-DMG", tip: "Krits knallen härter. Synergie mit Krit.",
+    baseCost: 130, bonus: 0.08, bonusText: "+8% Krit-Schaden", tip: "Krits knallen härter. Synergie mit Krit.",
     forClass: "all", diminish: 0.9, softCap: 10, maxLv: 12 },
   { key: "upgrade_bossdmg", cat: "offense", tier: "major", label: "Boss-Schaden",
     baseCost: 140, bonus: 0.05, bonusText: "+5% vs Boss", tip: "Spezialisiert auf Welt-Bosse.",
@@ -198,15 +198,15 @@ const DL_UPGRADES = [
     baseCost: 70, bonus: 1.15, bonusText: "+DEF", tip: "Weniger Schaden pro Treffer.",
     forClass: "all", diminish: 0.9, softCap: 12 },
   { key: "upgrade_regen", cat: "defense", tier: "major", label: "Regeneration",
-    baseCost: 125, bonus: 1.2, bonusText: "+1.2 LP/s", tip: "Heilung zwischen Treffern. Tanky Builds.",
+    baseCost: 125, bonus: 1.2, bonusText: "+1.2 LP/s", tip: "Heilung zwischen Treffern. Gut für stabile Builds.",
     forClass: "all", diminish: 0.88, softCap: 10, maxLv: 12 },
   { key: "upgrade_lifesteal", cat: "defense", tier: "keystone", label: "Lebensraub",
-    baseCost: 180, bonus: 0.012, bonusText: "+1.2% LS", tip: "Heilung beim Treffer. Caps hart (Anti-Immortal).",
+    baseCost: 180, bonus: 0.012, bonusText: "+1,2% Lebensraub", tip: "Heilung beim Treffer. Stark begrenzt – kein Unsterblichkeits-Build.",
     forClass: "all", diminish: 0.82, softCap: 6, maxLv: 8 },
 
   /* MOBILITY */
   { key: "upgrade_movespeed", cat: "mobility", tier: "major", label: "Bewegung",
-    baseCost: 110, bonus: 0.035, bonusText: "+3.5% MS", tip: "Schneller Positionieren / Kiten.",
+    baseCost: 110, bonus: 0.035, bonusText: "+3,5% Bewegung", tip: "Schneller positionieren und ausweichen.",
     forClass: "all", diminish: 0.9, softCap: 10, maxLv: 12 },
 
   /* ECONOMY */
@@ -227,11 +227,11 @@ const DL_UPGRADES = [
 ];
 
 const DL_UPGRADE_CAT_LABELS = {
-  offense: "OFFENSE",
-  defense: "DEFENSE",
-  mobility: "MOBILITY",
-  economy: "ECONOMY",
-  utility: "UTILITY"
+  offense: "ANGRIFF",
+  defense: "VERTEIDIGUNG",
+  mobility: "BEWEGLICHKEIT",
+  economy: "WIRTSCHAFT",
+  utility: "SPEZIAL"
 };
 
 /* ========== FORMELN ========== */
@@ -373,36 +373,36 @@ function dlRunSanityChecks(ctx) {
   const sampleGold = 550;
   ups.filter((u) => u.tier === "minor").slice(0, 3).forEach((u) => {
     const c1 = dlUpgradeCost(u, 0);
-    if (c1 > sampleGold * 1.2) warnings.push(u.key + " Stufe1 zu teuer vs ~RunGold");
+    if (c1 > sampleGold * 1.2) warnings.push(u.key + ": Stufe 1 zu teuer im Vergleich zum Run-Gold");
     const c5 = dlUpgradeCost(u, 5);
-    if (c5 / sampleGold > 4) warnings.push(u.key + " Stufe6 braucht >4 Runs (Avg)");
+    if (c5 / sampleGold > 4) warnings.push(u.key + ": Stufe 6 braucht mehr als 4 Durchschnitts-Runs");
   });
 
   // Lifesteal cap
   const ls = ups.find((u) => u.key === "upgrade_lifesteal");
   if (ls) {
     const total = dlEffectiveBonus(ls, dlUpgradeMax(ls));
-    if (total > 0.12) warnings.push("Lifesteal-Cap zu hoch: " + total.toFixed(3));
+    if (total > 0.12) warnings.push("Lebensraub-Maximum zu hoch: " + total.toFixed(3));
   }
 
   // Crit chance total
   const cr = ups.find((u) => u.key === "upgrade_crit");
   if (cr && ctx && ctx.baseCrit != null) {
     const total = (ctx.baseCrit || 0) + dlEffectiveBonus(cr, dlUpgradeMax(cr));
-    if (total > B.critChanceCap + 0.05) warnings.push("Krit über Cap möglich: " + total.toFixed(2));
+    if (total > B.critChanceCap + 0.05) warnings.push("Krit-Chance über dem Maximum möglich: " + total.toFixed(2));
   }
 
   // World lengths
   let prev = 0;
   B.worlds.forEach((w, i) => {
-    if (w.min < prev) warnings.push("World min nicht steigend: " + w.name);
+    if (w.min < prev) warnings.push("Welt-Startlevel steigt nicht: " + w.name);
     prev = w.min + w.length;
     if (w.length < 12) warnings.push("Welt zu kurz: " + w.name);
   });
 
   // Power targets sanity
   if (B.powerTargets.final[0] < B.powerTargets.afterW4[1]) {
-    warnings.push("Final Power-Target niedriger als nach W4");
+    warnings.push("End-Power-Ziel niedriger als nach Welt 4");
   }
 
   return warnings;
