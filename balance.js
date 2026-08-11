@@ -81,7 +81,7 @@ const DL_BALANCE = {
     ],
     softCapHpPct: 0.70,
     overSoftHealPct: 0.015,
-    regenPauseAfterDamageSec: 4
+    regenPauseAfterDamageSec: 6
   },
 
   xp: {

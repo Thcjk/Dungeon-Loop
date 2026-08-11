@@ -18,8 +18,9 @@ try {
 const report = dlRunBalanceReport();
 
 console.log("=== DUNGEON LOOP BALANCE REPORT v" + report.version + " ===\n");
-const range = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.targetFirstClearRange)
-  ? DL_BALANCE.targetFirstClearRange : [105, 145];
+const range = report.targetClearRange || report.targetFirstClearRange
+  || ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.targetFirstClearRange)
+    ? DL_BALANCE.targetFirstClearRange : [140, 170]);
 console.log("Target first clear: ~" + report.targetClearMin + " min (" + range[0] + "–" + range[1] + " acceptable)");
 if (report.targetDeaths) {
   console.log("Target deaths: " + report.targetDeaths[0] + "–" + report.targetDeaths[1] +
@@ -72,7 +73,7 @@ if (runUpgrades && typeof runUpgrades.dlCreateEmptyRunUpgradeState === "function
   console.log("  lifesteal  " + mk(["bloodlust", "vampire", "tough_body"]));
   console.log("  tank       " + mk(["tough_body", "tough_body", "plating", "titan", "iron_skin"]));
   console.log("  ability    " + mk(["specialist", "quick_hands", "focus"]));
-  console.log("  economy    " + mk(["gold_find", "gold_find", "elite_gold", "coin_magnet", "gold_greed"]));
+  console.log("  economy    " + mk(["sharp_blade", "tough_body", "elite_hunter"]));
 }
 
 console.log("\nPower by build archetype (start≈1.0 / scale100):");

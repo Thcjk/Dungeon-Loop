@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-178";
+const BUILD_ID = "sidescroller-v3-179";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -697,6 +697,7 @@ function buildWorldsFromBalance() {
     budgetEarly: d.budgetEarly, budgetMid: d.budgetMid,
     budgetLate: d.budgetLate, budgetBoss: d.budgetBoss,
     maxEnemies: d.maxEnemies != null ? d.maxEnemies : 5,
+    eliteChance: d.eliteChance != null ? d.eliteChance : 0.07,
     composition: d.composition || null,
     entryEase: d.entryEase != null ? d.entryEase : 1,
     ...(WORLD_THEME_SKINS[d.theme] || WORLD_THEME_SKINS.forest)
@@ -886,7 +887,9 @@ const game = {
   /** Temporäre Run-Upgrades (verloren bei Tod / NG+) */
   runUpgradeState: null,
   runUpgradeDraft: null,
-  runUpgradePaused: false
+  runUpgradePaused: false,
+  pendingWorldAdvance: false,
+  pendingBossUpgradeWorld: null
 };
 
 let WAVE_DATA = null;
@@ -2196,8 +2199,8 @@ function tryLastWarrior(h) {
   if (!rb.lastWarrior || !rus || rus.lastWarriorUsed) return false;
   rus.lastWarriorUsed = true;
   const st = heroStats();
-  h.hp = Math.max(1, Math.floor(st.maxHp * 0.25));
-  h.immuneTimer = 2;
+  h.hp = Math.max(1, Math.floor(st.maxHp * 0.20));
+  h.immuneTimer = 1.5;
   spawnBurst(h.x + h.w / 2, h.y + h.h / 2, "#f1c40f", 16, 5);
   addLog("Letzter Krieger – überlebt!", "heal");
   return true;
@@ -2215,7 +2218,7 @@ function onHeroTookDamage(h, dmgBeforeHp, st) {
   rus.secondWindTimer = 0;
   const rb = getRunBonus();
   if (rb.warMachine) {
-    rus.warMachineStacks = Math.max(0, (rus.warMachineStacks || 0) - 3);
+    rus.warMachineStacks = Math.max(0, (rus.warMachineStacks || 0) - 4);
   }
   const maxHp = (st && st.maxHp) || h.maxHp || 1;
   const now = performance.now() / 1000;
@@ -2225,7 +2228,7 @@ function onHeroTookDamage(h, dmgBeforeHp, st) {
     rus._ironHits.push(now);
     rus._ironHits = rus._ironHits.filter((t) => now - t <= 5);
     if (rus._ironHits.length >= 3) {
-      h.tempDr = Math.max(h.tempDr || 0, 0.15);
+      h.tempDr = Math.max(h.tempDr || 0, 0.16);
       h.tempDrTimer = Math.max(h.tempDrTimer || 0, 5);
       rus.ironCd = 12;
       rus._ironHits = [];
@@ -3238,6 +3241,9 @@ function migrateRunData(data) {
   if (!Array.isArray(out.runUpgradeState.claimedWorlds)) {
     out.runUpgradeState.claimedWorlds = [];
   }
+  if (!Array.isArray(out.runUpgradeState.claimedBossWorlds)) {
+    out.runUpgradeState.claimedBossWorlds = [];
+  }
   if (!out.runUpgradeState.stacks) out.runUpgradeState.stacks = {};
   if (!Array.isArray(out.runUpgradeState.upgrades)) out.runUpgradeState.upgrades = [];
   return out;
@@ -4073,19 +4079,18 @@ function startRun() {
   $("btn-restart").disabled = false;
   $("btn-pause").textContent = "Pause (P)";
   if (typeof resetRunStatsForNewRun === "function") resetRunStatsForNewRun();
-  // Run-Upgrade einmal pro Welt – vor der ersten Welle (kein Mid-Fight-Interrupt)
-  const offered = maybeOfferWorldRunUpgrade();
-  if (!offered) safeSpawnWave();
+  // Kein Run-Upgrade am Start – erst nach Boss-Kill (Welt 1–4)
+  safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Stirb → Upgrade → neuer Rekord!");
+  addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Boss besiegen → Run-Upgrade → nächste Welt!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
   saveActiveRun(true);
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      if (!game.runUpgradePaused) beginRunLoop();
+      beginRunLoop();
       if (canvas) canvas.focus();
     });
   });
@@ -4256,6 +4261,8 @@ function createHero() {
   }
   game.runUpgradeDraft = null;
   game.runUpgradePaused = false;
+  game.pendingWorldAdvance = false;
+  game.pendingBossUpgradeWorld = null;
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
     y: GROUND - HR.displayH(), vx: 0, vy: 0,
@@ -4339,9 +4346,16 @@ function heroStats() {
   const baseMaxHp = h.maxHp + (lb.hp || 0);
   const maxHp = Math.max(1, Math.floor(baseMaxHp * hpMult));
   let missing = 1 - (h.hp / Math.max(1, maxHp));
-  if (rb.berserker) dmgMult *= (1 + Math.min(0.20, Math.floor(missing / 0.1) * 0.025));
+  if (rb.berserker) {
+    const bersMax = rb.bersMax != null ? rb.bersMax : 0.24;
+    const bersPer = rb.bersPer10 != null ? rb.bersPer10 : 0.03;
+    dmgMult *= (1 + Math.min(bersMax, Math.floor(missing / 0.1) * bersPer));
+  }
   let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1);
-  if (rb.adrenaline && (h.hp / Math.max(1, maxHp)) < 0.35) atkSpd *= 1.15;
+  const adrFrac = rb.adrHpFrac != null ? rb.adrHpFrac : 0.30;
+  if (rb.adrenaline && (h.hp / Math.max(1, maxHp)) < adrFrac) {
+    atkSpd *= (1 + (rb.adrAtkSpdAdd != null ? rb.adrAtkSpdAdd : 0.18));
+  }
   if (rb.focus && game.runUpgradeState && (game.runUpgradeState.noDamageTimer || 0) >= 3) {
     dmgMult *= 1.15;
   }
@@ -4352,26 +4366,30 @@ function heroStats() {
   return {
     attack: (h.attack + (lb.attack || 0)) * dmgMult,
     defense: h.defense + (lb.defense || 0),
-    metaArmorDr: Math.min(caps.damageReduction || 0.55, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr),
+    metaArmorDr: Math.min(caps.damageReduction || 0.46, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr),
     crit: Math.min(critCap, h.crit + (lb.crit || 0) + (rb.critAdd || 0)),
-    critDamage: Math.min(critDmgCap, (h.critDamage || BALANCE.critDamageBase || 1.7) + (rb.critDmgAdd || 0)),
+    critDamage: Math.min(critDmgCap, (h.critDamage || BALANCE.critDamageBase || 1.65) + (rb.critDmgAdd || 0)),
     magicDamage: (h.magicDamage + (lb.magicDamage || 0)) * dmgMult,
     abilityDmgMult: rb.abilityDmgMult || 1,
     maxHp,
     maxMana: h.maxMana + (lb.mana || 0),
     goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1),
-    bossDamage: Math.min(caps.bossDamage || 0.5, (h.bossDamage || 0) + (rb.bossDmgAdd || 0)),
+    bossDamage: Math.min(caps.bossDamage || 0.38, (h.bossDamage || 0) + (rb.bossDmgAdd || 0)),
     lifesteal: Math.min(lsCap, (h.lifesteal || 0) + (rb.lifestealAdd || 0)),
     lifestealCap: lsCap,
     regen: h.regen || 0,
-    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.75), atkSpd),
-    moveSpeedMult: Math.min(1 + (caps.moveSpeedBonus || 0.25), (h.moveSpeedMult || 1) * (rb.moveSpeedMult || 1)),
+    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.60), atkSpd),
+    moveSpeedMult: Math.min(1 + (caps.moveSpeedBonus || 0.20), (h.moveSpeedMult || 1) * (rb.moveSpeedMult || 1)),
     eliteGoldMult: rb.eliteGoldMult || 1,
+    eliteDamageAdd: rb.eliteDamageAdd || 0,
     coinCatchMult: rb.coinCatchMult || 2,
     enemyDmgTakenMult: rb.enemyDmgTakenMult || 1,
     levelHealMult: rb.levelHealMult || 1,
     executioner: !!rb.executioner,
+    execHpFrac: rb.execHpFrac != null ? rb.execHpFrac : 0.2,
+    execDmgAdd: rb.execDmgAdd != null ? rb.execDmgAdd : 0.25,
     chainReaction: !!rb.chainReaction,
+    timeBreaker: !!rb.timeBreaker,
     cdrAdd: rb.cdrAdd || 0
   };
 }
@@ -4466,13 +4484,13 @@ function shouldSpawnWorldBoss() {
   return false;
 }
 
-/** Nach besiegter Boss-Welle: nächste Welt – Boss der letzten Welt = Spiel fertig. */
+/** Nach Boss: Run-Upgrade (Welt 1–4), dann nächste Welt. Final-Boss → Sieg. */
 function tryAdvanceWorldAfterBossWave() {
   if (!game.waveWasBoss) return false;
   game.waveWasBoss = false;
   const idx = clampWorldIndex(game.worldIndex);
 
-  // Boss in der letzten Welt besiegt → fertig
+  // Final-Boss → Sieg (kein Run-Upgrade mehr)
   if (idx >= WORLDS.length - 1) {
     completeDungeonLoop();
     return true;
@@ -4481,18 +4499,33 @@ function tryAdvanceWorldAfterBossWave() {
   const gate = WORLDS[idx + 1].min;
   if (game.dungeonLevel < gate) return false;
 
+  // Zuerst Run-Upgrade für die GESCHAFFTE Welt, danach Weltwechsel
+  game.pendingWorldAdvance = true;
+  game.pendingBossUpgradeWorld = idx;
+  if (maybeOfferBossRunUpgrade(idx)) return true;
+
+  // Nichts anbietbar → direkt weiter
+  game.pendingWorldAdvance = false;
+  game.pendingBossUpgradeWorld = null;
+  advanceToNextWorld();
+  return true;
+}
+
+function advanceToNextWorld() {
+  const idx = clampWorldIndex(game.worldIndex);
+  if (idx >= WORLDS.length - 1) {
+    completeDungeonLoop();
+    return;
+  }
   game.worldIndex = idx + 1;
   const newWorld = getWorld();
   PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
   initWorldBackground();
   startWorldTransition(newWorld);
-  addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, upgraden lohnt sich!", "boss");
+  addLog("⚠ NEUE WELT: " + newWorld.name + " – härter, Meta-Upgrades lohnen sich!", "boss");
   showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
   playWorldMusic(newWorld);
   emitCombatEvent("world_change");
-  // Ein Run-Upgrade beim Weltwechsel (zwischen den Wellen)
-  maybeOfferWorldRunUpgrade();
-  return true;
 }
 
 /** Glückwunsch – Welten geschafft. Nächster Durchlauf oder Neu starten. */
@@ -4826,7 +4859,11 @@ function spawnWave() {
       : { picks: [{ tag: "basic", cost: 1 }] };
     roles = roles.concat(plan.picks || []);
   } else {
-    const allowElite = progress >= 0.55 || (world.danger || 1) >= 3;
+    let eliteChance = world.eliteChance != null ? world.eliteChance : 0.07;
+    if (progress >= 0.85) eliteChance += 0.05;
+    eliteChance += (game.loopIndex | 0) * ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.loop)
+      ? (DL_BALANCE.loop.eliteChancePerLoop || 0) : 0);
+    const allowElite = Math.random() < eliteChance || progress >= 0.7;
     const plan = (typeof planEncounterRoles === "function")
       ? planEncounterRoles(budget, world.theme, world.danger, allowElite, planOpts)
       : { picks: Array.from({ length: getWaveSize() }, () => ({ tag: "basic", cost: 1 })) };
@@ -5411,7 +5448,25 @@ function useEquippedAbility(slotIdx) {
     setAbilitySlotCd(h, slotIdx, 0);
     h.abilityReadyState = h.abilityReadyState || {};
     h.abilityReadyState[ab.id + ":slot" + slotIdx] = false;
+    // Zeitbrecher: Ability trifft Elite/Boss → Chance CD sofort ready
+    tryTimeBreakerReset(h, slotIdx, ab, st);
   }
+}
+
+function tryTimeBreakerReset(h, slotIdx, ab, st) {
+  if (!st || !st.timeBreaker || !game.runUpgradeState) return;
+  const rus = game.runUpgradeState;
+  if ((rus.timeBreakerIcd || 0) > 0) return;
+  const hitEliteBoss = game.enemies.some((e) =>
+    e && !e.dead && e.hp > 0 && (e.isElite || e.isBoss) &&
+    Math.hypot((e.x + e.w / 2) - (h.x + h.w / 2), (e.y + e.h / 2) - (h.y + h.h / 2)) < 280
+  );
+  if (!hitEliteBoss) return;
+  if (Math.random() >= 0.10) return;
+  const cd = getEffectiveAbilityCd(ab);
+  setAbilitySlotCd(h, slotIdx, cd);
+  rus.timeBreakerIcd = 10;
+  addLog("Zeitbrecher – Fähigkeit bereit!", "magic");
 }
 
 function useSpecial() { useEquippedAbility(0); }
@@ -5512,10 +5567,11 @@ function updateFrame(dt) {
     if (rus.ironCd > 0) rus.ironCd -= dt;
     if (rus.guardCd > 0) rus.guardCd -= dt;
     if (rus.bloodlustIcd > 0) rus.bloodlustIcd -= dt;
+    if (rus.timeBreakerIcd > 0) rus.timeBreakerIcd -= dt;
     const rb = getRunBonus();
-    if (rb.secondWind && (rus.noDamageTimer || 0) >= 8) {
+    if (rb.secondWind && (rus.noDamageTimer || 0) >= 9) {
       rus.secondWindTimer = (rus.secondWindTimer || 0) + dt;
-      if (rus.secondWindTimer >= 4) {
+      if (rus.secondWindTimer >= 5) {
         rus.secondWindTimer = 0;
         h.hp = Math.min(st.maxHp, h.hp + Math.floor(st.maxHp * 0.02));
       }
@@ -5731,54 +5787,70 @@ function lootChanceForEnemy(e) {
 }
 
 function maybeOfferRunUpgrade() {
-  // Legacy no-op: Level-Meilensteine unterbrechen den Kampf nicht mehr.
-  // Auswahl nur einmal pro Welt → maybeOfferWorldRunUpgrade()
+  // Legacy no-op – keine Level-Meilensteine mehr
 }
 
-/** Ein Run-Upgrade pro Welt – beim Betreten (Start / Weltwechsel), nicht mitten im Kampf. */
-function maybeOfferWorldRunUpgrade() {
+/**
+ * Run-Upgrade NUR nach Boss-Kill der Welten 0–3 (nicht Final Boss).
+ * Belohnt die geschaffte Welt und stärkt für die NÄCHSTE.
+ */
+function maybeOfferBossRunUpgrade(defeatedWorldIndex) {
   if (!game.runUpgradeState) return false;
   if (game.runUpgradePaused || game.runUpgradeDraft) return false;
   if (game.isDead || game.loopCompleted) return false;
-  const worldIdx = clampWorldIndex(game.worldIndex | 0);
-  if (!Array.isArray(game.runUpgradeState.claimedWorlds)) {
-    game.runUpgradeState.claimedWorlds = [];
-  }
-  const claimed = game.runUpgradeState.claimedWorlds;
-  if (claimed.indexOf(worldIdx) >= 0) return false;
+  const wIdx = Math.max(0, defeatedWorldIndex | 0);
+  const maxPicks = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.runUpgrades
+    && DL_BALANCE.runUpgrades.maxPicksBeforeFinal != null)
+    ? DL_BALANCE.runUpgrades.maxPicksBeforeFinal : 4;
+  if (wIdx >= maxPicks) return false;
 
-  const progress = typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0;
-  const worldProgress = Math.min(1, worldIdx / Math.max(1, (WORLDS.length - 1)));
-  const rarityProgress = Math.max(progress, worldProgress);
-  const choices = (typeof dlSmartDraftRunUpgrades === "function")
-    ? dlSmartDraftRunUpgrades(game.runUpgradeState, rarityProgress, 3)
-    : [];
+  if (!Array.isArray(game.runUpgradeState.claimedBossWorlds)) {
+    game.runUpgradeState.claimedBossWorlds = [];
+  }
+  const claimed = game.runUpgradeState.claimedBossWorlds;
+  if (claimed.indexOf(wIdx) >= 0) return false;
+
+  const worldName = (WORLDS[wIdx] && WORLDS[wIdx].name) || ("Welt " + (wIdx + 1));
+  const choices = (typeof dlSmartDraftAfterBoss === "function")
+    ? dlSmartDraftAfterBoss(game.runUpgradeState, wIdx, 3)
+    : ((typeof dlSmartDraftRunUpgrades === "function")
+      ? dlSmartDraftRunUpgrades(game.runUpgradeState, wIdx / 4, 3) : []);
   if (!choices.length) {
-    game.runUpgradeState.claimedWorlds = claimed.concat([worldIdx]);
+    game.runUpgradeState.claimedBossWorlds = claimed.concat([wIdx]);
     return false;
   }
   game.runUpgradeDraft = {
     choices,
-    worldIndex: worldIdx,
-    worldName: (getWorld() && getWorld().name) || ("Welt " + (worldIdx + 1)),
-    rerolled: false
+    worldIndex: wIdx,
+    defeatedWorld: wIdx,
+    worldName: worldName,
+    rerolled: false,
+    afterBoss: true
   };
   game.runUpgradePaused = true;
   game.isPaused = true;
+  showAnnouncement("world", "WELT GESCHAFFT", worldName, 2.2);
   showRunUpgradeOverlay();
   return true;
+}
+
+/** @deprecated – Start/Weltwechsel ohne Boss gibt keine Run-Upgrades mehr */
+function maybeOfferWorldRunUpgrade() {
+  return false;
 }
 
 function showRunUpgradeOverlay() {
   const overlay = $("run-upgrade-overlay");
   const grid = $("run-upgrade-choices");
   const title = $("run-upgrade-title");
+  const hint = document.querySelector(".run-upgrade-hint");
   const rerollBtn = $("run-upgrade-reroll");
   if (!overlay || !grid || !game.runUpgradeDraft) return;
   const draft = game.runUpgradeDraft;
   if (title) {
-    title.textContent = "RUN-UPGRADE · " + (draft.worldName || ("Welt " + ((draft.worldIndex | 0) + 1)));
+    title.textContent = "WELT GESCHAFFT · " + (draft.worldName || ("Welt " + ((draft.worldIndex | 0) + 1)));
   }
+  if (hint) hint.textContent = "Wähle ein Run-Upgrade für die nächste Welt.";
   grid.innerHTML = "";
   draft.choices.forEach((def) => {
     const btn = document.createElement("button");
@@ -5813,27 +5885,37 @@ function hideRunUpgradeOverlay() {
 
 function pickRunUpgrade(id) {
   if (!game.runUpgradeDraft || !game.runUpgradeState) return;
-  const worldIdx = game.runUpgradeDraft.worldIndex;
+  const defeated = game.runUpgradeDraft.defeatedWorld != null
+    ? game.runUpgradeDraft.defeatedWorld
+    : game.runUpgradeDraft.worldIndex;
   const before = heroStats();
   const ratio = before.maxHp > 0 ? game.hero.hp / before.maxHp : 1;
   if (typeof dlApplyRunUpgradePick === "function") {
     dlApplyRunUpgradePick(game.runUpgradeState, id);
   }
-  if (!Array.isArray(game.runUpgradeState.claimedWorlds)) {
-    game.runUpgradeState.claimedWorlds = [];
+  if (!Array.isArray(game.runUpgradeState.claimedBossWorlds)) {
+    game.runUpgradeState.claimedBossWorlds = [];
   }
-  if (worldIdx != null && game.runUpgradeState.claimedWorlds.indexOf(worldIdx) < 0) {
-    game.runUpgradeState.claimedWorlds = game.runUpgradeState.claimedWorlds.concat([worldIdx]);
+  if (defeated != null && game.runUpgradeState.claimedBossWorlds.indexOf(defeated) < 0) {
+    game.runUpgradeState.claimedBossWorlds =
+      game.runUpgradeState.claimedBossWorlds.concat([defeated]);
   }
   const after = heroStats();
   game.hero.hp = Math.max(1, Math.min(after.maxHp, Math.floor(after.maxHp * ratio)));
   const def = typeof dlRunUpgradeById === "function" ? dlRunUpgradeById(id) : null;
-  addLog("Run-Upgrade: " + (def ? def.name : id), "heal");
+  addLog("Run-Upgrade: " + (def ? def.name : id) + " – Stärkung für die nächste Welt!", "heal");
   game.runUpgradeDraft = null;
   game.runUpgradePaused = false;
   game.isPaused = false;
   hideRunUpgradeOverlay();
   markRunSaveDirty();
+
+  if (game.pendingWorldAdvance) {
+    game.pendingWorldAdvance = false;
+    game.pendingBossUpgradeWorld = null;
+    advanceToNextWorld();
+  }
+
   if (game.isRunning && !game.isDead) {
     $("btn-pause").textContent = "Pause (P)";
     if (countAliveEnemies() === 0) safeSpawnWave();
@@ -5845,16 +5927,13 @@ function rerollRunUpgradeDraft() {
   if (!game.runUpgradeDraft || !game.runUpgradeState) return;
   if (game.runUpgradeDraft.rerolled || (game.runUpgradeState.rerolls | 0) <= 0) return;
   const prevIds = game.runUpgradeDraft.choices.map((c) => c.id);
-  const worldIdx = game.runUpgradeDraft.worldIndex | 0;
-  const worldProgress = Math.min(1, worldIdx / Math.max(1, (WORLDS.length - 1)));
-  const progress = Math.max(
-    typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0,
-    worldProgress
-  );
-  const next = (typeof dlRerollRunDraft === "function")
-    ? dlRerollRunDraft(game.runUpgradeState, prevIds, progress)
-    : (typeof dlSmartDraftRunUpgrades === "function"
-      ? dlSmartDraftRunUpgrades(game.runUpgradeState, progress, 3) : []);
+  const wIdx = game.runUpgradeDraft.defeatedWorld != null
+    ? game.runUpgradeDraft.defeatedWorld
+    : (game.runUpgradeDraft.worldIndex | 0);
+  const next = (typeof dlRerollAfterBoss === "function")
+    ? dlRerollAfterBoss(game.runUpgradeState, prevIds, wIdx)
+    : ((typeof dlSmartDraftAfterBoss === "function")
+      ? dlSmartDraftAfterBoss(game.runUpgradeState, wIdx, 3) : []);
   if (!next.length) return;
   game.runUpgradeState.rerolls = Math.max(0, (game.runUpgradeState.rerolls | 0) - 1);
   game.runUpgradeDraft.choices = next;
