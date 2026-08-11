@@ -3962,10 +3962,6 @@ function resumeRun(data) {
   game.clearedBossWorlds = Array.isArray(data.clearedBossWorlds)
     ? data.clearedBossWorlds.map((n) => n | 0)
     : [];
-  // Boss-Enemies in Save zählen als cleared für die aktuelle Welt
-  if (game.waveWasBoss && game.clearedBossWorlds.indexOf(game.worldIndex | 0) < 0) {
-    /* aktive Boss-Welle – noch nicht cleared */
-  }
   game.loopCompleted = !!data.loopCompleted;
   game.loopIndex = Math.max(0, Math.floor(Number(data.loopIndex) || 0));
   game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
