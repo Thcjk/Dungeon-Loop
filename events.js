@@ -858,8 +858,14 @@ function dlResolveEventChoice(state, pending, choiceId, ctx) {
     }
     if (id !== "accept") { res.logLines.push("Ungültige Wahl."); return res; }
     const bp = cfg.bloodPact || {};
-    const cost = bp.currentHpCost != null ? bp.currentHpCost : 0.25;
+    const minFrac = bp.minHpFrac != null ? bp.minHpFrac : 0.40;
+    const maxHp = c.heroMaxHp || 0;
     const hp = c.heroHp || 0;
+    if (maxHp > 0 && hp / maxHp < minFrac) {
+      res.logLines.push("Zu wenig Leben für den Blutpakt.");
+      return res;
+    }
+    const cost = bp.currentHpCost != null ? bp.currentHpCost : 0.25;
     const newHp = Math.max(1, Math.floor(hp * (1 - cost)));
     const lost = hp - newHp;
     if (typeof c.setHeroHp === "function") c.setHeroHp(newHp);
