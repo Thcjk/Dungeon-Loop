@@ -4169,9 +4169,9 @@ function getAttackScale() {
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  const ease = lv <= 12 ? 0.7 : lv <= 28 ? 0.8 : lv <= 45 ? 0.88 : lv <= 70 ? 0.94 : 1.0;
-  // ~30% weicher als zuvor (4.0 / 1.72)
-  return { hp: 2.85 * ease, atk: 1.28 * ease, rew: 4.2 };
+  const ease = lv <= 12 ? 0.72 : lv <= 28 ? 0.82 : lv <= 45 ? 0.9 : lv <= 70 ? 0.96 : 1.0;
+  // ~30% weicher als v156, Bosse bleiben spürbar
+  return { hp: 3.2 * ease, atk: 1.4 * ease, rew: 4.2 };
 }
 
 function getEnemyStats(isBoss) {
