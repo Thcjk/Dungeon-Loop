@@ -1,22 +1,22 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-168
+   Build: sidescroller-v3-170
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY
    - Soft gates: Skill kann früher schaffen, Avg braucht Upgrades
    - Gegner skalieren NICHT mit Player-Power (kein Meta-Ease)
    - Spieler wächst über feste World-Curves hinaus
-   - ~90–150 Min First Clear (Ziel ~120)
-   - 1–3 Runs pro spürbarem Upgrade
+   - Harte Sidescroller-Kurve (~10–15 Versuche pro Welt)
+   - 2–4 Runs pro spürbarem Upgrade
    - Loop/NG+ nach First Clear
    ============================================ */
 
 const DL_BALANCE = {
-  version: 166,
+  version: 170,
   targetFirstClearMin: 120,
   targetFirstClearRange: [90, 150],
-  runsPerMeaningfulUpgrade: [1, 3],
+  runsPerMeaningfulUpgrade: [2, 4],
 
   /* ---------- PLAYER BASE (Klassen bleiben in script.js CLASSES) ---------- */
   critDamageBase: 1.85,
@@ -32,67 +32,68 @@ const DL_BALANCE = {
   worlds: [
     { id: 0, name: "Dunkler Wald",       min: 1,   length: 18, danger: 1, theme: "forest",
       hpMult: 1.00, atkMult: 1.00, speedMult: 1.00,
-      budgetEarly: 3, budgetMid: 5, budgetLate: 7, budgetBoss: 12 },
+      budgetEarly: 4, budgetMid: 6, budgetLate: 8, budgetBoss: 14 },
     { id: 1, name: "Verfluchte Sümpfe",  min: 20,  length: 22, danger: 2, theme: "swamp",
       hpMult: 1.12, atkMult: 1.10, speedMult: 1.04,
-      budgetEarly: 4, budgetMid: 6, budgetLate: 9, budgetBoss: 14 },
+      budgetEarly: 5, budgetMid: 7, budgetLate: 11, budgetBoss: 17 },
     { id: 2, name: "Gefrorene Berge",    min: 42,  length: 26, danger: 3, theme: "frost",
       hpMult: 1.26, atkMult: 1.20, speedMult: 1.08,
-      budgetEarly: 5, budgetMid: 8, budgetLate: 11, budgetBoss: 16 },
+      budgetEarly: 6, budgetMid: 9, budgetLate: 13, budgetBoss: 19 },
     { id: 3, name: "Feuerlande",         min: 70,  length: 30, danger: 4, theme: "fire",
       hpMult: 1.42, atkMult: 1.32, speedMult: 1.12,
-      budgetEarly: 6, budgetMid: 10, budgetLate: 13, budgetBoss: 18 },
+      budgetEarly: 7, budgetMid: 11, budgetLate: 15, budgetBoss: 21 },
     { id: 4, name: "Vergessene Ruinen",  min: 105, length: 36, danger: 5, theme: "ruins",
       hpMult: 1.60, atkMult: 1.46, speedMult: 1.15,
-      budgetEarly: 7, budgetMid: 11, budgetLate: 15, budgetBoss: 22 }
+      budgetEarly: 8, budgetMid: 13, budgetLate: 17, budgetBoss: 26 }
   ],
 
   /* Interner World-Progress 0..1 → Difficulty-Kurve (smooth peaks) */
   worldCurve: {
-    warmup:   [0.00, 0.20, 0.88],
-    rising:   [0.20, 0.40, 1.00],
-    wall:     [0.40, 0.60, 1.12],
-    elite:    [0.60, 0.75, 1.22],
-    hard:     [0.75, 0.90, 1.28],
-    preBoss:  [0.90, 1.00, 1.35]
+    warmup:   [0.00, 0.20, 0.98],
+    rising:   [0.20, 0.40, 1.10],
+    wall:     [0.40, 0.60, 1.22],
+    elite:    [0.60, 0.75, 1.32],
+    hard:     [0.75, 0.90, 1.40],
+    preBoss:  [0.90, 1.00, 1.48]
   },
 
   /* ---------- ENEMY BASE (feste Welt-Stats, kein Player-Scaling) ---------- */
   enemy: {
-    baseHp: 30,
-    hpPerDepth: 3.4,
-    hpPerDanger: 5.5,
-    baseAtk: 3.6,
-    atkPerDepth: 0.42,
-    atkPerDanger: 1.1,
-    depthPowHp: 1.028,
-    depthPowAtk: 1.018,
-    depthPowCap: 22,
-    earlyEaseUntil: 12,
-    earlyHpEase: 0.10,
-    earlyAtkEase: 0.14,
-    difficultyMult: 1.0,
-    goldBase: 8,
-    goldPerDepth: 2.2,
-    goldPerDanger: 3.2,
-    goldDepthFactor: 0.035,
+    baseHp: 32,
+    hpPerDepth: 3.8,
+    hpPerDanger: 6.2,
+    baseAtk: 4.0,
+    atkPerDepth: 0.48,
+    atkPerDanger: 1.25,
+    depthPowHp: 1.036,
+    depthPowAtk: 1.024,
+    depthPowCap: 24,
+    earlyEaseUntil: 8,
+    earlyHpEase: 0.06,
+    earlyAtkEase: 0.10,
+    /** Haupthebel: ~2.1² ≈ 4.4× Gegner-DPS + Stat/Kurve/Budget ≈ 8× Wellendruck */
+    difficultyMult: 2.1,
+    goldBase: 15,
+    goldPerDepth: 4.0,
+    goldPerDanger: 5.8,
+    goldDepthFactor: 0.040,
     xpBase: 11,
     xpPerDepth: 2.4,
     xpPerDanger: 3.5,
-    waveCooldown: 1.9,
-    minWaveCooldown: 0.9,
+    waveCooldown: 2.0,
+    minWaveCooldown: 0.95,
     lootChance: 0.2,
     /** TTK-Ziele (Sekunden) für Sanity – Orientierung */
-    ttkNormal: [0.6, 2.2],
-    ttkElite: [3.5, 8],
-    ttkBoss: [18, 45]
+    ttkNormal: [1.0, 3.8],
+    ttkElite: [5, 12],
+    ttkBoss: [30, 70]
   },
 
   boss: {
-    hpMultEarly: 3.8,
-    hpMultMid: 4.2,
-    hpMultLate: 4.6,
-    atkMult: 1.65,
+    hpMultEarly: 4.2,
+    hpMultMid: 4.6,
+    hpMultLate: 5.0,
+    atkMult: 1.78,
     rewardMult: 5.0
   },
 
@@ -125,8 +126,8 @@ const DL_BALANCE = {
 
   /* Rhythmus: nach hartem Fight leichteres Budget */
   rhythm: {
-    hardThreshold: 1.18,
-    breathBudgetMult: 0.72,
+    hardThreshold: 1.22,
+    breathBudgetMult: 0.82,
     breathWaves: 1
   },
 

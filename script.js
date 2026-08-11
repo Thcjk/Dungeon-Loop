@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-168";
+const BUILD_ID = "sidescroller-v3-170";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
