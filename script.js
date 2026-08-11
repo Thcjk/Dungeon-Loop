@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-180";
+const BUILD_ID = "sidescroller-v3-181";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -846,6 +846,8 @@ const game = {
   worldIndex: 0,
   /** Aktuelle Welle war Welt-Boss (Tor zur nächsten Welt) */
   waveWasBoss: false,
+  /** Welten, deren Boss in diesem Run bereits besiegt wurde (kein Re-Spawn) */
+  clearedBossWorlds: [],
   /** Dungeon Loop einmal komplett geschafft (Run beendet) */
   loopCompleted: false,
   hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
@@ -3680,6 +3682,9 @@ function migrateRunData(data) {
   out.eventState = typeof dlMigrateEventState === "function"
     ? dlMigrateEventState(out.eventState)
     : (out.eventState || {});
+  out.clearedBossWorlds = Array.isArray(out.clearedBossWorlds)
+    ? out.clearedBossWorlds.map((n) => n | 0).filter((n, i, a) => a.indexOf(n) === i)
+    : [];
   return out;
 }
 
@@ -3806,6 +3811,7 @@ function saveActiveRun(force) {
     dungeonLevel: game.dungeonLevel,
     worldIndex: game.worldIndex | 0,
     waveWasBoss: !!game.waveWasBoss,
+    clearedBossWorlds: Array.isArray(game.clearedBossWorlds) ? game.clearedBossWorlds.slice() : [],
     loopCompleted: !!game.loopCompleted,
     loopIndex: game.loopIndex | 0,
     runGold: game.runGold,
@@ -3953,6 +3959,13 @@ function resumeRun(data) {
   );
   game.waveWasBoss = !!data.waveWasBoss ||
     (Array.isArray(data.enemies) && data.enemies.some((e) => e && e.isBoss));
+  game.clearedBossWorlds = Array.isArray(data.clearedBossWorlds)
+    ? data.clearedBossWorlds.map((n) => n | 0)
+    : [];
+  // Boss-Enemies in Save zählen als cleared für die aktuelle Welt
+  if (game.waveWasBoss && game.clearedBossWorlds.indexOf(game.worldIndex | 0) < 0) {
+    /* aktive Boss-Welle – noch nicht cleared */
+  }
   game.loopCompleted = !!data.loopCompleted;
   game.loopIndex = Math.max(0, Math.floor(Number(data.loopIndex) || 0));
   game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
@@ -4570,6 +4583,7 @@ async function continueOrStartRun() {
 function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.lastRunGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.worldIndex = 0; game.waveWasBoss = false;
+  game.clearedBossWorlds = [];
   game.loopCompleted = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
@@ -4940,23 +4954,39 @@ function getWorld() {
   return WORLDS[clampWorldIndex(game.worldIndex)];
 }
 
-/** Boss-Welle: Tor zur nächsten Welt; in der letzten Welt endet der Run nach dem Boss. */
-function shouldSpawnWorldBoss() {
-  const idx = clampWorldIndex(game.worldIndex);
-  const world = WORLDS[idx];
-  const len = world.length || 20;
-  // Boss am Ende der Weltlänge (soft gate)
-  if (game.dungeonLevel >= world.min + len) return true;
-  // Legacy-Tor: nächste Welt-min
-  if (idx < WORLDS.length - 1 && game.dungeonLevel >= WORLDS[idx + 1].min) return true;
-  return false;
+/** Boss bereits in diesem Run für diese Welt besiegt? */
+function isWorldBossCleared(worldIndex) {
+  const idx = clampWorldIndex(worldIndex);
+  const list = game.clearedBossWorlds || [];
+  return list.indexOf(idx) >= 0;
 }
 
-/** Nach Boss: Run-Upgrade (Welt 1–4), dann nächste Welt. Final-Boss → Sieg. */
+function markWorldBossCleared(worldIndex) {
+  const idx = clampWorldIndex(worldIndex);
+  if (!Array.isArray(game.clearedBossWorlds)) game.clearedBossWorlds = [];
+  if (game.clearedBossWorlds.indexOf(idx) < 0) game.clearedBossWorlds.push(idx);
+}
+
+/**
+ * Boss-Welle: genau einmal am Ende der aktuellen Welt.
+ * Kein Legacy-Gate über nextWorld.min (sonst Boss-Spam / Boss direkt nach Weltwechsel).
+ */
+function shouldSpawnWorldBoss() {
+  const idx = clampWorldIndex(game.worldIndex);
+  if (isWorldBossCleared(idx)) return false;
+  const world = WORLDS[idx];
+  const len = Math.max(1, world.length || 20);
+  // Tiefe innerhalb der Welt (1..len) – Boss erst am Ende
+  const depth = Math.max(1, game.dungeonLevel - (world.min || 1) + 1);
+  return depth >= len;
+}
+
+/** Nach Boss: als cleared markieren → Run-Upgrade → nächste Welt. Nie denselben Boss nochmal. */
 function tryAdvanceWorldAfterBossWave() {
   if (!game.waveWasBoss) return false;
   game.waveWasBoss = false;
   const idx = clampWorldIndex(game.worldIndex);
+  markWorldBossCleared(idx);
 
   // Final-Boss → Sieg (kein Run-Upgrade mehr)
   if (idx >= WORLDS.length - 1) {
@@ -4964,15 +4994,11 @@ function tryAdvanceWorldAfterBossWave() {
     return true;
   }
 
-  const gate = WORLDS[idx + 1].min;
-  if (game.dungeonLevel < gate) return false;
-
-  // Zuerst Run-Upgrade für die GESCHAFFTE Welt, danach Weltwechsel
+  // Immer weiter nach Boss – kein dungeonLevel-Gate mehr (verhinderte Advance + Re-Boss)
   game.pendingWorldAdvance = true;
   game.pendingBossUpgradeWorld = idx;
   if (maybeOfferBossRunUpgrade(idx)) return true;
 
-  // Nichts anbietbar → direkt weiter
   game.pendingWorldAdvance = false;
   game.pendingBossUpgradeWorld = null;
   advanceToNextWorld();
@@ -4989,8 +5015,23 @@ function advanceToNextWorld() {
   if (typeof dlClearWorldEventBuffs === "function") dlClearWorldEventBuffs(game.eventState);
   game.eventLootBonus = null;
   game.goldenFleeTimer = 0;
+  // Alte Welle wegräumen – kein Residual-Boss in der neuen Welt
+  game.enemies = [];
+  game.projectiles = [];
+  game.waveWasBoss = false;
+  game.currentWave = null;
+  game.waveCooldown = 0.6;
   game.worldIndex = idx + 1;
   const newWorld = getWorld();
+  // Fortschritt sauber in der neuen Welt starten (kein Sofort-Boss durch Overshoot)
+  const len = Math.max(1, newWorld.length || 20);
+  const softEnd = (newWorld.min || 1) + len;
+  if (game.dungeonLevel < (newWorld.min || 1)) {
+    game.dungeonLevel = newWorld.min || 1;
+  } else if (game.dungeonLevel >= softEnd) {
+    // Zu weit: am Anfang der neuen Welt ansetzen (~erste 5%)
+    game.dungeonLevel = (newWorld.min || 1) + Math.max(0, Math.floor(len * 0.05));
+  }
   PackAssets?.ensureWorld(newWorld.theme).catch(() => {});
   initWorldBackground();
   startWorldTransition(newWorld);
@@ -6487,6 +6528,8 @@ function pickRunUpgrade(id) {
 
   if (game.isRunning && !game.isDead) {
     $("btn-pause").textContent = "Pause (P)";
+    // Nach Weltwechsel: normale Startwelle, nie sofort Boss
+    game.enemies = game.enemies.filter((e) => e && e.hp > 0 && !e.dead && !e.isBoss);
     if (countAliveEnemies() === 0) safeSpawnWave();
     ensureGameLoop();
   }
