@@ -13,11 +13,18 @@ eval(balanceSrc.replace(/^\/\*[\s\S]*?\*\//, ""));
 const report = dlRunBalanceReport();
 
 console.log("=== DUNGEON LOOP BALANCE REPORT v" + report.version + " ===\n");
-console.log("Target first clear: ~" + report.targetClearMin + " min (90–150 acceptable)\n");
+const range = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.targetFirstClearRange)
+  ? DL_BALANCE.targetFirstClearRange : [160, 300];
+console.log("Target first clear: ~" + report.targetClearMin + " min (" + range[0] + "–" + range[1] + " acceptable)");
+if (report.runsPerWorld) {
+  console.log("Target runs/world: " + report.runsPerWorld[0] + "–" + report.runsPerWorld[1] + "\n");
+} else {
+  console.log("");
+}
 
 console.log("Estimated first-clear time (heuristic):");
 Object.entries(report.estimateMinutes).forEach(([k, v]) => {
-  const ok = v >= 90 && v <= 150;
+  const ok = v >= range[0] && v <= range[1];
   console.log("  " + k.padEnd(10) + v + " min" + (ok ? " ✓" : " ⚠"));
 });
 
