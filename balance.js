@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-179
+   Build: sidescroller-v3-180
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY (Hard Balance + Boss-only Run-Upgrades)
@@ -14,7 +14,7 @@
    ============================================ */
 
 const DL_BALANCE = {
-  version: 179,
+  version: 180,
   targetFirstClearMin: 150,
   targetFirstClearRange: [140, 170],
   targetDeaths: [26, 38],
@@ -307,6 +307,144 @@ const DL_BALANCE = {
     firstRunWorld1Progress: { average: [0.15, 0.30], skilled: [0.35, 0.55] }
   },
 
+  events: {
+    enabled: true,
+    spawn: {
+      baseChance: 0.08,
+      eliteChance: 0.14,
+      recoveryChance: 0.04,
+      preBossChance: 0,
+      postBossChance: 0,
+      skipFirstWaves: 3,
+      skipLastWavesBeforeBoss: 2,
+      minWavesBetween: 4,
+      pityAfterWaves: 8,
+      pityPerWave: 0.04,
+      pityCap: 0.20,
+      worldChanceMult: [0.85, 1.00, 1.10, 1.15, 1.20]
+    },
+    limits: {
+      maxPerWorld: [2, 2, 3, 3, 3],
+      maxAltarPerRun: 1,
+      maxMerchantPerWorld: 1,
+      maxFountainPerWorld: 1,
+      maxFateGatePerWorld: 1,
+      maxBloodPactPerWorld: 1,
+      noDuplicateConsecutive: true,
+      maxVisibleHudIcons: 3,
+      maxOffensivePower: 0.20,
+      maxDefensivePower: 0.18
+    },
+    weights: {
+      cursed_altar: 0.18,
+      merchant: 0.18,
+      elite_challenge: 0.17,
+      treasure: 0.14,
+      healing_fountain: 0.12,
+      blood_pact: 0.09,
+      golden_enemy: 0.07,
+      fate_gate: 0.05
+    },
+    budgetCompensation: [1.00, 1.04, 1.04, 1.06, 1.06],
+    merchant: {
+      maxBuys: 1,
+      prices: {
+        // world index -> {common, uncommon, rare}
+        0: { common:90, uncommon:150, rare:260 },
+        1: { common:140, uncommon:230, rare:390 },
+        2: { common:210, uncommon:340, rare:560 },
+        3: { common:300, uncommon:480, rare:780 },
+        4: { common:420, uncommon:650, rare:1050 }
+      },
+      items: [
+        { id:"heal_potion", rarity:"common", name:"Heiltrank", healPct:0.20, maxHpToBuy:0.95 },
+        { id:"guard_potion", rarity:"uncommon", name:"Schutztrank", drAdd:0.12, encounters:3 },
+        { id:"war_potion", rarity:"uncommon", name:"Kriegstrank", dmgAdd:0.15, encounters:3 },
+        { id:"boss_elixir", rarity:"rare", name:"Boss-Elixier", bossDmgAdd:0.18, untilBoss:true },
+        { id:"gold_magnet", rarity:"common", name:"Goldmagnet", catchRadiusAdd:0.25, untilWorldEnd:true },
+        { id:"mana_essence", rarity:"uncommon", name:"Mana-Essenz", mageOnly:true, fillMana:true, manaAdd:15, untilWorldEnd:true }
+      ]
+    },
+    altar: {
+      maxActive: 1,
+      pacts: [
+        { id:"blood_power", name:"Blut für Macht", maxHpMult:-0.15, damageAdd:0.12 },
+        { id:"glass_force", name:"Glaskraft", abilityDmgAdd:0.18, enemyDmgTakenAdd:0.10 },
+        { id:"greed", name:"Gier", goldAdd:0.25, maxHpMult:-0.12 },
+        { id:"fury", name:"Raserei", atkSpdAdd:0.12, armorAdd:-0.08 }
+      ]
+    },
+    eliteChallenge: {
+      budgetMult: 1.45,
+      minElites: 1,
+      dualEliteFromWorld: 2,
+      dualEliteChance: 0.30,
+      goldMult: 2.2,
+      lootChanceAdd: 0.40,
+      rarePlusLootMult: 2,
+      tempBuffChance: 0.15,
+      tempBuffs: [
+        { id:"ec_dmg", damageAdd:0.06 },
+        { id:"ec_hp", maxHpAdd:0.08 },
+        { id:"ec_as", atkSpdAdd:0.05 },
+        { id:"ec_boss", bossDmgAdd:0.05 }
+      ],
+      maxOvershoot: 1.45
+    },
+    treasure: {
+      gold: 0.40, loot: 0.30, buff: 0.20, mimic: 0.10,
+      goldRange: {
+        0:[80,130], 1:[130,210], 2:[210,330], 3:[320,500], 4:[450,700]
+      },
+      lootRarity: { uncommon:0.62, rare:0.28, epic:0.09, legendary:0.01 },
+      buffs: [
+        { id:"tr_dmg", damageAdd:0.08 },
+        { id:"tr_hp", maxHpAdd:0.10 },
+        { id:"tr_as", atkSpdAdd:0.07 },
+        { id:"tr_armor", armorAdd:0.06 }
+      ],
+      mimic: { hpMult:4.0, atkMult:1.8, speedMult:1.15, rewardMult:3, minLoot:"rare" }
+    },
+    healingFountain: {
+      healPct: 0.22,
+      softCap: 0.85,
+      hideIfHpAbove: 0.80
+    },
+    bloodPact: {
+      currentHpCost: 0.25,
+      minHpFrac: 0.40,
+      damageAdd: 0.18,
+      bossDmgAdd: 0.12,
+      goldAdd: 0.15
+    },
+    goldenEnemy: {
+      hpMult: 1.5,
+      atkMult: 0.75,
+      speedMult: 1.45,
+      fleeSeconds: 12,
+      gold: { 0:120, 1:190, 2:300, 3:450, 4:650 },
+      lootChance: 0.35,
+      minLoot: "uncommon"
+    },
+    fateGate: {
+      safeBudgetMult: 0.75,
+      dangerBudgetMult: 1.35,
+      dangerEnemyDmgAdd: 0.10,
+      dangerEliteChanceAdd: 0.10,
+      dangerEncounters: 2,
+      rewardGoldMult: 2.5,
+      rewardEpicChance: 0.20,
+      rewardLegendaryChance: 0.02,
+      maxOvershoot: 1.35
+    },
+    ngPlus: {
+      eliteChallengeBudgetAddPerLoopFrom2: 0.05,
+      fateGateBudgetAddPerLoopFrom2: 0.05,
+      rewardAddPerLoopFrom2: 0.08,
+      corruptedChanceFromLoop3: 0.20
+    }
+  },
+
   runUpgrades: {
     mode: "afterBoss",
     maxPicksBeforeFinal: 4,
@@ -543,6 +681,20 @@ function dlEncounterBudget(worldDef, progress, isBoss, loopIndex, breath) {
     const r = DL_BALANCE.rhythm || {};
     budget *= (r.breathBudgetMult != null ? r.breathBudgetMult : 0.5);
   }
+
+  if (!isBoss) {
+    const ev = DL_BALANCE.events;
+    const comp = ev && ev.budgetCompensation;
+    if (comp) {
+      let wi = (w.id != null) ? (w.id | 0) : -1;
+      if (wi < 0 && (DL_BALANCE.worlds || []).length) {
+        wi = DL_BALANCE.worlds.indexOf(worldDef);
+      }
+      if (wi < 0) wi = 0;
+      if (comp[wi] != null) budget *= comp[wi];
+    }
+  }
+
   return Math.max(2, budget);
 }
 
