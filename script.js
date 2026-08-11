@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-159";
+const BUILD_ID = "sidescroller-v3-160";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -551,7 +551,7 @@ const CLASS_BRIEFINGS = {
 };
 
 const BRIEFING_SHARED = {
-  goal: "Sterbe, upgrade, komm weiter: Jede Welt braucht oft viele Runs. Alle Welten geschafft → Glückwunsch-Banner, dann Endlos-Schleife oder neue Welt.",
+  goal: "Sterbe, upgrade, komm weiter: Jede Welt braucht oft viele Runs. Alle Welten geschafft → Glückwunsch, dann von vorn neu starten.",
   controls: [
     "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
     "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
@@ -774,7 +774,6 @@ const BALANCE = {
   earlyAtkEase: 0.2,
   /** Härter als v157 – Welten brauchen Upgrade-Schleifen */
   difficultyMult: 1.08,
-  endlessScalePerBoss: 0.07,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
@@ -797,10 +796,8 @@ const game = {
   worldIndex: 0,
   /** Aktuelle Welle war Welt-Boss (Tor zur nächsten Welt) */
   waveWasBoss: false,
-  /** Dungeon Loop einmal komplett geschafft → Endlos-Modus */
+  /** Dungeon Loop einmal komplett geschafft (Run beendet) */
   loopCompleted: false,
-  endlessMode: false,
-  endlessBosses: 0,
   hero: null, enemies: [], projectiles: [], particles: [], coins: [], meleeSlashes: [],
   attackEffects: [], screenShake: 0,
   waveNumber: 0, currentWave: null,
@@ -2197,9 +2194,7 @@ function bindEvents() {
   bind("btn-save-score", saveScore);
   bind("btn-gameover-run", () => { clearActiveRun(); startRun(); });
   bind("btn-gameover-upgrade", goToUpgrades);
-  bind("btn-victory-endless", continueEndlessFromVictory);
-  bind("btn-victory-newworld", startNewWorldFromVictory);
-  bind("btn-victory-end", endGameFromVictory);
+  bind("btn-victory-restart", restartFromVictory);
   bind("btn-open-upgrades", toggleUpgrades);
   bind("btn-close-upgrades", hideUpgrades);
   bind("btn-reload-leaderboard", () => {});
@@ -3163,8 +3158,6 @@ function saveActiveRun(force) {
     worldIndex: game.worldIndex | 0,
     waveWasBoss: !!game.waveWasBoss,
     loopCompleted: !!game.loopCompleted,
-    endlessMode: !!game.endlessMode,
-    endlessBosses: game.endlessBosses | 0,
     runGold: game.runGold,
     runXp: game.runXp,
     playerLevel: game.playerLevel,
@@ -3307,8 +3300,6 @@ function resumeRun(data) {
   game.waveWasBoss = !!data.waveWasBoss ||
     (Array.isArray(data.enemies) && data.enemies.some((e) => e && e.isBoss));
   game.loopCompleted = !!data.loopCompleted;
-  game.endlessMode = !!data.endlessMode || game.loopCompleted;
-  game.endlessBosses = Math.max(0, Math.floor(Number(data.endlessBosses) || 0));
   game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
   game.runXp = Math.max(0, Math.floor(Number(data.runXp) || 0));
   game.playerLevel = Math.max(1, Math.floor(Number(data.playerLevel) || 1));
@@ -3897,7 +3888,7 @@ async function continueOrStartRun() {
 function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.lastRunGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.worldIndex = 0; game.waveWasBoss = false;
-  game.loopCompleted = false; game.endlessMode = false; game.endlessBosses = 0;
+  game.loopCompleted = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
   game.meleeSlashes = []; game.attackEffects = []; game.screenShake = 0;
@@ -4125,11 +4116,10 @@ function getWorld() {
   return WORLDS[clampWorldIndex(game.worldIndex)];
 }
 
-/** Boss-Welle: Tor zur nächsten Welt / Endlos-Bosse in der letzten Welt. */
+/** Boss-Welle: Tor zur nächsten Welt; in der letzten Welt endet der Run nach dem Boss. */
 function shouldSpawnWorldBoss() {
   const idx = clampWorldIndex(game.worldIndex);
   if (idx >= WORLDS.length - 1) {
-    // Letzte Welt / Endlos: Bosse alle 18 Level nach Eintritt
     const base = WORLDS[idx].min;
     return game.dungeonLevel > base && (game.dungeonLevel - base) % 18 === 0;
   }
@@ -4137,23 +4127,16 @@ function shouldSpawnWorldBoss() {
   return game.dungeonLevel >= gate;
 }
 
-/** Nach besiegter Boss-Welle: nächste Welt oder Loop-Abschluss → Endlos. */
+/** Nach besiegter Boss-Welle: nächste Welt – Boss der letzten Welt = Spiel fertig. */
 function tryAdvanceWorldAfterBossWave() {
   if (!game.waveWasBoss) return false;
   game.waveWasBoss = false;
   const idx = clampWorldIndex(game.worldIndex);
 
-  // Schon in der letzten Welt: Endlos-Loop (nach erstem Abschluss)
+  // Boss in der letzten Welt besiegt → fertig
   if (idx >= WORLDS.length - 1) {
-    game.endlessMode = true;
-    game.endlessBosses = (game.endlessBosses || 0) + 1;
-    if (!game.loopCompleted) {
-      completeDungeonLoop();
-      return true;
-    }
-    addLog("Endlos-Boss #" + game.endlessBosses + " besiegt – die Ruinen enden nie.", "boss");
-    showAnnouncement("endless", "ENDLOS", "Boss #" + game.endlessBosses, 2.4);
-    return false;
+    completeDungeonLoop();
+    return true;
   }
 
   const gate = WORLDS[idx + 1].min;
@@ -4168,63 +4151,55 @@ function tryAdvanceWorldAfterBossWave() {
   showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
   playWorldMusic(newWorld);
   emitCombatEvent("world_change");
-
-  // Eintritt in die letzte Welt = Dungeon Loop geschafft → Banner
-  if (game.worldIndex >= WORLDS.length - 1 && !game.loopCompleted) {
-    completeDungeonLoop();
-  }
   return true;
 }
 
-/** Glückwunsch-Banner: Loop geschafft, dann Endlos oder neue Welt. */
+/** Glückwunsch – Spiel fertig. Nur Neustart von Anfang an. */
 function completeDungeonLoop() {
   if (game.loopCompleted) return;
   game.loopCompleted = true;
-  game.endlessMode = true;
   game.isPaused = true;
+  game.isRunning = false;
   stopLoop();
   hidePauseMenu();
   hideUpgrades();
+
+  const earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
+  game.lastRunGold = earnedGold;
+  game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
+  game.runGold = 0;
+  saveMeta();
+  if (game.playerName) saveLocalPlayer({ quiet: true });
+  clearActiveRun();
+
   const panel = $("victory-panel");
   if (panel) panel.classList.remove("hidden");
   const summary = $("victory-summary");
   if (summary) {
     summary.textContent =
       "Alle Welten bezwungen · Level " + game.dungeonLevel +
-      " · " + game.monstersDefeated + " Monster · " +
-      Math.max(0, Math.floor(Number(game.runGold) || 0)) + " Gold im Run";
+      " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold";
   }
-  addLog("Glückwunsch – Dungeon Loop geschafft! Endlos-Schleife aktiv.", "heal");
+  addLog("Glückwunsch – Dungeon Loop geschafft!", "heal");
   showAnnouncement("victory", "GLÜCKWUNSCH", "Dungeon Loop geschafft", 3.2);
   emitCombatEvent("world_change");
-  markRunSaveDirty();
-  saveActiveRun(true);
+  $("btn-start-run").disabled = false;
+  $("btn-pause").disabled = true;
+  updateTotalGold();
+  renderUpgradeButtons();
   updateRunButtons();
+  tryMenuMusic();
 }
 
 function hideVictoryPanel() {
   $("victory-panel")?.classList.add("hidden");
 }
 
-/** Endlos weiter in der letzten Welt. */
-function continueEndlessFromVictory() {
-  hideVictoryPanel();
-  if (!game.isDead) {
-    game.isPaused = false;
-    $("btn-pause").textContent = "Pause (P)";
-    ensureGameLoop();
-    if (canvas) canvas.focus();
-    addLog("Endlos-Schleife – Bosse werden immer härter.");
-  }
-}
-
-/** Neuer Durchlauf ab Welt 1 – Upgrades/Gold bleiben. */
-function startNewWorldFromVictory() {
+/** Neustart von Anfang an – Upgrades/Gold bleiben. */
+function restartFromVictory() {
   hideVictoryPanel();
   clearActiveRun();
   game.loopCompleted = false;
-  game.endlessMode = false;
-  game.endlessBosses = 0;
   game.isDead = false;
   game.isPaused = false;
   stopLoop();
@@ -4246,23 +4221,13 @@ function startNewWorldFromVictory() {
   safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Neue Welt – zurück zum Wald. Deine Upgrades bleiben!");
+  addLog("Neu gestartet – zurück zum Wald. Deine Upgrades bleiben!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
   saveActiveRun(true);
   beginRunLoop();
   if (canvas) canvas.focus();
-}
-
-/** Banner schließen und zum Hauptmenü. */
-function endGameFromVictory() {
-  hideVictoryPanel();
-  if (game.isRunning && !game.isDead) {
-    saveActiveRun(true);
-    if (game.playerName) saveLocalPlayer();
-  }
-  returnToMainMenu();
 }
 
 // Schwierigkeit je Welt: Tiefe in der aktuellen Welt + Welt-Gefahr
@@ -4274,11 +4239,6 @@ function getWorldDepth() {
 function getMetaEase() {
   const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
   return Math.max(0.74, 1 - total * 0.0065);
-}
-
-function getEndlessMult() {
-  if (!game.endlessMode) return 1;
-  return 1 + (game.endlessBosses || 0) * (BALANCE.endlessScalePerBoss || 0.07);
 }
 
 function getBossMult(isBoss) {
@@ -4293,7 +4253,7 @@ function getEnemyStats(isBoss) {
   const depth = getWorldDepth();
   const danger = world.danger || 1;
   const ease = getMetaEase();
-  const diff = (BALANCE.difficultyMult || 1) * getEndlessMult();
+  const diff = (BALANCE.difficultyMult || 1);
   const depthHp = Math.pow(BALANCE.levelScalePow, Math.min(28, depth * 0.85));
   const depthAtk = Math.pow(BALANCE.levelScalePow - 0.014, Math.min(28, depth * 0.85));
   const boss = getBossMult(isBoss);
