@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-166";
+const BUILD_ID = "sidescroller-v3-167";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -642,7 +642,7 @@ const WORLD_MONSTERS = {
   }
 };
 
-const WORLD_VISUALS = {
+const WORLD_THEME_SKINS = {
   forest: {
     sky: "#040e0a", bg: "#071812", hill: "#0a2218",
     hill2: "#0d2e1e", hill3: "#123824",
@@ -683,10 +683,10 @@ const WORLD_VISUALS = {
 function buildWorldsFromBalance() {
   const defs = (typeof dlWorldDefs === "function") ? dlWorldDefs() : null;
   if (!defs) {
-    return Object.keys(WORLD_VISUALS).map((theme, i) => ({
+    return Object.keys(WORLD_THEME_SKINS).map((theme, i) => ({
       name: theme, min: 1 + i * 20, danger: i + 1, theme,
       hpMult: 1, atkMult: 1, speedMult: 1, length: 20,
-      ...(WORLD_VISUALS[theme] || {})
+      ...(WORLD_THEME_SKINS[theme] || {})
     }));
   }
   return defs.map((d) => ({
@@ -695,7 +695,7 @@ function buildWorldsFromBalance() {
     length: d.length,
     budgetEarly: d.budgetEarly, budgetMid: d.budgetMid,
     budgetLate: d.budgetLate, budgetBoss: d.budgetBoss,
-    ...(WORLD_VISUALS[d.theme] || WORLD_VISUALS.forest)
+    ...(WORLD_THEME_SKINS[d.theme] || WORLD_THEME_SKINS.forest)
   }));
 }
 
