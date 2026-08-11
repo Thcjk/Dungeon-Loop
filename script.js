@@ -3880,7 +3880,7 @@ async function continueOrStartRun() {
 }
 
 function resetRun() {
-  game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
+  game.dungeonLevel = 1; game.runGold = 0; game.lastRunGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.worldIndex = 0; game.waveWasBoss = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
