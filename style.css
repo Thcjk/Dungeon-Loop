@@ -1425,3 +1425,88 @@ body {
   padding: 2px 6px;
   cursor: pointer;
 }
+
+/* ----- Run-Upgrade Overlay (temporär, pro Run) ----- */
+.run-upgrade-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 12, 0.88);
+  padding: 1rem;
+}
+.run-upgrade-overlay.hidden { display: none; }
+.run-upgrade-content {
+  text-align: center;
+  width: min(96%, 640px);
+  padding: 1.35rem 1.1rem 1.2rem;
+  border: 2px solid rgba(196, 160, 80, 0.55);
+  background: linear-gradient(165deg, #12141c 0%, #0a0c12 55%, #101820 100%);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+}
+.run-upgrade-title {
+  font-size: clamp(1.15rem, 4vw, 1.55rem);
+  letter-spacing: 0.14em;
+  color: #e8d5a3;
+  margin: 0 0 0.35rem;
+}
+.run-upgrade-hint {
+  font-size: 0.78rem;
+  color: #9aa3b0;
+  margin: 0 0 1rem;
+}
+.run-upgrade-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+@media (max-width: 560px) {
+  .run-upgrade-choices { grid-template-columns: 1fr; }
+}
+.run-upgrade-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.75rem 0.7rem;
+  border-radius: 4px;
+  border: 1px solid #3a4250;
+  background: rgba(18, 22, 30, 0.95);
+  color: #dce3ec;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.run-upgrade-card:hover {
+  transform: translateY(-2px);
+  border-color: #c4a050;
+}
+.run-upgrade-card .ru-rarity {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.run-upgrade-card .ru-name {
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  color: #f0e6d0;
+}
+.run-upgrade-card .ru-desc {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #9aa3b0;
+}
+.run-upgrade-card.rarity-common { border-color: #6b7280; }
+.run-upgrade-card.rarity-common .ru-rarity { color: #9ca3af; }
+.run-upgrade-card.rarity-uncommon { border-color: #3d8f5a; }
+.run-upgrade-card.rarity-uncommon .ru-rarity { color: #5ecf7e; }
+.run-upgrade-card.rarity-rare { border-color: #3b6ea5; }
+.run-upgrade-card.rarity-rare .ru-rarity { color: #6eb0ef; }
+.run-upgrade-card.rarity-epic { border-color: #7a4ea8; }
+.run-upgrade-card.rarity-epic .ru-rarity { color: #c084fc; }
+.run-upgrade-card.rarity-legendary { border-color: #c4a050; }
+.run-upgrade-card.rarity-legendary .ru-rarity { color: #f0c14a; }
+#run-upgrade-reroll { margin-top: 0.15rem; }

@@ -130,9 +130,14 @@ function dealPlayerDamage(e, rawDmg, opts) {
   let dmg = Math.max(1, Number(rawDmg) || 0);
 
   const isCrit = !!o.crit || (o.critRoll != null && Math.random() < o.critRoll);
-  if (isCrit) dmg *= (st.critDamage || (BALANCE.critDamageBase || 1.85));
+  if (isCrit) dmg *= (st.critDamage || (BALANCE.critDamageBase || 1.7));
 
   if (e.isBoss && st.bossDamage) dmg *= (1 + st.bossDamage);
+
+  // Executioner: +22% vs targets under 20% HP
+  if (st.executioner && e.maxHp > 0 && (e.hp / e.maxHp) < 0.2) {
+    dmg *= 1.22;
+  }
 
   if (e.weakTimer > 0 && e.damageTakenMult) dmg *= e.damageTakenMult;
 
@@ -146,8 +151,25 @@ function dealPlayerDamage(e, rawDmg, opts) {
   rs.combo = (rs.combo || 0) + 1;
   if (rs.combo > (rs.highestCombo || 0)) rs.highestCombo = rs.combo;
 
+  // Bloodlust: jeder 12. Treffer heilt 2.5% max HP
+  if (game.hero && game.runUpgradeState && st.maxHp) {
+    const rb = (typeof getRunBonus === "function") ? getRunBonus() : {};
+    if (rb.bloodlust) {
+      const rus = game.runUpgradeState;
+      rus.hitCount = (rus.hitCount || 0) + 1;
+      if (rus.hitCount >= 12 && (rus.bloodlustIcd || 0) <= 0) {
+        rus.hitCount = 0;
+        rus.bloodlustIcd = 2;
+        game.hero.hp = Math.min(st.maxHp, game.hero.hp + Math.floor(st.maxHp * 0.025));
+      }
+    }
+  }
+
+  const lsCap = st.lifestealCap != null
+    ? st.lifestealCap
+    : ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) ? DL_BALANCE.caps.lifesteal : 0.10);
   if (game.hero && st.lifesteal > 0 && dmg > 0) {
-    const heal = Math.max(0, Math.floor(dmg * Math.min(0.12, st.lifesteal)));
+    const heal = Math.max(0, Math.floor(dmg * Math.min(lsCap || 0.10, st.lifesteal)));
     if (heal > 0) {
       const maxHp = st.maxHp || game.hero.maxHp;
       game.hero.hp = Math.min(maxHp, game.hero.hp + heal);
@@ -162,6 +184,31 @@ function dealPlayerDamage(e, rawDmg, opts) {
       big: !!o.big || e.isBoss,
       color: o.color
     });
+  }
+
+  // Chain Reaction: bei Crit 18% Chance, nächster Gegner 35%
+  if (isCrit && st.chainReaction && game.enemies) {
+    if (Math.random() < 0.18) {
+      let nearest = null, best = Infinity;
+      const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+      game.enemies.forEach((o2) => {
+        if (!o2 || o2 === e || o2.dead || o2.hp <= 0) return;
+        const d = Math.hypot(o2.x + o2.w / 2 - ex, o2.y + o2.h / 2 - ey);
+        if (d < best) { best = d; nearest = o2; }
+      });
+      if (nearest) {
+        const chain = Math.max(1, Math.floor(dmg * 0.35));
+        nearest.hp -= chain;
+        nearest.hitFlash = Math.max(nearest.hitFlash || 0, 6);
+        if (typeof spawnDamage === "function") {
+          spawnDamage(nearest.x + nearest.w / 2, nearest.y, chain, { magic: true });
+        }
+        if (nearest.hp <= 0 && !nearest.dead) {
+          nearest.dead = true;
+          if (typeof onEnemyKill === "function") onEnemyKill(nearest);
+        }
+      }
+    }
   }
 
   if (e.hp <= 0 && !e.dead) {
@@ -190,31 +237,38 @@ function noteEnemyKillForStats(e) {
 }
 
 /** Encounter aus Budget bauen – Rollenliste */
-function planEncounterRoles(budget, theme, danger, allowElite) {
+function planEncounterRoles(budget, theme, danger, allowElite, opts) {
   const roles = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.roles : null;
-  if (!roles) return [{ tag: "basic", cost: 1 }];
+  if (!roles) return { picks: [{ tag: "basic", cost: 1 }], spent: 1, synergy: 0 };
+  const o = opts || {};
+  const maxEnemies = Math.max(1, o.maxEnemies || 5);
 
-  const weights = (typeof dlThemeRoleWeights === "function")
-    ? dlThemeRoleWeights(theme, danger)
-    : { basic: 1, fast: 0.3, ranged: 0.3, tank: 0.2 };
+  let weights;
+  if (o.composition && typeof o.composition === "object") {
+    weights = Object.assign({}, o.composition);
+  } else if (typeof dlThemeRoleWeights === "function") {
+    weights = dlThemeRoleWeights(theme, danger);
+  } else {
+    weights = { basic: 1, fast: 0.3, ranged: 0.3, tank: 0.2 };
+  }
 
-  const pool = Object.keys(weights).filter((k) => k !== "boss" && (allowElite || k !== "elite"));
+  const pool = Object.keys(weights).filter((k) => k !== "boss" && (allowElite || k !== "elite") && roles[k]);
   const picks = [];
   let spent = 0;
   let guard = 0;
-  while (spent < budget - 0.4 && picks.length < 5 && guard++ < 20) {
+  while (spent < budget - 0.4 && picks.length < maxEnemies && guard++ < 24) {
     const remaining = budget - spent;
     const options = pool
       .map((tag) => ({ tag, cost: roles[tag].cost, w: weights[tag] || 0.1 }))
-      .filter((o) => o.cost <= remaining + 0.15);
+      .filter((opt) => opt.cost <= remaining + 0.15);
     if (!options.length) break;
     // Weighted random
-    const sum = options.reduce((a, o) => a + o.w, 0);
+    const sum = options.reduce((a, opt) => a + opt.w, 0);
     let r = Math.random() * sum;
     let chosen = options[0];
-    for (const o of options) {
-      r -= o.w;
-      if (r <= 0) { chosen = o; break; }
+    for (const opt of options) {
+      r -= opt.w;
+      if (r <= 0) { chosen = opt; break; }
     }
     picks.push({ tag: chosen.tag, cost: chosen.cost });
     spent += chosen.cost;
@@ -223,9 +277,24 @@ function planEncounterRoles(budget, theme, danger, allowElite) {
   }
   if (!picks.length) picks.push({ tag: "basic", cost: 1 });
 
-  const tags = picks.map((p) => p.tag);
+  // Synergy-Overshoot: letzte Nicht-Basics droppen
+  let tags = picks.map((p) => p.tag);
+  const maxO = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.synergy)
+    ? (DL_BALANCE.synergy.maxOvershoot || 1.15) : 1.15;
+  if (typeof dlSynergyMult === "function") {
+    while (picks.length > 1 && dlSynergyMult(tags) * spent > budget * maxO) {
+      let dropIdx = -1;
+      for (let i = picks.length - 1; i >= 0; i--) {
+        if (picks[i].tag !== "basic") { dropIdx = i; break; }
+      }
+      if (dropIdx < 0) break;
+      spent -= picks[dropIdx].cost || 1;
+      picks.splice(dropIdx, 1);
+      tags = picks.map((p) => p.tag);
+    }
+  }
+
   const syn = (typeof dlSynergyExtra === "function") ? dlSynergyExtra(tags) : 0;
-  // If synergy would blow budget badly and we have room to drop last, keep for tension
   return { picks, spent: spent + syn, synergy: syn };
 }
 
@@ -367,19 +436,27 @@ function renderBalanceDebugPanel() {
   const progress = (typeof getWorldProgress01 === "function") ? getWorldProgress01() : 0;
   const intensity = (typeof dlWorldIntensity === "function") ? dlWorldIntensity(progress) : 1;
   const power = getPlayerPowerScore();
+  const runPower = (game.runUpgradeState && typeof dlRunUpgradePowerScore === "function")
+    ? dlRunUpgradePowerScore(game.runUpgradeState)
+    : (game.runUpgradeState?.powerScore || 0);
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
   const warnings = (typeof dlRunSanityChecks === "function")
     ? dlRunSanityChecks({ baseCrit: CLASSES[game.classKey]?.crit || 0 })
     : [];
   const goals = getShortMidLongGoals();
   el.innerHTML =
-    "<strong>BALANCE-DEBUG</strong>" +
-    "<div>Stärke " + power + " · Durchlauf " + ((game.loopIndex | 0) + 1) + "</div>" +
+    "<strong>BALANCE-DEBUG v" + ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.version) || "?") + "</strong>" +
+    "<div>Meta " + power + " · RunPower " + runPower + " · Loop " + ((game.loopIndex | 0) + 1) + "</div>" +
     "<div>Welt " + (world.name || "?") + " · Fortschritt " + formatPct(progress) + " · Intensität " + intensity.toFixed(2) + "</div>" +
+    "<div>Caps: Krit " + Math.round((caps.critChance || 0.45) * 100) + "% · DR " +
+    Math.round((caps.damageReduction || 0.55) * 100) + "% · LS " +
+    Math.round((caps.lifesteal || 0.1) * 100) + "%</div>" +
     "<div>Gold " + (typeof getSpendableGold === "function" ? getSpendableGold() : 0) +
-    " · Läufe ohne Upgrade " + (game.emptyUpgradeRuns | 0) + "</div>" +
+    " · Läufe ohne Upgrade " + (game.emptyUpgradeRuns | 0) +
+    " · Held-Lv " + (game.playerLevel || 1) + "</div>" +
     "<div>Angriff " + Math.floor(st.attack || 0) + " Magie " + Math.floor(st.magicDamage || 0) +
     " Tempo " + ((st.atkSpeedMult || 1)).toFixed(2) + " Krit " + Math.round((st.crit || 0) * 100) + "%</div>" +
-    "<div>Leben " + Math.floor(st.maxHp || 0) + " Rüstung " + (st.defense || 0).toFixed?.(1) +
+    "<div>Leben " + Math.floor(st.maxHp || 0) + " metaDR " + Math.round((st.metaArmorDr || 0) * 100) + "%" +
     " Lebensraub " + Math.round((st.lifesteal || 0) * 1000) / 10 + "%</div>" +
     "<div class='dbg-goals'>Kurz: " + goals.short + "<br>Mittel: " + goals.mid + "<br>Lang: " + goals.long + "</div>" +
     (warnings.length ? ("<div class='dbg-warn'>" + warnings.join("<br>") + "</div>") : "<div>Checks OK</div>") +

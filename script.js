@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-176";
+const BUILD_ID = "sidescroller-v3-177";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -481,28 +481,34 @@ const CLASS_WEAPONS = {
   mage: "Arkaner Stab"
 };
 
-const CLASSES = {
+const CLASSES = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.classes)
+  ? {
+    warrior: { ...DL_BALANCE.classes.warrior },
+    ranger: { ...DL_BALANCE.classes.ranger },
+    mage: { ...DL_BALANCE.classes.mage }
+  }
+  : {
   warrior: {
     name: "Krieger", attackType: "melee",
-    hp: 150, attack: 22, defense: 8, crit: 0.06, mana: 0, magicDamage: 0,
-    range: 84, attackRate: 440, moveSpeed: 124,
+    hp: 135, attack: 18, defense: 5, crit: 0.04, critDamage: 1.70, mana: 0, magicDamage: 0,
+    range: 82, attackRate: 440, moveSpeed: 128,
     aoeFalloff: 0.74,
     special: "Schildschlag", specialCd: 8, specialRange: 90, specialMult: 2.2,
     desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
   },
   ranger: {
     name: "Waldläufer", attackType: "ranged",
-    hp: 118, attack: 17, defense: 5, crit: 0.17, mana: 0, magicDamage: 0,
-    range: 235, attackRate: 360, moveSpeed: 152,
-    closeRange: 55, meleePenalty: 0.4,
+    hp: 102, attack: 14, defense: 2, crit: 0.06, critDamage: 1.75, mana: 0, magicDamage: 0,
+    range: 225, attackRate: 360, moveSpeed: 146,
+    closeRange: 60, meleePenalty: 0.45,
     proj: "projectile_arrow", projSpeed: 13,
     special: "Präzisionsschuss", specialCd: 5,
     desc: "Bogen, große Reichweite, schwach im Nahkampf"
   },
   mage: {
     name: "Magier", attackType: "magic",
-    hp: 100, attack: 8, defense: 4, crit: 0.12, mana: 145, magicDamage: 34,
-    range: 215, attackRate: 300, moveSpeed: 110, manaPerShot: 3,
+    hp: 92, attack: 7, defense: 1, crit: 0.04, critDamage: 1.70, mana: 130, magicDamage: 29,
+    range: 205, attackRate: 300, moveSpeed: 138, manaPerShot: 3,
     proj: "projectile_fire", projSpeed: 8,
     special: "Feuerball", specialCd: 6, manaCost: 26,
     desc: "Zauber, mittlere Reichweite, braucht Mana"
@@ -685,9 +691,14 @@ function buildWorldsFromBalance() {
   return defs.map((d) => ({
     name: d.name, min: d.min, danger: d.danger, theme: d.theme,
     hpMult: d.hpMult, atkMult: d.atkMult, speedMult: d.speedMult,
+    rewardMult: d.rewardMult != null ? d.rewardMult : 1,
     length: d.length,
+    budget: d.budget || null,
     budgetEarly: d.budgetEarly, budgetMid: d.budgetMid,
     budgetLate: d.budgetLate, budgetBoss: d.budgetBoss,
+    maxEnemies: d.maxEnemies != null ? d.maxEnemies : 5,
+    composition: d.composition || null,
+    entryEase: d.entryEase != null ? d.entryEase : 1,
     ...(WORLD_THEME_SKINS[d.theme] || WORLD_THEME_SKINS.forest)
   }));
 }
@@ -871,7 +882,11 @@ const game = {
   /** Boss-Near-Miss Tracking */
   activeBossMaxHp: 0,
   activeBossMinHpFrac: 1,
-  runStartMs: 0
+  runStartMs: 0,
+  /** Temporäre Run-Upgrades (verloren bei Tod / NG+) */
+  runUpgradeState: null,
+  runUpgradeDraft: null,
+  runUpgradePaused: false
 };
 
 let WAVE_DATA = null;
@@ -904,7 +919,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 4;
+const RUN_SAVE_VERSION = 5;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
@@ -1862,8 +1877,12 @@ function getEquippedAbilities() {
 }
 
 function getEffectiveAbilityCd(ab) {
-  const cdRed = (game.upgrades.upgrade_cooldown || 0) * 0.4;
-  return Math.max(2, ab.cd - cdRed);
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
+  const maxCdr = caps.cooldownReduction || 0.4;
+  const metaCdr = Math.min(maxCdr, typeof getUpgradeEff === "function" ? getUpgradeEff("upgrade_cooldown") : 0);
+  const rb = typeof getRunBonus === "function" ? getRunBonus() : {};
+  const cdr = Math.min(maxCdr, metaCdr + (rb.cdrAdd || 0));
+  return Math.max(2, ab.cd * (1 - cdr));
 }
 
 /** Dauerhafte Ult-Anzeige über dem Helden: W / S, ✓ wenn bereit. */
@@ -2132,9 +2151,15 @@ function spawnExplosion(x, y, radius, playSound) {
 }
 
 function calcPlayerDamage(rawAttack, defense) {
+  const st = game.hero ? heroStats() : {};
+  let atk = rawAttack * (st.enemyDmgTakenMult || 1);
   const def = defense * (BALANCE.defenseFactor || 1);
-  const pierce = Math.floor(rawAttack * (BALANCE.pierceFactor ?? 0.14));
-  return Math.max(1, Math.max(pierce, rawAttack - def));
+  const pierce = Math.floor(atk * (BALANCE.pierceFactor ?? 0.16));
+  let dmg = Math.max(1, Math.max(pierce, atk - def));
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
+  let dr = Math.min(caps.damageReduction || 0.55, st.metaArmorDr || 0);
+  dmg = Math.max(1, Math.floor(dmg * (1 - dr)));
+  return dmg;
 }
 
 /** Schildschlag-Schadensreduktion auf eingehenden Schaden anwenden */
@@ -2164,6 +2189,74 @@ function applyEnemyDebuff(e, ab) {
   }
 }
 
+/** Run-Upgrade-Schutz: Letzter Krieger (einmal pro Run) */
+function tryLastWarrior(h) {
+  const rb = getRunBonus();
+  const rus = game.runUpgradeState;
+  if (!rb.lastWarrior || !rus || rus.lastWarriorUsed) return false;
+  rus.lastWarriorUsed = true;
+  const st = heroStats();
+  h.hp = Math.max(1, Math.floor(st.maxHp * 0.25));
+  h.immuneTimer = 2;
+  spawnBurst(h.x + h.w / 2, h.y + h.h / 2, "#f1c40f", 16, 5);
+  addLog("Letzter Krieger – überlebt!", "heal");
+  return true;
+}
+
+/** Nach erlittenem Schaden: Regen-Pause, Run-Upgrade-Tracker */
+function onHeroTookDamage(h, dmgBeforeHp, st) {
+  if (!h) return;
+  const pause = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.levelUpHeal)
+    ? (DL_BALANCE.levelUpHeal.regenPauseAfterDamageSec || 4) : 4;
+  h.regenPause = pause;
+  const rus = game.runUpgradeState;
+  if (!rus) return;
+  rus.noDamageTimer = 0;
+  rus.secondWindTimer = 0;
+  const rb = getRunBonus();
+  if (rb.warMachine) {
+    rus.warMachineStacks = Math.max(0, (rus.warMachineStacks || 0) - 3);
+  }
+  const maxHp = (st && st.maxHp) || h.maxHp || 1;
+  const now = performance.now() / 1000;
+  // Iron Skin: 3 Treffer in 5s
+  if (rb.ironSkin && (rus.ironCd || 0) <= 0) {
+    rus._ironHits = rus._ironHits || [];
+    rus._ironHits.push(now);
+    rus._ironHits = rus._ironHits.filter((t) => now - t <= 5);
+    if (rus._ironHits.length >= 3) {
+      h.tempDr = Math.max(h.tempDr || 0, 0.15);
+      h.tempDrTimer = Math.max(h.tempDrTimer || 0, 5);
+      rus.ironCd = 12;
+      rus._ironHits = [];
+      addLog("Eisenhaut!", "heal");
+    }
+  }
+  // Guard Layer: schwerer Treffer ≥15% max LP
+  if (rb.guardLayer && (rus.guardCd || 0) <= 0 && dmgBeforeHp >= maxHp * 0.15) {
+    h.tempDr = Math.max(h.tempDr || 0, 0.10);
+    h.tempDrTimer = Math.max(h.tempDrTimer || 0, 4);
+    rus.guardCd = 10;
+    addLog("Schutzschicht!", "heal");
+  }
+}
+
+function applyDamageToHero(h, dmg, st, opts) {
+  const o = opts || {};
+  if ((h.immuneTimer || 0) > 0) return 0;
+  const applied = Math.max(0, Math.floor(dmg));
+  if (applied <= 0) return 0;
+  h.hp -= applied;
+  onHeroTookDamage(h, applied, st || heroStats());
+  if (typeof notePlayerDamageTaken === "function") notePlayerDamageTaken(applied);
+  if (h.hp <= 0) {
+    if (tryLastWarrior(h)) return applied;
+    h.hp = 0;
+    if (!o.skipDeath) onDeath();
+  }
+  return applied;
+}
+
 function enemyAttackPlayer(e, h, st) {
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
@@ -2181,8 +2274,7 @@ function enemyAttackPlayer(e, h, st) {
   spawnImpactRing(hx, hy, e.isBoss ? 32 : 22, "#e74c3c", 14);
   spawnBurst(hx, hy - 8, "#e74c3c", e.isBoss ? 8 : 5, 3.5);
 
-  h.hp -= dmg;
-  if (typeof notePlayerDamageTaken === "function") notePlayerDamageTaken(dmg);
+  applyDamageToHero(h, dmg, st);
   h.hitFlash = e.isBoss ? 14 : 10;
   h.hurtAnim = 0.28;
   game.screenShake = Math.max(game.screenShake, e.isBoss ? 8 : 5);
@@ -2190,7 +2282,6 @@ function enemyAttackPlayer(e, h, st) {
   spawnDamage(hx, hy - 18, dmg, { taken: true, boss: e.isBoss });
   emitCombatEvent("enemy_attack");
   emitCombatEvent("player_hurt");
-  if (h.hp <= 0) { h.hp = 0; onDeath(); }
 }
 
 /** Fernkampf-Gegner (Magier, Hexe) schießen Projektile */
@@ -2225,13 +2316,12 @@ function bossSpecialAttack(e, h, st) {
   game.screenShake = Math.max(game.screenShake, 10);
   game.critFlash = 0.15;
 
-  h.hp -= dmg;
+  applyDamageToHero(h, dmg, st);
   h.hitFlash = 16;
   h.hurtAnim = 0.35;
   spawnDamage(hx, hy - 18, dmg, { taken: true, boss: true });
   addLog(e.name + " – Spezialangriff!", "boss");
   emitCombatEvent("enemy_attack");
-  if (h.hp <= 0) { h.hp = 0; onDeath(); }
 }
 
 function bindEvents() {
@@ -2442,19 +2532,21 @@ function spawnCoinBonusText(x, y, text) {
   });
 }
 
-/** Gold einsammeln – isBonus verdoppelt den Wert (nur einmal pro Münze) */
+/** Gold einsammeln – isBonus nutzt coinCatchMult (Standard ×2) */
 function collectCoinDrop(coin, isBonus) {
   if (!coin || coin.collected) return;
   coin.collected = true;
   coin.bonus = !!isBonus;
-  const amount = isBonus ? coin.val * 2 : coin.val;
+  const st = game.hero ? heroStats() : {};
+  const catchMult = st.coinCatchMult || 2;
+  const amount = isBonus ? Math.floor(coin.val * catchMult) : coin.val;
   game.runGold += amount;
   coin.pop = 0.35;
   playSound("coin");
   spawnBurst(coin.x, coin.y, "#f1c40f", isBonus ? 10 : 5, isBonus ? 4 : 2);
   if (isBonus) {
     addLog("Perfekt! Münzbonus: " + amount + " Gold!", "crit");
-    spawnCoinBonusText(coin.x, coin.y, "+" + amount + " x2!");
+    spawnCoinBonusText(coin.x, coin.y, "+" + amount + " x" + (Math.round(catchMult * 100) / 100) + "!");
   } else {
     addLog("Du sammelst " + amount + " Gold.", "damage");
   }
@@ -3115,25 +3207,36 @@ function migrateRunData(data) {
     data.version !== RUN_SAVE_VERSION ||
     data.worldLayoutVersion !== WORLD_LAYOUT_VERSION ||
     (data.buildId && data.buildId !== BUILD_ID);
-  if (!needs) return data;
-  const out = { ...data };
-  out.version = RUN_SAVE_VERSION;
-  out.worldLayoutVersion = WORLD_LAYOUT_VERSION;
-  out.buildId = BUILD_ID;
-  out.scrollX = 0;
-  if (out.hero) {
-    const minX = COMBAT_LAYOUT?.heroMoveMinX ?? 16;
-    const maxX = COMBAT_LAYOUT?.heroMoveMaxX ?? 560;
-    out.hero.x = Math.max(minX, Math.min(maxX, Number(out.hero.x) || 320));
+  const out = needs ? { ...data } : data;
+  if (needs) {
+    out.version = RUN_SAVE_VERSION;
+    out.worldLayoutVersion = WORLD_LAYOUT_VERSION;
+    out.buildId = BUILD_ID;
+    out.scrollX = 0;
+    if (out.hero) {
+      const minX = COMBAT_LAYOUT?.heroMoveMinX ?? 16;
+      const maxX = COMBAT_LAYOUT?.heroMoveMaxX ?? 560;
+      out.hero.x = Math.max(minX, Math.min(maxX, Number(out.hero.x) || 320));
+    }
+    if (Array.isArray(out.enemies)) {
+      out.enemies = out.enemies.map((e) => {
+        if (!e) return e;
+        const copy = { ...e };
+        delete copy.y;
+        return copy;
+      });
+    }
   }
-  if (Array.isArray(out.enemies)) {
-    out.enemies = out.enemies.map((e) => {
-      if (!e) return e;
-      const copy = { ...e };
-      delete copy.y;
-      return copy;
-    });
+  // Run-Upgrade-State immer mit Defaults ergänzen (keine Wipe)
+  const empty = typeof dlCreateEmptyRunUpgradeState === "function"
+    ? dlCreateEmptyRunUpgradeState()
+    : { upgrades: [], stacks: {}, claimedMilestones: [], rerolls: 1 };
+  out.runUpgradeState = Object.assign({}, empty, out.runUpgradeState || {});
+  if (!Array.isArray(out.runUpgradeState.claimedMilestones)) {
+    out.runUpgradeState.claimedMilestones = [];
   }
+  if (!out.runUpgradeState.stacks) out.runUpgradeState.stacks = {};
+  if (!Array.isArray(out.runUpgradeState.upgrades)) out.runUpgradeState.upgrades = [];
   return out;
 }
 
@@ -3274,6 +3377,9 @@ function saveActiveRun(force) {
     waveIntro: !!game.waveIntro,
     bestLoot: game.bestLoot || null,
     enemyId: enemyId,
+    runUpgradeState: game.runUpgradeState
+      ? JSON.parse(JSON.stringify(game.runUpgradeState))
+      : (typeof dlCreateEmptyRunUpgradeState === "function" ? dlCreateEmptyRunUpgradeState() : null),
     hero: serializeHero(game.hero),
     enemies: game.enemies.filter((e) => e && e.hp > 0 && !e.dead).map(serializeEnemy)
   };
@@ -3301,15 +3407,6 @@ function restoreHeroFromSave(data) {
   if (!s) return;
   h.x = Number.isFinite(s.x) ? s.x : h.x;
   h.facing = s.facing === -1 ? -1 : 1;
-  h.maxHp = Number(s.maxHp) || h.maxHp;
-  h.maxMana = Number(s.maxMana) || h.maxMana;
-  h.attack = Number(s.attack) || h.attack;
-  h.defense = Number(s.defense) || h.defense;
-  h.crit = Number(s.crit) || h.crit;
-  h.magicDamage = Number(s.magicDamage) || h.magicDamage;
-  h.goldBonus = Number(s.goldBonus) || h.goldBonus;
-  h.xpBonus = Number(s.xpBonus) || h.xpBonus;
-  h.specialCd = Number(s.specialCd) || h.specialCd;
   h.specialTimer = Math.max(0, Number(s.specialTimer) || 0);
   restoreAbilitySlotCds(h, s);
   h.abilityCds = { ...(s.abilityCds || h.abilityCds || {}) };
@@ -3322,6 +3419,8 @@ function restoreHeroFromSave(data) {
     ...(s.lootBonuses || {})
   };
   h.equipment = s.equipment || null;
+  // Meta-Stats aus Upgrades neu berechnen (Save kann alte Flat-Werte haben)
+  refreshHeroFromUpgrades();
   const st = heroStats();
   h.hp = Math.max(1, Math.min(st.maxHp, Number(s.hp) || st.maxHp));
   h.mana = Math.max(0, Math.min(st.maxMana, Number.isFinite(Number(s.mana)) ? Number(s.mana) : st.maxMana));
@@ -3437,6 +3536,15 @@ function resumeRun(data) {
     startRun();
     return;
   }
+  // Run-Upgrades nach createHero wiederherstellen
+  {
+    const empty = typeof dlCreateEmptyRunUpgradeState === "function"
+      ? dlCreateEmptyRunUpgradeState()
+      : { upgrades: [], stacks: {}, claimedMilestones: [], rerolls: 1 };
+    game.runUpgradeState = Object.assign({}, empty, data.runUpgradeState || {});
+  }
+  game.runUpgradeDraft = null;
+  game.runUpgradePaused = false;
   initWorldBackground();
   game.isRunning = true; game.isPaused = false; game.isDead = false;
   upgradePause = false;
@@ -3922,15 +4030,8 @@ function ensureGameLoop() {
   if (!canvas || !ctx) return;
   if (!game.loopId) startLoop();
   render();
-  // Regeneration (Defense-Build)
-  if (game.hero && !game.isDead) {
-    const stR = heroStats();
-    if (stR.regen > 0) {
-      game.hero.hp = Math.min(stR.maxHp, game.hero.hp + stR.regen * dt);
-    }
-  }
   if (typeof syncRunStatsLive === "function") syncRunStatsLive();
-  if (typeof tickBalanceDebug === "function") tickBalanceDebug(dt);
+  if (typeof tickBalanceDebug === "function") tickBalanceDebug(0);
   updateHUD();
   updateStatus();
 }
@@ -4108,9 +4209,12 @@ function goToUpgrades() {
 
 function togglePause() {
   if (!game.isRunning || game.isDead) return;
-  // Während Upgrade- oder Victory-Overlay: Pause nicht umschalten
+  // Während Upgrade-, Run-Upgrade- oder Victory-Overlay: Pause nicht umschalten
   const sec = $("upgrade-section");
   if (sec && !sec.classList.contains("hidden")) return;
+  const ru = $("run-upgrade-overlay");
+  if (ru && !ru.classList.contains("hidden")) return;
+  if (game.runUpgradePaused) return;
   const vic = $("victory-panel");
   if (vic && !vic.classList.contains("hidden")) return;
   game.isPaused = !game.isPaused;
@@ -4133,30 +4237,43 @@ function togglePause() {
 
 function createHero() {
   const cls = CLASSES[game.classKey];
-  const eff = (key) => getUpgradeEff(key);
-  const hp = cls.hp + eff("upgrade_health");
-  const atkSpd = 1 + eff("upgrade_atkspd");
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
+  const atkPct = getUpgradeEff("upgrade_attack");
+  const hpPct = getUpgradeEff("upgrade_health");
+  const asPct = getUpgradeEff("upgrade_atkspd");
+  const cdr = getUpgradeEff("upgrade_cooldown");
+  const armorDr = getUpgradeEff("upgrade_defense");
+  const maxHp = Math.floor(cls.hp * (1 + hpPct));
+  if (typeof dlCreateEmptyRunUpgradeState === "function") {
+    game.runUpgradeState = dlCreateEmptyRunUpgradeState();
+  } else {
+    game.runUpgradeState = { upgrades: [], stacks: {}, claimedMilestones: [], rerolls: 1 };
+  }
+  game.runUpgradeDraft = null;
+  game.runUpgradePaused = false;
   game.hero = {
     x: COMBAT_LAYOUT.heroCombatX,
     y: GROUND - HR.displayH(), vx: 0, vy: 0,
     w: HR.displayW(), h: HR.displayH(),
-    maxHp: hp,
-    hp: hp,
-    attack: cls.attack + eff("upgrade_attack"),
-    defense: cls.defense + eff("upgrade_defense"),
-    crit: cls.crit + eff("upgrade_crit"),
-    critDamage: (BALANCE.critDamageBase || 1.85) + eff("upgrade_critdmg"),
-    magicDamage: cls.magicDamage + eff("upgrade_magic"),
-    maxMana: cls.mana + eff("upgrade_mana"),
-    mana: cls.mana + eff("upgrade_mana"),
-    goldBonus: 1 + eff("upgrade_gold"),
-    xpBonus: 1 + eff("upgrade_xp"),
-    bossDamage: eff("upgrade_bossdmg"),
-    lifesteal: Math.min(0.12, eff("upgrade_lifesteal")),
-    regen: eff("upgrade_regen"),
-    atkSpeedMult: Math.min(1.85, atkSpd),
+    maxHp: maxHp,
+    hp: maxHp,
+    attack: cls.attack * (1 + atkPct),
+    defense: cls.defense,
+    metaArmorDr: Math.min(caps.damageReduction || 0.55, armorDr),
+    crit: cls.crit + getUpgradeEff("upgrade_crit"),
+    critDamage: (cls.critDamage || BALANCE.critDamageBase || 1.7) + getUpgradeEff("upgrade_critdmg"),
+    magicDamage: cls.magicDamage * (1 + getUpgradeEff("upgrade_magic")),
+    maxMana: cls.mana + getUpgradeEff("upgrade_mana"),
+    mana: cls.mana + getUpgradeEff("upgrade_mana"),
+    goldBonus: 1 + getUpgradeEff("upgrade_gold"),
+    xpBonus: 1 + getUpgradeEff("upgrade_xp"),
+    bossDamage: Math.min(caps.bossDamage || 0.5, getUpgradeEff("upgrade_bossdmg")),
+    lifesteal: Math.min(caps.lifesteal || 0.1, getUpgradeEff("upgrade_lifesteal")),
+    regen: getUpgradeEff("upgrade_regen"),
+    regenPause: 0,
+    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.75), 1 + asPct),
     moveSpeedMult: 1,
-    specialCd: Math.max(2.5, cls.specialCd - eff("upgrade_cooldown")),
+    specialCd: Math.max(2.5, cls.specialCd * (1 - Math.min(caps.cooldownReduction || 0.4, cdr))),
     specialTimer: 0,
     abilitySlotCds: [0, 0],
     abilityCds: {},
@@ -4164,6 +4281,9 @@ function createHero() {
     warriorBuffMult: 1,
     shieldTimer: 0,
     shieldReduction: 0,
+    immuneTimer: 0,
+    tempDr: 0,
+    tempDrTimer: 0,
     lootBonuses: { attack:0, hp:0, defense:0, crit:0, goldBonus:0, magicDamage:0, mana:0 },
     equipment: null,
     facing: 1, anim: 0, hitFlash: 0, attackAnim: 0, hurtAnim: 0,
@@ -4188,49 +4308,100 @@ function initHeroAbilityCds(h) {
   });
 }
 
+function getRunBonus() {
+  if (typeof dlComputeRunBonus !== "function" || !game.runUpgradeState) {
+    return {
+      damageMult: 1, atkSpdMult: 1, critAdd: 0, critDmgAdd: 0, bossDmgAdd: 0,
+      maxHpMult: 1, armorAdd: 0, moveSpeedMult: 1, goldMult: 1, eliteGoldMult: 1,
+      lifestealAdd: 0, lifestealCap: 0.10, levelHealMult: 1, abilityDmgMult: 1,
+      attackDmgMult: 1, cdrAdd: 0, coinCatchMult: 2, enemyDmgTakenMult: 1,
+      executioner: false, adrenaline: false, berserker: false, focus: false,
+      chainReaction: false, warMachine: false, lastWarrior: false,
+      secondWind: false, guardLayer: false, ironSkin: false, bloodlust: false
+    };
+  }
+  return dlComputeRunBonus(game.runUpgradeState);
+}
+
 function heroStats() {
-  const h = game.hero, lb = h.lootBonuses || {};
-  const cap = BALANCE.critChanceCap || 0.52;
+  const h = game.hero, lb = h.lootBonuses || {}, rb = getRunBonus();
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
+  const critCap = caps.critChance || BALANCE.critChanceCap || 0.45;
+  const critDmgCap = caps.critDamage || 2.6;
+  const lsCap = rb.lifestealCap || caps.lifesteal || 0.10;
+  let hpMult = rb.maxHpMult || 1;
+  let dmgMult = (rb.damageMult || 1) * (rb.attackDmgMult || 1);
+  const baseMaxHp = h.maxHp + (lb.hp || 0);
+  const maxHp = Math.max(1, Math.floor(baseMaxHp * hpMult));
+  let missing = 1 - (h.hp / Math.max(1, maxHp));
+  if (rb.berserker) dmgMult *= (1 + Math.min(0.20, Math.floor(missing / 0.1) * 0.025));
+  let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1);
+  if (rb.adrenaline && (h.hp / Math.max(1, maxHp)) < 0.35) atkSpd *= 1.15;
+  if (rb.focus && game.runUpgradeState && (game.runUpgradeState.noDamageTimer || 0) >= 3) {
+    dmgMult *= 1.15;
+  }
+  if (rb.warMachine && game.runUpgradeState) {
+    dmgMult *= (1 + Math.min(0.24, (game.runUpgradeState.warMachineStacks || 0) * 0.015));
+  }
+  const tempDr = ((h.tempDrTimer || 0) > 0) ? (h.tempDr || 0) : 0;
   return {
-    attack: h.attack + (lb.attack || 0),
+    attack: (h.attack + (lb.attack || 0)) * dmgMult,
     defense: h.defense + (lb.defense || 0),
-    crit: Math.min(cap, h.crit + (lb.crit || 0)),
-    critDamage: h.critDamage || (BALANCE.critDamageBase || 1.85),
-    magicDamage: h.magicDamage + (lb.magicDamage || 0),
-    maxHp: h.maxHp + (lb.hp || 0),
+    metaArmorDr: Math.min(caps.damageReduction || 0.55, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr),
+    crit: Math.min(critCap, h.crit + (lb.crit || 0) + (rb.critAdd || 0)),
+    critDamage: Math.min(critDmgCap, (h.critDamage || BALANCE.critDamageBase || 1.7) + (rb.critDmgAdd || 0)),
+    magicDamage: (h.magicDamage + (lb.magicDamage || 0)) * dmgMult,
+    abilityDmgMult: rb.abilityDmgMult || 1,
+    maxHp,
     maxMana: h.maxMana + (lb.mana || 0),
-    goldBonus: h.goldBonus + (lb.goldBonus || 0),
-    bossDamage: h.bossDamage || 0,
-    lifesteal: h.lifesteal || 0,
+    goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1),
+    bossDamage: Math.min(caps.bossDamage || 0.5, (h.bossDamage || 0) + (rb.bossDmgAdd || 0)),
+    lifesteal: Math.min(lsCap, (h.lifesteal || 0) + (rb.lifestealAdd || 0)),
+    lifestealCap: lsCap,
     regen: h.regen || 0,
-    atkSpeedMult: h.atkSpeedMult || 1,
-    moveSpeedMult: 1
+    atkSpeedMult: Math.min(1 + (caps.attackSpeedBonus || 0.75), atkSpd),
+    moveSpeedMult: Math.min(1 + (caps.moveSpeedBonus || 0.25), (h.moveSpeedMult || 1) * (rb.moveSpeedMult || 1)),
+    eliteGoldMult: rb.eliteGoldMult || 1,
+    coinCatchMult: rb.coinCatchMult || 2,
+    enemyDmgTakenMult: rb.enemyDmgTakenMult || 1,
+    levelHealMult: rb.levelHealMult || 1,
+    executioner: !!rb.executioner,
+    chainReaction: !!rb.chainReaction,
+    cdrAdd: rb.cdrAdd || 0
   };
 }
 
 function refreshHeroFromUpgrades() {
   if (!game.hero) return;
   const cls = CLASSES[game.classKey];
-  const eff = (key) => getUpgradeEff(key);
+  const caps = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.caps) || {};
   const h = game.hero;
-  const ratio = h.maxHp > 0 ? h.hp / h.maxHp : 1;
-  h.maxHp = cls.hp + eff("upgrade_health");
-  h.hp = Math.max(1, Math.min(h.maxHp, Math.floor(h.maxHp * ratio)));
-  h.attack = cls.attack + eff("upgrade_attack");
-  h.defense = cls.defense + eff("upgrade_defense");
-  h.crit = cls.crit + eff("upgrade_crit");
-  h.critDamage = (BALANCE.critDamageBase || 1.85) + eff("upgrade_critdmg");
-  h.magicDamage = cls.magicDamage + eff("upgrade_magic");
-  h.maxMana = cls.mana + eff("upgrade_mana");
+  const stBefore = heroStats();
+  const ratio = stBefore.maxHp > 0 ? h.hp / stBefore.maxHp : 1;
+  const atkPct = getUpgradeEff("upgrade_attack");
+  const hpPct = getUpgradeEff("upgrade_health");
+  const asPct = getUpgradeEff("upgrade_atkspd");
+  const cdr = getUpgradeEff("upgrade_cooldown");
+  const armorDr = getUpgradeEff("upgrade_defense");
+  h.maxHp = Math.floor(cls.hp * (1 + hpPct));
+  h.attack = cls.attack * (1 + atkPct);
+  h.defense = cls.defense;
+  h.metaArmorDr = Math.min(caps.damageReduction || 0.55, armorDr);
+  h.crit = cls.crit + getUpgradeEff("upgrade_crit");
+  h.critDamage = (cls.critDamage || BALANCE.critDamageBase || 1.7) + getUpgradeEff("upgrade_critdmg");
+  h.magicDamage = cls.magicDamage * (1 + getUpgradeEff("upgrade_magic"));
+  h.maxMana = cls.mana + getUpgradeEff("upgrade_mana");
   h.mana = Math.min(h.maxMana, h.mana);
-  h.goldBonus = 1 + eff("upgrade_gold");
-  h.xpBonus = 1 + eff("upgrade_xp");
-  h.bossDamage = eff("upgrade_bossdmg");
-  h.lifesteal = Math.min(0.12, eff("upgrade_lifesteal"));
-  h.regen = eff("upgrade_regen");
-  h.atkSpeedMult = Math.min(1.85, 1 + eff("upgrade_atkspd"));
+  h.goldBonus = 1 + getUpgradeEff("upgrade_gold");
+  h.xpBonus = 1 + getUpgradeEff("upgrade_xp");
+  h.bossDamage = Math.min(caps.bossDamage || 0.5, getUpgradeEff("upgrade_bossdmg"));
+  h.lifesteal = Math.min(caps.lifesteal || 0.1, getUpgradeEff("upgrade_lifesteal"));
+  h.regen = getUpgradeEff("upgrade_regen");
+  h.atkSpeedMult = Math.min(1 + (caps.attackSpeedBonus || 0.75), 1 + asPct);
   h.moveSpeedMult = 1;
-  h.specialCd = Math.max(2.5, cls.specialCd - eff("upgrade_cooldown"));
+  h.specialCd = Math.max(2.5, cls.specialCd * (1 - Math.min(caps.cooldownReduction || 0.4, cdr)));
+  const stAfter = heroStats();
+  h.hp = Math.max(1, Math.min(stAfter.maxHp, Math.floor(stAfter.maxHp * ratio)));
 }
 
 function getWorldForLevel(level) {
@@ -4497,9 +4668,11 @@ function getFarmGoldMult() {
   const pityRuns = Math.max(0, game.emptyUpgradeRuns | 0);
   const eco = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.economy : null;
   if (!eco) return 1;
-  if (pityRuns < (eco.pityGoldAfterEmptyRuns || 3)) return 1;
-  const steps = pityRuns - eco.pityGoldAfterEmptyRuns + 1;
-  return Math.min(eco.maxPityMult || 1.45, 1 + steps * ((eco.pityGoldMult || 1.15) - 1));
+  const after = eco.pityGoldAfterEmptyRuns || 3;
+  if (pityRuns < after) return 1;
+  const steps = eco.pitySteps || [1.25, 1.40];
+  const idx = Math.min(steps.length - 1, pityRuns - after);
+  return Math.min(eco.maxPityMult || 1.50, steps[idx] || eco.pityGoldMult || 1.25);
 }
 
 function getLoopMult() {
@@ -4511,11 +4684,11 @@ function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const depth = getWorldDepth();
   const B = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.boss : null;
-  const early = B ? B.hpMultEarly : 3.8;
-  const mid = B ? B.hpMultMid : 4.2;
-  const late = B ? B.hpMultLate : 4.6;
+  const early = B ? B.hpMultEarly : 1;
+  const mid = B ? B.hpMultMid : 1;
+  const late = B ? B.hpMultLate : 1;
   const hp = depth <= 8 ? early : depth <= 16 ? mid : late;
-  return { hp, atk: B ? B.atkMult : 1.65, rew: B ? B.rewardMult : 5 };
+  return { hp, atk: B ? B.atkMult : 1, rew: B ? B.rewardMult : 4.2 };
 }
 
 function getEnemyStats(isBoss, roleTag) {
@@ -4523,49 +4696,65 @@ function getEnemyStats(isBoss, roleTag) {
   const depth = getWorldDepth();
   const danger = world.danger || 1;
   const progress = getWorldProgress01();
-  const intensity = (typeof dlWorldIntensity === "function" && !isBoss)
-    ? dlWorldIntensity(progress)
-    : 1;
   const E = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.enemy : null;
-  const role = (typeof DL_BALANCE !== "undefined" && roleTag && DL_BALANCE.roles[roleTag])
-    ? DL_BALANCE.roles[roleTag]
-    : { hp: 1, atk: 1, speed: 1 };
+  const roles = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.roles : null;
+  const role = (roles && roleTag && roles[roleTag]) ? roles[roleTag] : { hp: 1, atk: 1, speed: 1 };
   const loop = getLoopMult();
-  const boss = getBossMult(isBoss);
-  const early = getEarlyEase();
-  const earlyHp = 1 - (BALANCE.earlyHpEase || 0.1) * early;
-  const earlyAtk = 1 - (BALANCE.earlyAtkEase || 0.14) * early;
-
-  const baseHp = (E ? E.baseHp : 30) + depth * (E ? E.hpPerDepth : 3.4) + danger * (E ? E.hpPerDanger : 5.5);
-  const baseAtk = (E ? E.baseAtk : 3.6) + depth * (E ? E.atkPerDepth : 0.42) + danger * (E ? E.atkPerDanger : 1.1);
-  const powHp = E ? E.depthPowHp : 1.028;
-  const powAtk = E ? E.depthPowAtk : 1.018;
-  const cap = E ? E.depthPowCap : 22;
-  const depthHp = Math.pow(powHp, Math.min(cap, depth * 0.85));
-  const depthAtk = Math.pow(powAtk, Math.min(cap, depth * 0.85));
   const farm = getFarmGoldMult();
-  const eliteExtra = (roleTag === "elite" && !isBoss && typeof DL_BALANCE !== "undefined")
-    ? DL_BALANCE.elite : null;
+  const depthHp = (typeof dlDepthHpMult === "function") ? dlDepthHpMult(progress) : (1 + 0.28 * progress);
+  const depthAtk = (typeof dlDepthAtkMult === "function") ? dlDepthAtkMult(progress) : (1 + 0.20 * progress);
 
-  let hpMult = world.hpMult * intensity * (BALANCE.difficultyMult || 1) * boss.hp * earlyHp * loop.hp * (role.hp || 1);
-  let atkMult = world.atkMult * intensity * (BALANCE.difficultyMult || 1) * boss.atk * earlyAtk * loop.atk * (role.atk || 1);
-  if (eliteExtra) {
-    hpMult *= eliteExtra.hpMult / (role.hp || 1);
-    atkMult *= eliteExtra.atkMult / (role.atk || 1);
+  // Entry ease: erste ~12% der Welt etwas milder
+  let ease = 1;
+  const entryEase = world.entryEase != null ? world.entryEase : 1;
+  if (progress < 0.12 && entryEase < 1) {
+    ease = entryEase + (1 - entryEase) * (progress / 0.12);
   }
 
-  const goldBase = (E ? E.goldBase : 8) + depth * (E ? E.goldPerDepth : 2.2) + danger * (E ? E.goldPerDanger : 3.2);
-  const rew = boss.rew * (eliteExtra ? eliteExtra.rewardMult : 1) * loop.gold * farm;
+  if (isBoss) {
+    const bossDef = (typeof dlGetBossDef === "function") ? dlGetBossDef(game.worldIndex) : null;
+    const lp = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.loop) ? DL_BALANCE.loop : {};
+    const L = game.loopIndex | 0;
+    let hp = bossDef ? bossDef.hp : 900;
+    let atk = bossDef ? bossDef.atk : 13;
+    let gold = bossDef ? bossDef.gold : 250;
+    hp *= (1 + L * (lp.bossHpPerLoop || 0.10)) * (loop.hp || 1);
+    atk *= (1 + L * (lp.bossAtkPerLoop || 0.05)) * (loop.atk || 1);
+    gold *= (world.rewardMult || 1) * (loop.gold || 1) * farm;
+    return {
+      hp: Math.floor(hp),
+      attack: Math.max(1, Math.floor(atk)),
+      gold: Math.floor(gold),
+      xp: Math.floor(((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4)) * 5),
+      speed: 0.52 * (world.speedMult || 1),
+      attackInterval: Math.max(0.7, 1.05 - danger * 0.02),
+      role: "boss",
+      intensity: 1
+    };
+  }
+
+  const eliteExtra = (roleTag === "elite" && typeof DL_BALANCE !== "undefined")
+    ? DL_BALANCE.elite : null;
+  // roles.elite enthält bereits hp/atk-Mults; elite.rewardMult nur für Gold
+  let hp = (E ? E.baseHp : 38) * (world.hpMult || 1) * depthHp * (role.hp || 1) * ease * (loop.hp || 1);
+  let atk = (E ? E.baseAtk : 6) * (world.atkMult || 1) * depthAtk * (role.atk || 1) * ease * (loop.atk || 1);
+
+  let gold = (E ? E.goldBase : 5) + depth * (E ? E.goldPerDepth : 1.1) + danger * (E ? E.goldPerDanger : 1.6);
+  gold *= (world.rewardMult || 1) * (eliteExtra ? (eliteExtra.rewardMult || 3) : 1) * (loop.gold || 1) * farm;
+  gold *= (1 + depth * (E ? E.goldDepthFactor : 0.02));
+
+  const xp = ((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4))
+    * (eliteExtra ? 2.2 : 1);
 
   return {
-    hp: Math.floor(baseHp * depthHp * hpMult),
-    attack: Math.max(1, Math.floor(baseAtk * depthAtk * atkMult)),
-    gold: Math.floor(goldBase * rew * (1 + depth * (E ? E.goldDepthFactor : 0.035))),
-    xp: Math.floor(((E ? E.xpBase : 11) + depth * (E ? E.xpPerDepth : 2.4) + danger * (E ? E.xpPerDanger : 3.5)) * boss.rew),
-    speed: (isBoss ? 0.52 : 0.7) * world.speedMult * (role.speed || 1) + depth * 0.01,
-    attackInterval: Math.max(0.66, 1.15 - depth * 0.007 - danger * 0.016),
-    role: roleTag || (isBoss ? "boss" : "basic"),
-    intensity
+    hp: Math.max(1, Math.floor(hp)),
+    attack: Math.max(1, Math.floor(atk)),
+    gold: Math.max(1, Math.floor(gold)),
+    xp: Math.max(1, Math.floor(xp)),
+    speed: (0.7 * (world.speedMult || 1) * (role.speed || 1)) + depth * 0.008,
+    attackInterval: Math.max(0.66, (1.15 / (role.atkSpeed || 1)) - depth * 0.006 - danger * 0.014),
+    role: roleTag || "basic",
+    intensity: depthHp
   };
 }
 
@@ -4615,27 +4804,50 @@ function spawnWave() {
   const progress = getWorldProgress01();
   const breath = (game.breathWavesLeft | 0) > 0;
   if (breath) game.breathWavesLeft = Math.max(0, (game.breathWavesLeft | 0) - 1);
+  const maxEnemies = world.maxEnemies || 5;
 
   let budget = (typeof dlEncounterBudget === "function")
     ? dlEncounterBudget(world, progress, isBoss, game.loopIndex || 0, breath)
     : getWaveSize();
 
   let roles = [];
+  const planOpts = { maxEnemies, composition: world.composition || null };
   if (isBoss) {
     roles = [{ tag: "boss", cost: 8 }];
-    // Filler bis Budget
     const plan = (typeof planEncounterRoles === "function")
-      ? planEncounterRoles(Math.max(2, budget - 8), world.theme, world.danger, false)
+      ? planEncounterRoles(Math.max(2, budget - 8), world.theme, world.danger, false, planOpts)
       : { picks: [{ tag: "basic", cost: 1 }] };
     roles = roles.concat(plan.picks || []);
   } else {
     const allowElite = progress >= 0.55 || (world.danger || 1) >= 3;
     const plan = (typeof planEncounterRoles === "function")
-      ? planEncounterRoles(budget, world.theme, world.danger, allowElite)
+      ? planEncounterRoles(budget, world.theme, world.danger, allowElite, planOpts)
       : { picks: Array.from({ length: getWaveSize() }, () => ({ tag: "basic", cost: 1 })) };
     roles = plan.picks || [{ tag: "basic", cost: 1 }];
+    // Synergy-Overshoot: letzte Nicht-Basics droppen
+    if (typeof dlSynergyMult === "function" && roles.length > 1) {
+      let tags = roles.map((r) => r.tag);
+      let spent = roles.reduce((s, r) => s + (r.cost || 1), 0);
+      const maxO = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.synergy)
+        ? (DL_BALANCE.synergy.maxOvershoot || 1.15) : 1.15;
+      while (roles.length > 1 && dlSynergyMult(tags) * spent > budget * maxO) {
+        let dropIdx = -1;
+        for (let i = roles.length - 1; i >= 0; i--) {
+          if (roles[i].tag !== "basic") { dropIdx = i; break; }
+        }
+        if (dropIdx < 0) break;
+        spent -= roles[dropIdx].cost || 1;
+        roles.splice(dropIdx, 1);
+        tags = roles.map((r) => r.tag);
+      }
+    }
+    if (roles.length > maxEnemies) roles = roles.slice(0, maxEnemies);
     game.lastEncounterIntensity = (plan.spent || budget) / Math.max(1, world.budgetMid || 5);
-    if (game.lastEncounterIntensity >= ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.rhythm.hardThreshold) || 1.18)) {
+    const hardT = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.rhythm)
+      ? (DL_BALANCE.rhythm.hardThreshold || 1.2) : 1.2;
+    const breathChance = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.rhythm)
+      ? (DL_BALANCE.rhythm.breathChance || 0.3) : 0.3;
+    if (game.lastEncounterIntensity >= hardT && Math.random() < breathChance) {
       game.breathWavesLeft = (typeof DL_BALANCE !== "undefined" ? DL_BALANCE.rhythm.breathWaves : 1);
     }
   }
@@ -4931,7 +5143,8 @@ function getPrimaryTarget(range) {
 function dealAbilityDamage(e, rawDmg, opts) {
   const o = opts || {};
   const st = game.hero ? heroStats() : {};
-  const dmg = dealPlayerDamage(e, rawDmg, {
+  const mult = st.abilityDmgMult || 1;
+  const dmg = dealPlayerDamage(e, rawDmg * mult, {
     stats: st, critRoll: o.critRoll, crit: o.crit, magic: o.magic, big: o.big, color: o.color
   });
   spawnImpactRing(e.x + e.w / 2, e.y + e.h / 2, o.ring || 18, o.color || "#ecf0f1", 10);
@@ -4974,6 +5187,8 @@ function castAbility(ab, h, st) {
 
   const atkBase = game.classKey === "mage" ? st.magicDamage : st.attack;
   const buffMult = h.warriorBuff > 0 ? h.warriorBuffMult : 1;
+  const abilityMult = st.abilityDmgMult || 1;
+  const projAtk = atkBase * abilityMult;
 
   switch (ab.type) {
     case "melee_aoe": {
@@ -5059,7 +5274,7 @@ function castAbility(ab, h, st) {
           x: hx, y: hy - Math.random() * 20,
           vx: Math.cos(ang) * (cls.projSpeed || 14),
           vy: Math.sin(ang) * (cls.projSpeed || 14),
-          dmg: Math.floor(atkBase * ab.dmgMult),
+          dmg: Math.floor(projAtk * ab.dmgMult),
           crit: Math.random() < st.crit + (ab.critBonus || 0.1),
           sprite: cls.proj || "projectile_arrow",
           life: 80, owner: "player", pierce: ab.type === "projectile_rain",
@@ -5074,7 +5289,7 @@ function castAbility(ab, h, st) {
       const len = Math.hypot(dx, dy) || 1;
       game.projectiles.push({
         x: hx, y: hy, vx: (dx / len) * 15, vy: (dy / len) * 15,
-        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        dmg: Math.floor(projAtk * ab.dmgMult), crit: false,
         sprite: "projectile_arrow", life: 70, owner: "player",
         trail: ab.particle, poison: ab.dotTicks || 4, poisonMult: ab.dotMult || 0.35
       });
@@ -5087,7 +5302,7 @@ function castAbility(ab, h, st) {
       const spd = game.classKey === "mage" ? 7 : 14;
       game.projectiles.push({
         x: hx, y: hy, vx: (dx / len) * spd, vy: (dy / len) * spd,
-        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        dmg: Math.floor(projAtk * ab.dmgMult), crit: false,
         sprite: game.classKey === "mage" ? "projectile_fire" : "projectile_arrow",
         life: 60, owner: "player", explosive: true, big: true,
         explosiveRadius: ab.radius || 90,
@@ -5101,7 +5316,7 @@ function castAbility(ab, h, st) {
       const len = Math.hypot(dx, dy) || 1;
       game.projectiles.push({
         x: hx, y: hy, vx: (dx / len) * 12, vy: (dy / len) * 12,
-        dmg: Math.floor(atkBase * ab.dmgMult), crit: false,
+        dmg: Math.floor(projAtk * ab.dmgMult), crit: false,
         sprite: "projectile_fire", life: 75, owner: "player",
         pierce: true, pierceLeft: ab.pierceCount || 4,
         trail: ab.particle, magic: true
@@ -5114,7 +5329,7 @@ function castAbility(ab, h, st) {
       const len = Math.hypot(dx, dy) || 1;
       game.projectiles.push({
         x: hx, y: hy, vx: (dx / len) * 20, vy: (dy / len) * 20,
-        dmg: Math.floor(atkBase * ab.dmgMult),
+        dmg: Math.floor(projAtk * ab.dmgMult),
         crit: Math.random() < st.crit + (ab.critBonus || 0),
         sprite: "projectile_arrow", life: 55, owner: "player",
         trail: ab.particle, big: true
@@ -5268,7 +5483,37 @@ function updateFrame(dt) {
   if (typeof HR !== "undefined") HR.updateAnim(h, dt, heroMoving);
 
   // Mana regen (nur Magier)
-  if (game.classKey === "mage") h.mana = Math.min(st.maxMana, h.mana + dt * 7);
+  if (game.classKey === "mage") {
+    const manaRegen = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.mageManaRegen != null)
+      ? DL_BALANCE.mageManaRegen : 6;
+    h.mana = Math.min(st.maxMana, h.mana + dt * manaRegen);
+  }
+
+  // Regen / Immune / Temp-DR / Run-Upgrade-Timer
+  if (h.immuneTimer > 0) h.immuneTimer -= dt;
+  if (h.tempDrTimer > 0) {
+    h.tempDrTimer -= dt;
+    if (h.tempDrTimer <= 0) h.tempDr = 0;
+  }
+  if (h.regenPause > 0) h.regenPause -= dt;
+  if (st.regen > 0 && (h.regenPause || 0) <= 0) {
+    h.hp = Math.min(st.maxHp, h.hp + st.regen * st.maxHp * dt);
+  }
+  if (game.runUpgradeState) {
+    const rus = game.runUpgradeState;
+    rus.noDamageTimer = (rus.noDamageTimer || 0) + dt;
+    if (rus.ironCd > 0) rus.ironCd -= dt;
+    if (rus.guardCd > 0) rus.guardCd -= dt;
+    if (rus.bloodlustIcd > 0) rus.bloodlustIcd -= dt;
+    const rb = getRunBonus();
+    if (rb.secondWind && (rus.noDamageTimer || 0) >= 8) {
+      rus.secondWindTimer = (rus.secondWindTimer || 0) + dt;
+      if (rus.secondWindTimer >= 4) {
+        rus.secondWindTimer = 0;
+        h.hp = Math.min(st.maxHp, h.hp + Math.floor(st.maxHp * 0.02));
+      }
+    }
+  }
 
   if (game.waveIntro) updateWaveIntro();
 
@@ -5376,13 +5621,11 @@ function updateFrame(dt) {
       if (h && p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h) {
         const st = heroStats();
         let dmg = applyShieldToDamage(h, calcPlayerDamage(p.dmg, st.defense));
-        h.hp -= dmg;
-        if (typeof notePlayerDamageTaken === "function") notePlayerDamageTaken(dmg);
+        applyDamageToHero(h, dmg, st);
         h.hitFlash = 8;
         h.hurtAnim = 0.2;
         spawnDamage(h.x + h.w / 2, h.y, dmg, { taken: true, magic: true });
         emitCombatEvent("player_hurt");
-        if (h.hp <= 0) { h.hp = 0; onDeath(); }
         return false;
       }
     }
@@ -5452,22 +5695,146 @@ function updateFrame(dt) {
     if (runSaveDirty) saveActiveRun(false);
   }
 
-  // Regeneration (Defense-Build)
-  if (game.hero && !game.isDead) {
-    const stR = heroStats();
-    if (stR.regen > 0) {
-      game.hero.hp = Math.min(stR.maxHp, game.hero.hp + stR.regen * dt);
-    }
-  }
   if (typeof syncRunStatsLive === "function") syncRunStatsLive();
   if (typeof tickBalanceDebug === "function") tickBalanceDebug(dt);
   updateHUD();
   updateStatus();
 }
 
+function xpNeededForLevel(lv) {
+  return typeof dlXpNeeded === "function" ? dlXpNeeded(lv) : (110 + lv * 3.2);
+}
+
+function lootChanceForEnemy(e) {
+  const E = (typeof DL_BALANCE !== "undefined") ? DL_BALANCE.enemy : null;
+  if (!E) return BALANCE.lootChance || 0.14;
+  if (e.isBoss) return E.lootChanceBoss != null ? E.lootChanceBoss : 1;
+  if (e.isElite) return E.lootChanceElite != null ? E.lootChanceElite : 0.65;
+  const role = e.role || "basic";
+  const map = {
+    basic: E.lootChanceBasic,
+    fast: E.lootChanceFast,
+    ranged: E.lootChanceRanged,
+    tank: E.lootChanceTank,
+    support: E.lootChanceSupport,
+    jump: E.lootChanceFast,
+    elite: E.lootChanceElite
+  };
+  return map[role] != null ? map[role] : (E.lootChance || 0.14);
+}
+
+function maybeOfferRunUpgrade() {
+  if (!game.runUpgradeState || typeof dlPendingRunMilestones !== "function") return;
+  if (game.runUpgradePaused || game.runUpgradeDraft) return;
+  const claimed = game.runUpgradeState.claimedMilestones || [];
+  const pending = dlPendingRunMilestones(game.playerLevel, claimed);
+  if (!pending.length) return;
+  const milestone = pending[0];
+  const progress = typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0;
+  const choices = (typeof dlSmartDraftRunUpgrades === "function")
+    ? dlSmartDraftRunUpgrades(game.runUpgradeState, progress, 3)
+    : [];
+  if (!choices.length) {
+    // Nichts anbietbar – Milestone trotzdem claimen, damit kein Softlock
+    game.runUpgradeState.claimedMilestones = claimed.concat([milestone]);
+    return;
+  }
+  game.runUpgradeDraft = { choices, milestone, rerolled: false };
+  game.runUpgradePaused = true;
+  game.isPaused = true;
+  showRunUpgradeOverlay();
+}
+
+function showRunUpgradeOverlay() {
+  const overlay = $("run-upgrade-overlay");
+  const grid = $("run-upgrade-choices");
+  const title = $("run-upgrade-title");
+  const rerollBtn = $("run-upgrade-reroll");
+  if (!overlay || !grid || !game.runUpgradeDraft) return;
+  const draft = game.runUpgradeDraft;
+  if (title) title.textContent = "RUN-UPGRADE · Level " + draft.milestone;
+  grid.innerHTML = "";
+  draft.choices.forEach((def) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "run-upgrade-card rarity-" + (def.rarity || "common");
+    btn.innerHTML =
+      '<span class="ru-rarity">' + ({
+        common: "Gewöhnlich", uncommon: "Ungewöhnlich", rare: "Selten",
+        epic: "Episch", legendary: "Legendär"
+      }[def.rarity] || def.rarity) + "</span>" +
+      "<strong class=\"ru-name\">" + def.name + "</strong>" +
+      "<span class=\"ru-desc\">" + (def.desc || "") + "</span>";
+    btn.onclick = () => pickRunUpgrade(def.id);
+    grid.appendChild(btn);
+  });
+  const rerolls = (game.runUpgradeState && game.runUpgradeState.rerolls) || 0;
+  if (rerollBtn) {
+    rerollBtn.disabled = rerolls <= 0 || draft.rerolled;
+    rerollBtn.textContent = rerolls > 0 && !draft.rerolled
+      ? ("Neu würfeln (" + rerolls + ")")
+      : "Kein Reroll";
+    rerollBtn.onclick = rerollRunUpgradeDraft;
+  }
+  overlay.classList.remove("hidden");
+  stopLoop();
+}
+
+function hideRunUpgradeOverlay() {
+  const overlay = $("run-upgrade-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function pickRunUpgrade(id) {
+  if (!game.runUpgradeDraft || !game.runUpgradeState) return;
+  const milestone = game.runUpgradeDraft.milestone;
+  const before = heroStats();
+  const ratio = before.maxHp > 0 ? game.hero.hp / before.maxHp : 1;
+  if (typeof dlApplyRunUpgradePick === "function") {
+    dlApplyRunUpgradePick(game.runUpgradeState, id);
+  }
+  const claimed = game.runUpgradeState.claimedMilestones || [];
+  if (claimed.indexOf(milestone) < 0) {
+    game.runUpgradeState.claimedMilestones = claimed.concat([milestone]);
+  }
+  const after = heroStats();
+  game.hero.hp = Math.max(1, Math.min(after.maxHp, Math.floor(after.maxHp * ratio)));
+  const def = typeof dlRunUpgradeById === "function" ? dlRunUpgradeById(id) : null;
+  addLog("Run-Upgrade: " + (def ? def.name : id), "heal");
+  game.runUpgradeDraft = null;
+  game.runUpgradePaused = false;
+  game.isPaused = false;
+  hideRunUpgradeOverlay();
+  markRunSaveDirty();
+  // Weitere pending Milestones?
+  maybeOfferRunUpgrade();
+  if (!game.runUpgradePaused && game.isRunning && !game.isDead) {
+    $("btn-pause").textContent = "Pause (P)";
+    ensureGameLoop();
+  }
+}
+
+function rerollRunUpgradeDraft() {
+  if (!game.runUpgradeDraft || !game.runUpgradeState) return;
+  if (game.runUpgradeDraft.rerolled || (game.runUpgradeState.rerolls | 0) <= 0) return;
+  const prevIds = game.runUpgradeDraft.choices.map((c) => c.id);
+  const progress = typeof getWorldProgress01 === "function" ? getWorldProgress01() : 0;
+  const next = (typeof dlRerollRunDraft === "function")
+    ? dlRerollRunDraft(game.runUpgradeState, prevIds, progress)
+    : (typeof dlSmartDraftRunUpgrades === "function"
+      ? dlSmartDraftRunUpgrades(game.runUpgradeState, progress, 3) : []);
+  if (!next.length) return;
+  game.runUpgradeState.rerolls = Math.max(0, (game.runUpgradeState.rerolls | 0) - 1);
+  game.runUpgradeDraft.choices = next;
+  game.runUpgradeDraft.rerolled = true;
+  showRunUpgradeOverlay();
+}
+
 function onEnemyKill(e) {
   const st = heroStats();
-  const gold = Math.floor(e.goldReward * st.goldBonus);
+  let goldMult = st.goldBonus;
+  if (e.isElite && st.eliteGoldMult) goldMult *= st.eliteGoldMult;
+  const gold = Math.floor(e.goldReward * goldMult);
   const xp = Math.floor(e.xpReward * game.hero.xpBonus);
   game.runXp += xp;
   game.monstersDefeated++; game.dungeonLevel++;
@@ -5475,6 +5842,10 @@ function onEnemyKill(e) {
   if (game.runStats) {
     game.runStats.goldEarned = (game.runStats.goldEarned || 0) + gold;
     game.runStats.resourcesEarned = (game.runStats.resourcesEarned || 0) + gold;
+  }
+  // War Machine stacks on kill
+  if (game.runUpgradeState && getRunBonus().warMachine) {
+    game.runUpgradeState.warMachineStacks = (game.runUpgradeState.warMachineStacks || 0) + 1;
   }
   addLog(e.name + " besiegt!", e.isBoss ? "boss" : (e.isElite ? "loot" : "damage"));
   addMetaXp(2);
@@ -5485,34 +5856,55 @@ function onEnemyKill(e) {
     for (let i = 0; i < 5; i++) pushParticle({ x:e.x+e.w/2, y:e.y+e.h/2, vx:(Math.random()-0.5)*3, vy:-Math.random()*4, life:20, color:"#f1c40f", size:2 });
   }
 
-  while (game.runXp >= game.playerLevel * BALANCE.xpPerLevel) {
-    game.runXp -= game.playerLevel * BALANCE.xpPerLevel;
+  while (game.runXp >= xpNeededForLevel(game.playerLevel)) {
+    game.runXp -= xpNeededForLevel(game.playerLevel);
     game.playerLevel++;
-    game.hero.hp = Math.min(heroStats().maxHp, game.hero.hp + Math.floor(heroStats().maxHp * BALANCE.levelUpHealPct));
+    const stLv = heroStats();
+    let hp = game.hero.hp;
+    if (typeof dlApplyLevelUpHeal === "function") {
+      const healed = dlApplyLevelUpHeal(hp, stLv.maxHp, game.playerLevel);
+      const delta = healed - hp;
+      game.hero.hp = Math.min(stLv.maxHp, hp + Math.floor(delta * (stLv.levelHealMult || 1)));
+    } else {
+      game.hero.hp = Math.min(stLv.maxHp, hp + Math.floor(stLv.maxHp * (BALANCE.levelUpHealPct || 0.1) * (stLv.levelHealMult || 1)));
+    }
     spawnBurst(game.hero.x + game.hero.w / 2, game.hero.y, "#2ecc71", 10, 3);
     emitCombatEvent("level_up");
     addLog("Level Up! Held " + game.playerLevel, "heal");
+    maybeOfferRunUpgrade();
   }
-  if (Math.random() < BALANCE.lootChance) generateLoot();
+  if (Math.random() < lootChanceForEnemy(e)) generateLoot();
   markRunSaveDirty();
 }
 
 function onDeath() {
   game.isDead = true;
   stopMusic();
+  hideRunUpgradeOverlay();
+  game.runUpgradeDraft = null;
+  game.runUpgradePaused = false;
   if (!game.upgradeBoughtThisRun) {
     game.emptyUpgradeRuns = (game.emptyUpgradeRuns | 0) + 1;
   }
   // Gold aus dem Run sichern – Mindest-Belohnung gegen wertlose Runs
   let earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
-  const floor = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.economy.minRunGoldFloor)
-    ? DL_BALANCE.economy.minRunGoldFloor : 12;
+  const cheapestCosts = UPGRADES.map((u) => {
+    try { return getUpgradeCost(u.key); } catch (_) { return Infinity; }
+  }).filter((c) => c < Infinity && c > 0);
+  const cheapest = cheapestCosts.length ? Math.min(...cheapestCosts) : 120;
+  const floor = typeof dlMinRunGoldFloor === "function"
+    ? dlMinRunGoldFloor(cheapest)
+    : ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.economy.minRunGoldFloor)
+      ? DL_BALANCE.economy.minRunGoldFloor : 50);
   if (earnedGold < floor && game.monstersDefeated > 0) {
     earnedGold = Math.max(floor, Math.floor(game.monstersDefeated * 4));
   }
   game.lastRunGold = earnedGold;
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
+  // Run-Upgrades gehen mit dem Tod verloren
+  game.runUpgradeState = typeof dlCreateEmptyRunUpgradeState === "function"
+    ? dlCreateEmptyRunUpgradeState() : null;
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
@@ -5908,7 +6300,7 @@ function updateHUD() {
   const world = getWorld();
   $("hud-hp-fill").style.width = clampHudPct(h.hp, st.maxHp) + "%";
   $("hud-hp-text").textContent = formatHudRatio(h.hp, st.maxHp);
-  const xpNeed = Math.max(1, game.playerLevel * BALANCE.xpPerLevel);
+  const xpNeed = Math.max(1, xpNeededForLevel(game.playerLevel));
   $("hud-xp-fill").style.width = clampHudPct(game.runXp, xpNeed) + "%";
   $("hud-xp-text").textContent = formatHudRatio(game.runXp, xpNeed);
   $("hud-gold").textContent = formatHudInt(game.runGold);
@@ -6091,7 +6483,6 @@ async function buyUpgrade(k) {
   game.upgrades[k] = (game.upgrades[k] || 0) + 1;
   game.emptyUpgradeRuns = 0;
   game.upgradeBoughtThisRun = true;
-  game.upgradeBoughtThisRun = false;
   const up = UPGRADES.find((u) => u.key === k);
   const eff = (typeof getUpgradeEff === "function") ? getUpgradeEff(k) : game.upgrades[k] * up.bonus;
   addLog("Upgrade: " + up.label + " Stufe " + game.upgrades[k] + " – spürbar stärker!", "heal");
