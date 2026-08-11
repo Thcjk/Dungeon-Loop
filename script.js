@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-154";
+const BUILD_ID = "sidescroller-v3-155";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -1471,10 +1471,14 @@ function validateMeta(parsed) {
     const src = parsed.abilities?.[ck];
     if (!src) return;
     const unlocked = Array.isArray(src.unlocked) ? src.unlocked.filter((id) => typeof id === "string") : base.abilities[ck].unlocked;
-    let equipped = Array.isArray(src.equipped) ? src.equipped.slice(0, 2) : base.abilities[ck].equipped;
+    let equipped = Array.isArray(src.equipped) ? src.equipped.slice(0, 2) : base.abilities[ck].equipped.slice();
     while (equipped.length < 2) equipped.push(null);
     equipped = equipped.map((id) => (id && unlocked.includes(id) ? id : null));
+    // W und S müssen unterschiedliche Fähigkeiten behalten
+    equipped = normalizeEquippedPair(equipped);
     if (!equipped[0] && unlocked.length) equipped[0] = unlocked[0];
+    // Falls Auto-Fill von Slot 0 mit Slot 1 kollidiert: Slot 1 freimachen
+    equipped = normalizeEquippedPair(equipped);
     base.abilities[ck] = { unlocked, equipped };
   });
   return base;
@@ -1511,6 +1515,14 @@ function saveMeta() {
   } catch (_) {}
   // Legacy-Spiegel für Migration älterer Builds
   try { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(game.meta)); } catch (_) {}
+}
+
+/** W/S-Ausrüstung: nie dieselbe Fähigkeit auf beiden Tasten */
+function normalizeEquippedPair(equipped) {
+  const eq = Array.isArray(equipped) ? equipped.slice(0, 2) : [null, null];
+  while (eq.length < 2) eq.push(null);
+  if (eq[0] && eq[1] && eq[0] === eq[1]) eq[1] = null;
+  return eq;
 }
 
 function flashSaveIndicator(msg) {
@@ -1570,17 +1582,17 @@ function syncUnlockedAbilities(classKey) {
   const classes = classKey ? [classKey] : [game.classKey || "warrior"];
   classes.forEach((ck) => {
     game.meta.abilities[ck].unlocked = getUnlockedAbilityIds(ck, cdLv);
-    const eq = game.meta.abilities[ck].equipped || [null, null];
+    const eq = (game.meta.abilities[ck].equipped || [null, null]).slice(0, 2);
+    while (eq.length < 2) eq.push(null);
+    // Nur ungültige (gesperrte) Einträge entfernen – manuelle Wahl bleibt sonst stehen
     for (let i = 0; i < 2; i++) {
       if (eq[i] && !game.meta.abilities[ck].unlocked.includes(eq[i])) eq[i] = null;
     }
+    // Nur leeren W-Slot einmalig mit Basis füllen (nicht S überschreiben)
     if (!eq[0] && game.meta.abilities[ck].unlocked.length) {
       eq[0] = game.meta.abilities[ck].unlocked[0];
     }
-    if (!eq[1] && game.meta.abilities[ck].unlocked.length > 1) {
-      eq[1] = game.meta.abilities[ck].unlocked.find((id) => id !== eq[0]) || null;
-    }
-    game.meta.abilities[ck].equipped = eq;
+    game.meta.abilities[ck].equipped = normalizeEquippedPair(eq);
   });
   saveMeta();
 }
@@ -1628,13 +1640,27 @@ function setEquippedAbility(slotIdx, abilityId) {
   ensureMeta();
   const ck = game.classKey;
   if (!game.meta.abilities[ck]) return;
-  if (abilityId && !isAbilityOwned(ck, abilityId)) return;
-  const otherSlot = slotIdx === 0 ? 1 : 0;
-  if (abilityId && game.meta.abilities[ck].equipped[otherSlot] === abilityId) {
-    game.meta.abilities[ck].equipped[otherSlot] = null;
+  const slot = slotIdx === 0 || slotIdx === 1 ? slotIdx : -1;
+  if (slot < 0) return;
+  const nextId = abilityId || null;
+  if (nextId && !isAbilityOwned(ck, nextId)) {
+    renderAbilityPanel();
+    return;
   }
-  game.meta.abilities[ck].equipped[slotIdx] = abilityId;
+  const eq = normalizeEquippedPair((game.meta.abilities[ck].equipped || [null, null]).slice());
+  const otherSlot = slot === 0 ? 1 : 0;
+  // Gleiche Fähigkeit auf W und S verbieten – bestehende Auswahl bleibt
+  if (nextId && eq[otherSlot] === nextId) {
+    addLog("Taste " + getAbilityKeyLabel(otherSlot) + " hat diese Fähigkeit schon – bitte eine andere wählen.", "special");
+    renderAbilityPanel();
+    updateClassHint();
+    return;
+  }
+  // Nur dieser Slot ändert sich; der andere bleibt gespeichert
+  eq[slot] = nextId;
+  game.meta.abilities[ck].equipped = normalizeEquippedPair(eq);
   saveMeta();
+  if (game.playerName) saveLocalPlayer({ quiet: true });
   if (game.isRunning && !game.isDead) { markRunSaveDirty(); saveActiveRun(true); }
   renderAbilityPanel();
   updateClassHint();
@@ -1653,7 +1679,7 @@ function renderSetupAbilityHint() {
     .filter((x) => x && x.ab);
 
   let html = '<p class="ability-setup-lead">6 Spezialfähigkeiten pro Klasse · Freischaltung bei <strong>Spezial-CD Meilensteinen</strong> (Stufe 3, 6, 10 …)</p>';
-  html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · Taste <kbd>W</kbd>/<kbd>S</kbd> im Kampf</p>';
+  html += '<p class="ability-setup-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' freigeschaltet · <kbd>W</kbd> und <kbd>S</kbd> je eigene Fähigkeit</p>';
   html += '<div class="ability-overview">';
   list.forEach((ab) => {
     const ownedFlag = owned.includes(ab.id);
@@ -1785,10 +1811,11 @@ function renderAbilityPanel() {
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>W</kbd>/<kbd>S</kbd> im Kampf</p>';
-  html += '<p class="ability-meta ability-meta--hint">Meilensteine: CD Stufe <strong>3 · 6 · 10 · 14 · 20</strong> – spätere Fähigkeiten sind deutlich stärker.</p>';
+  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>W</kbd>/<kbd>S</kbd> getrennt</p>';
+  html += '<p class="ability-meta ability-meta--hint">Meilensteine: CD Stufe <strong>3 · 6 · 10 · 14 · 20</strong> – W und S speichern je eine eigene Fähigkeit (nicht dieselbe).</p>';
   html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
+    const otherId = equipped[slotIdx === 0 ? 1 : 0] || null;
     html += '<div class="ability-equip-slot">';
     html += '<label class="label ability-equip-label">Taste ' + getAbilityKeyLabel(slotIdx) + '</label>';
     html += '<select class="input ability-select" data-slot="' + slotIdx + '">';
@@ -1796,7 +1823,12 @@ function renderAbilityPanel() {
     owned.forEach((id) => {
       const ab = getAbilityById(ck, id);
       if (!ab) return;
-      html += '<option value="' + id + '"' + (equipped[slotIdx] === id ? ' selected' : '') + '>' + ab.name + '</option>';
+      const taken = otherId === id;
+      const sel = equipped[slotIdx] === id;
+      html += '<option value="' + id + '"' +
+        (sel ? ' selected' : '') +
+        (taken && !sel ? ' disabled' : '') +
+        '>' + ab.name + (taken && !sel ? ' (schon ' + getAbilityKeyLabel(slotIdx === 0 ? 1 : 0) + ')' : '') + '</option>';
     });
     html += '</select></div>';
   });
@@ -2188,7 +2220,8 @@ function bindEvents() {
       e.preventDefault();
     }
     if (k === "p" && game.isRunning) togglePause();
-    if (!isTypingInForm()) {
+    if (!isTypingInForm() && !e.repeat) {
+      // W und S getrennt: je eine Fähigkeit, kein Key-Repeat-Spam
       if ((k === "w" || k === "arrowup") && game.isRunning) useEquippedAbility(0);
       if ((k === "s" || k === "arrowdown") && game.isRunning) useEquippedAbility(1);
     }
