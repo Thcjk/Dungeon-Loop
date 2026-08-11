@@ -2890,8 +2890,8 @@ function restoreSetupFromSave() {
   const homeHint = $("menu-home-hint");
   if (homeHint) {
     homeHint.textContent = filled
-      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt. Laden = direkt weiter · Neu = Heldenwahl."
-      : "Neues Spiel → Heldenwahl · Bis zu 3 Spielstände möglich.";
+      ? filled + " von " + MAX_SAVE_SLOTS + " Slots belegt. Laden = direkt weiter · Neu = Held + Anleitung."
+      : "Neues Spiel → Held wählen → kurze Anleitung · Bis zu 3 Spielstände möglich.";
   }
   showMenuPanel("home");
   updateRunButtons();
