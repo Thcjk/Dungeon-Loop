@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-155";
+const BUILD_ID = "sidescroller-v3-156";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -491,27 +491,27 @@ const CLASS_WEAPONS = {
 const CLASSES = {
   warrior: {
     name: "Krieger", attackType: "melee",
-    hp: 136, attack: 20, defense: 7, crit: 0.06, mana: 0, magicDamage: 0,
-    range: 84, attackRate: 460, moveSpeed: 124,
+    hp: 150, attack: 22, defense: 8, crit: 0.06, mana: 0, magicDamage: 0,
+    range: 84, attackRate: 440, moveSpeed: 124,
     aoeFalloff: 0.74,
     special: "Schildschlag", specialCd: 8, specialRange: 90, specialMult: 2.2,
     desc: "Nahkampf-Schwert, kurze Reichweite, viel Leben"
   },
   ranger: {
     name: "Waldläufer", attackType: "ranged",
-    hp: 104, attack: 15, defense: 4, crit: 0.16, mana: 0, magicDamage: 0,
-    range: 235, attackRate: 380, moveSpeed: 152,
-    closeRange: 55, meleePenalty: 0.35,
+    hp: 118, attack: 17, defense: 5, crit: 0.17, mana: 0, magicDamage: 0,
+    range: 235, attackRate: 360, moveSpeed: 152,
+    closeRange: 55, meleePenalty: 0.4,
     proj: "projectile_arrow", projSpeed: 13,
     special: "Präzisionsschuss", specialCd: 5,
     desc: "Bogen, große Reichweite, schwach im Nahkampf"
   },
   mage: {
     name: "Magier", attackType: "magic",
-    hp: 88, attack: 7, defense: 3, crit: 0.12, mana: 130, magicDamage: 30,
-    range: 215, attackRate: 320, moveSpeed: 110, manaPerShot: 4,
+    hp: 100, attack: 8, defense: 4, crit: 0.12, mana: 145, magicDamage: 34,
+    range: 215, attackRate: 300, moveSpeed: 110, manaPerShot: 3,
     proj: "projectile_fire", projSpeed: 8,
-    special: "Feuerball", specialCd: 6, manaCost: 28,
+    special: "Feuerball", specialCd: 6, manaCost: 26,
     desc: "Zauber, mittlere Reichweite, braucht Mana"
   }
 };
@@ -654,7 +654,7 @@ const WORLDS = [
   },
   {
     name: "Verfluchte Sümpfe", min: 20, danger: 2, theme: "swamp",
-    hpMult: 1.32, atkMult: 1.24, speedMult: 1.1,
+    hpMult: 1.22, atkMult: 1.14, speedMult: 1.06,
     sky: "#060a06", bg: "#0a1208", hill: "#141a10",
     hill2: "#1a2214", hill3: "#202818",
     ground: "#1a1810", moss: "#354828", leaf: "#405838",
@@ -663,7 +663,7 @@ const WORLDS = [
   },
   {
     name: "Gefrorene Berge", min: 40, danger: 3, theme: "frost",
-    hpMult: 1.62, atkMult: 1.48, speedMult: 1.18,
+    hpMult: 1.45, atkMult: 1.32, speedMult: 1.12,
     sky: "#080c18", bg: "#0c1428", hill: "#142038",
     hill2: "#182848", hill3: "#1c3058",
     ground: "#c8d8e8", moss: "#6a8898", leaf: "#a8d8ea",
@@ -672,7 +672,7 @@ const WORLDS = [
   },
   {
     name: "Feuerlande", min: 60, danger: 4, theme: "fire",
-    hpMult: 1.95, atkMult: 1.72, speedMult: 1.25,
+    hpMult: 1.72, atkMult: 1.52, speedMult: 1.18,
     sky: "#0a0202", bg: "#180606", hill: "#3a0c08",
     hill2: "#4a1008", hill3: "#5a180a",
     ground: "#2a0804", moss: "#5a1a08", leaf: "#922b21",
@@ -681,7 +681,7 @@ const WORLDS = [
   },
   {
     name: "Vergessene Ruinen", min: 80, danger: 5, theme: "ruins",
-    hpMult: 2.35, atkMult: 2.05, speedMult: 1.32,
+    hpMult: 2.05, atkMult: 1.78, speedMult: 1.24,
     sky: "#0a0814", bg: "#100c1c", hill: "#1a1430",
     hill2: "#201838", hill3: "#281c40",
     ground: "#2a2438", moss: "#4a5058", leaf: "#5a6068",
@@ -747,37 +747,38 @@ const LOOT_EFFECTS = [
   { key: "goldBonus", label: "Gold" }, { key: "magicDamage", label: "Magie" }, { key: "mana", label: "Mana" }
 ];
 const UPGRADES = [
-  { key: "upgrade_health",   label: "Leben",        baseCost: 85,  bonus: 24,  bonusText: "+24 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
-  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 75,  bonus: 1,   bonusText: "+1 DEF",       tip: "Weniger Schaden – für jede Klasse nützlich.", forClass: "all" },
-  { key: "upgrade_attack",   label: "Angriff",      baseCost: 95,  bonus: 4,   bonusText: "+4 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
-  { key: "upgrade_magic",    label: "Magieschaden", baseCost: 110, bonus: 5,   bonusText: "+5 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
-  { key: "upgrade_mana",     label: "Mana",         baseCost: 100, bonus: 15,  bonusText: "+15 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
-  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 120, bonus: 0.011, bonusText: "+1.1% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
-  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 130, bonus: 0.08, bonusText: "+8% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
-  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 110, bonus: 0.06, bonusText: "+6% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
-  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 165, bonus: 0.35, bonusText: "-0.35s CD",  tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
+  { key: "upgrade_health",   label: "Leben",        baseCost: 80,  bonus: 28,  bonusText: "+28 LP",       tip: "Überleben! Pflicht für jeden Run.",           forClass: "all" },
+  { key: "upgrade_defense",  label: "Verteidigung", baseCost: 70,  bonus: 1.25, bonusText: "+1.25 DEF",   tip: "Weniger Schaden – für jede Klasse nützlich.", forClass: "all" },
+  { key: "upgrade_attack",   label: "Angriff",      baseCost: 90,  bonus: 5,   bonusText: "+5 ATK",       tip: "Schneller töten. Krieger & Waldläufer.",    forClass: "warrior,ranger" },
+  { key: "upgrade_magic",    label: "Magieschaden", baseCost: 100, bonus: 6,   bonusText: "+6 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
+  { key: "upgrade_mana",     label: "Mana",         baseCost: 95,  bonus: 18,  bonusText: "+18 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
+  { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 110, bonus: 0.013, bonusText: "+1.3% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
+  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 120, bonus: 0.09, bonusText: "+9% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
+  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 100, bonus: 0.07, bonusText: "+7% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – Early Game fairer; Werte hier zum Feintuning
+// Balance – Upgrades ~10 sollen Welt 3 öffnen; später härter
 const BALANCE = {
-  upgradeCostPow: 1.58,
+  upgradeCostPow: 1.52,
   upgradeMax: 25,
-  lootChance: 0.2,
-  xpPerLevel: 145,          // niedriger = schnelleres Held-Level
-  levelScalePow: 1.055,       // niedriger = langsamere Gegner-Skalierung
-  levelUpHealPct: 0.16,
-  waveCooldown: 2.05,
-  minWaveCooldown: 0.9,
-  defenseFactor: 1.35,          // höher = Verteidigung wirkt stärker
-  earlyEaseUntil: 18,           // erste N Dungeon-Level leichter
-  earlyHpEase: 0.14,            // max. HP-Reduktion Early Game
-  earlyAtkEase: 0.24,           // max. Schaden-Reduktion Early Game
-  coinLife: 2.4,                // Sekunden auf dem Boden bis Auto-Einsammeln (nur Krieger)
-  coinJumpDur: 0.78,            // Sprung in die Luft (länger oben)
-  coinJumpHeight: 118,          // Max. Sprunghöhe – gut mit der Maus erreichbar
-  coinHitRadius: 28,            // Maus/Touch-Trefferzone
-  coinCatchDelay: 0.14,         // Kurz nicht einsammelbar – Münze entweicht der Maus
-  coinCatchMoveMin: 28          // Mausbewegung nötig für x2-Bonus
+  lootChance: 0.22,
+  xpPerLevel: 130,              // etwas schneller Held-Level im Run
+  levelScalePow: 1.04,          // flachere Gegner-Skalierung (vorher 1.055)
+  levelUpHealPct: 0.22,
+  waveCooldown: 2.15,
+  minWaveCooldown: 1.0,
+  defenseFactor: 1.48,          // Verteidigung wirkt stärker
+  earlyEaseUntil: 20,
+  earlyHpEase: 0.16,
+  earlyAtkEase: 0.26,
+  coinLife: 2.4,
+  coinJumpDur: 0.78,
+  coinJumpHeight: 118,
+  coinHitRadius: 28,
+  coinCatchDelay: 0.14,
+  coinCatchMoveMin: 28,
+  pierceFactor: 0.14            // weniger True-Damage durch Verteidigung
 };
 let enemyId = 0;
 let upgradePause = false;
@@ -886,7 +887,7 @@ const ENEMY_AI = {
   Sandwurm:   { style: "melee",  speedMult: 0.95, atkMult: 1.2,  intervalMult: 1.1 },
   "Skarabäus-Schwarm": { style: "fast", speedMult: 1.35, atkMult: 0.8, intervalMult: 0.8 },
   Sphinx:     { style: "melee",  speedMult: 1.0,  atkMult: 1.25, intervalMult: 1.05 },
-  _boss:      { style: "boss",   speedMult: 0.95, atkMult: 1.2,  intervalMult: 0.88 }
+  _boss:      { style: "boss",   speedMult: 0.92, atkMult: 1.08, intervalMult: 0.92 }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1758,7 +1759,7 @@ function getEquippedAbilities() {
 }
 
 function getEffectiveAbilityCd(ab) {
-  const cdRed = (game.upgrades.upgrade_cooldown || 0) * 0.35;
+  const cdRed = (game.upgrades.upgrade_cooldown || 0) * 0.4;
   return Math.max(2, ab.cd - cdRed);
 }
 
@@ -2029,7 +2030,7 @@ function spawnExplosion(x, y, radius, playSound) {
 
 function calcPlayerDamage(rawAttack, defense) {
   const def = defense * (BALANCE.defenseFactor || 1);
-  const pierce = Math.floor(rawAttack * 0.17);
+  const pierce = Math.floor(rawAttack * (BALANCE.pierceFactor ?? 0.14));
   return Math.max(1, Math.max(pierce, rawAttack - def));
 }
 
@@ -2111,7 +2112,7 @@ function bossSpecialAttack(e, h, st) {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.6, st.defense)));
+  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.35, st.defense)));
 
   e.attackAnim = 0.55;
   e.attackWindup = 1;
@@ -4137,13 +4138,15 @@ function tryAdvanceWorldAfterBossWave() {
 
 // Schwierigkeit skaliert mit Dungeon-Level & Welt – Meta-Upgrades helfen spürbar mit
 function getScaledLevel(lv) {
-  if (lv <= 14) return lv;
-  return 14 + Math.pow(lv - 14, 0.82);
+  if (lv <= 15) return lv;
+  if (lv <= 40) return 15 + Math.pow(lv - 15, 0.76);
+  return 15 + Math.pow(25, 0.76) + Math.pow(lv - 40, 0.66);
 }
 
 function getMetaEase() {
-  const total = Object.values(game.upgrades).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.72, 1 - total * 0.011);
+  const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
+  // Mehr Upgrades = spürbar leichtere Gegner (Boden 0.62)
+  return Math.max(0.62, 1 - total * 0.0125);
 }
 
 function getDifficultyScale() {
@@ -4156,15 +4159,15 @@ function getDifficultyScale() {
 function getAttackScale() {
   const lv = getScaledLevel(game.dungeonLevel);
   const world = getWorld();
-  const atkPow = BALANCE.levelScalePow - 0.032;
+  const atkPow = BALANCE.levelScalePow - 0.022;
   return Math.pow(atkPow, lv) * world.atkMult * getMetaEase();
 }
 
 function getBossMult(isBoss) {
   if (!isBoss) return { hp: 1, atk: 1, rew: 1 };
   const lv = game.dungeonLevel;
-  const ease = lv <= 10 ? 0.78 : lv <= 25 ? 0.9 : lv <= 50 ? 0.98 : 1.05;
-  return { hp: 4.8 * ease, atk: 2.1 * ease, rew: 4.0 };
+  const ease = lv <= 12 ? 0.74 : lv <= 28 ? 0.86 : lv <= 45 ? 0.93 : lv <= 70 ? 0.98 : 1.04;
+  return { hp: 4.0 * ease, atk: 1.72 * ease, rew: 4.0 };
 }
 
 function getEnemyStats(isBoss) {
@@ -4173,28 +4176,33 @@ function getEnemyStats(isBoss) {
   const hpScale = getDifficultyScale();
   const atkScale = getAttackScale();
   const boss = getBossMult(isBoss);
-  const worldEase = world.danger === 1 ? 0.74 : world.danger === 2 ? 0.86 : world.danger === 3 ? 0.93 : world.danger === 4 ? 0.97 : 1;
-  const lvEase = lv <= 14 ? 0.76 : lv <= 26 ? 0.84 : lv <= 40 ? 0.91 : 1;
+  const worldEase = world.danger === 1 ? 0.74
+    : world.danger === 2 ? 0.82
+    : world.danger === 3 ? 0.9
+    : world.danger === 4 ? 0.95
+    : 1;
+  const lvEase = lv <= 15 ? 0.74 : lv <= 28 ? 0.82 : lv <= 42 ? 0.9 : lv <= 60 ? 0.95 : 1;
   const early = getEarlyEase();
   const earlyHp = 1 - BALANCE.earlyHpEase * early;
   const earlyAtk = 1 - BALANCE.earlyAtkEase * early;
-  const hpEase = lv <= 14 ? 0.88 : lv <= 26 ? 0.94 : 1;
+  const hpEase = lv <= 15 ? 0.86 : lv <= 28 ? 0.92 : lv <= 45 ? 0.96 : 1;
 
   return {
-    hp: Math.floor((24 + lv * 3.1) * hpScale * boss.hp * earlyHp * hpEase),
-    attack: Math.max(1, Math.floor((3 + lv * 0.78) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
-    gold: Math.floor((5 + lv * 1.55) * boss.rew * (1 + lv * 0.034)),
-    xp: Math.floor((11 + lv * 2.45) * boss.rew),
-    speed: (isBoss ? 0.52 : 0.72) * world.speedMult + lv * 0.009,
-    attackInterval: Math.max(0.64, 1.12 - lv * 0.0035 - world.danger * 0.026)
+    hp: Math.floor((22 + lv * 2.7) * hpScale * boss.hp * earlyHp * hpEase),
+    attack: Math.max(1, Math.floor((2.8 + lv * 0.62) * atkScale * boss.atk * worldEase * lvEase * earlyAtk)),
+    gold: Math.floor((6 + lv * 1.75) * boss.rew * (1 + lv * 0.036)),
+    xp: Math.floor((12 + lv * 2.6) * boss.rew),
+    speed: (isBoss ? 0.5 : 0.7) * world.speedMult + lv * 0.0075,
+    attackInterval: Math.max(0.7, 1.18 - lv * 0.003 - world.danger * 0.02)
   };
 }
 
 function getWaveSize() {
   const lv = game.dungeonLevel;
   const d = getWorld().danger;
-  const size = 2 + Math.floor(lv / 3) + Math.max(0, d - 2);
-  return Math.min(6, Math.max(2, size));
+  // Dungeon-Level steigt pro Kill – Wellengröße langsamer wachsen lassen
+  const size = 2 + Math.floor(lv / 5) + Math.max(0, d - 2);
+  return Math.min(5, Math.max(2, size));
 }
 
 function getUpgradeTip() {
