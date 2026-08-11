@@ -684,14 +684,8 @@ body {
 .victory-summary {
   font-size: 0.8rem;
   color: var(--muted);
-  margin-bottom: 0.55rem;
-  line-height: 1.45;
-}
-.victory-hint {
-  font-size: 0.72rem;
-  color: var(--muted);
   margin-bottom: 1rem;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 .victory-actions {
   display: flex;
