@@ -9,7 +9,7 @@
   <title>Dungeon Loop</title>
   <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=181">
+  <link rel="stylesheet" href="style.css?v=183">
 </head>
 <body>
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
@@ -243,6 +243,7 @@
                 <div class="hud-stat world-name" id="hud-world">Wald</div>
               </div>
               <div class="hud-event-icons hidden" id="hud-event-icons"></div>
+              <div class="hud-loop" id="hud-loop">LOOP 1</div>
             </div>
           </div>
 
@@ -289,9 +290,10 @@
               <h2 class="victory-title">GLÜCKWUNSCH</h2>
               <p class="victory-lead" id="victory-lead">Erster Durchlauf geschafft!</p>
               <p class="victory-summary" id="victory-summary"></p>
-              <p class="victory-hint">Nächster Durchlauf = Upgrades behalten, härtere Gegner. Neu starten = alles zurücksetzen.</p>
+              <p class="victory-next-preview hidden" id="victory-next-preview"></p>
+              <p class="victory-hint">Nächster Loop = Meta behalten, Run-Power neu. Neu starten = alles zurücksetzen.</p>
               <div class="victory-actions">
-                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Durchlauf</button>
+                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Loop</button>
                 <button type="button" class="btn btn-gold btn-large" id="btn-victory-restart">Neu starten</button>
               </div>
             </div>
@@ -303,6 +305,21 @@
               <p class="run-upgrade-hint">Welt geschafft – wähle ein Run-Upgrade für die nächste Welt.</p>
               <div class="run-upgrade-choices" id="run-upgrade-choices"></div>
               <button type="button" class="btn btn-secondary" id="run-upgrade-reroll">Neu würfeln</button>
+            </div>
+          </div>
+
+          <div class="loop-start-overlay hidden" id="loop-start-overlay">
+            <div class="loop-start-content">
+              <h2 class="loop-start-title" id="loop-start-title">LOOP 2</h2>
+              <p class="loop-start-body" id="loop-start-body"></p>
+              <p class="loop-start-hint">Klicken zum Überspringen</p>
+            </div>
+          </div>
+
+          <div class="corruption-overlay hidden" id="corruption-overlay">
+            <div class="corruption-content">
+              <h2 class="corruption-title" id="corruption-title">KORRUPTION</h2>
+              <p class="corruption-body" id="corruption-body"></p>
             </div>
           </div>
 
@@ -374,19 +391,20 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-179</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=181"></script>
-  <script src="world-config.js?v=181"></script>
-  <script src="world-render.js?v=181"></script>
-  <script src="visual-enemies.js?v=181"></script>
-  <script src="visual-fx.js?v=181"></script>
-  <script src="pack-fx.js?v=181"></script>
-  <script src="visual-sprites.js?v=181"></script>
-  <script src="hero-render.js?v=181"></script>
-  <script src="balance.js?v=181"></script>
-  <script src="events.js?v=181"></script>
-  <script src="run-upgrades.js?v=181"></script>
-  <script src="abilities.js?v=181"></script>
-  <script src="progression.js?v=181"></script>
-  <script src="script.js?v=181"></script>
+  <script src="asset-pack.js?v=183"></script>
+  <script src="world-config.js?v=183"></script>
+  <script src="world-render.js?v=183"></script>
+  <script src="visual-enemies.js?v=183"></script>
+  <script src="visual-fx.js?v=183"></script>
+  <script src="pack-fx.js?v=183"></script>
+  <script src="visual-sprites.js?v=183"></script>
+  <script src="hero-render.js?v=183"></script>
+  <script src="balance.js?v=183"></script>
+  <script src="events.js?v=183"></script>
+  <script src="ngplus.js?v=183"></script>
+  <script src="run-upgrades.js?v=183"></script>
+  <script src="abilities.js?v=183"></script>
+  <script src="progression.js?v=183"></script>
+  <script src="script.js?v=183"></script>
 </body>
 </html>

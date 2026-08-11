@@ -1642,3 +1642,61 @@ body {
   color: #9aa3b0;
   line-height: 1.4;
 }
+
+
+/* ----- NG+ Loop / Corruption Overlays ----- */
+.hud-loop {
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: #c4b07a;
+}
+.loop-start-overlay,
+.corruption-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 235;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 14, 0.88);
+  padding: 1rem;
+  cursor: pointer;
+}
+.loop-start-overlay.hidden,
+.corruption-overlay.hidden { display: none; }
+.loop-start-content,
+.corruption-content {
+  text-align: center;
+  width: min(92%, 420px);
+  padding: 1.2rem 1rem;
+  border: 2px solid rgba(180, 140, 70, 0.55);
+  background: linear-gradient(165deg, #16120e 0%, #0a0c12 100%);
+}
+.corruption-content { border-color: rgba(160, 50, 70, 0.65); }
+.loop-start-title,
+.corruption-title {
+  letter-spacing: 0.16em;
+  color: #e8d5a3;
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.2rem, 4vw, 1.6rem);
+}
+.corruption-title { color: #e8a0b0; }
+.loop-start-body,
+.corruption-body {
+  color: #9aa3b0;
+  font-size: 0.82rem;
+  white-space: pre-line;
+  margin: 0 0 0.5rem;
+}
+.loop-start-hint { font-size: 0.68rem; color: #6b7380; margin: 0; }
+.victory-next-preview {
+  font-size: 0.8rem;
+  color: #c4b07a;
+  margin: 0.35rem 0 0.5rem;
+}
+.upgrade-btn.mastery {
+  border-color: #8a6d3b;
+  background: linear-gradient(180deg, rgba(80, 60, 28, 0.45), rgba(40, 32, 18, 0.55));
+}
+.upgrade-btn.mastery .upgrade-name { color: #e0c07a; }

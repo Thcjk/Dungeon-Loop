@@ -135,16 +135,40 @@ function dealPlayerDamage(e, rawDmg, opts) {
   if (e.isBoss && st.bossDamage) dmg *= (1 + st.bossDamage);
   if (e.isElite && st.eliteDamageAdd) dmg *= (1 + st.eliteDamageAdd);
 
+  // NG+ Adaptation
+  if (game.runUpgradeState && st.adaptation && e.isElite &&
+      game.runUpgradeState.adaptTargetId === e.id && (game.runUpgradeState.adaptTimer || 0) > 0) {
+    dmg *= (1 + (st.adaptDmg != null ? st.adaptDmg : 0.08));
+  }
+
   // Executioner
   const execFrac = st.execHpFrac != null ? st.execHpFrac : 0.2;
   const execAdd = st.execDmgAdd != null ? st.execDmgAdd : 0.25;
   if (st.executioner && e.maxHp > 0 && (e.hp / e.maxHp) < execFrac) {
-    dmg *= (1 + execAdd);
+    if (!st.bossOnlyExec || e.isBoss) dmg *= (1 + execAdd);
   }
 
   if (e.weakTimer > 0 && e.damageTakenMult) dmg *= e.damageTakenMult;
 
+  // NG+ Elite Armor
+  if (e.eliteArmor) dmg *= Math.max(0.35, 1 - e.eliteArmor);
+
   dmg = Math.max(1, Math.floor(dmg));
+
+  // NG+ Elite Shield absorbs first
+  if ((e.eliteShield || 0) > 0) {
+    const absorb = Math.min(e.eliteShield, dmg);
+    e.eliteShield -= absorb;
+    dmg -= absorb;
+    e.hitFlash = Math.max(e.hitFlash || 0, 8);
+    if (dmg <= 0) {
+      const rs = ensureRunStats();
+      rs.damageDealt += absorb;
+      return absorb;
+    }
+    dmg = Math.max(1, dmg);
+  }
+
   e.hp -= dmg;
   e.hitFlash = Math.max(e.hitFlash || 0, isCrit ? 10 : 6);
 
@@ -447,9 +471,21 @@ function renderBalanceDebugPanel() {
     ? dlRunSanityChecks({ baseCrit: CLASSES[game.classKey]?.crit || 0 })
     : [];
   const goals = getShortMidLongGoals();
+  const loopMult = (typeof dlLoopEnemyMult === "function") ? dlLoopEnemyMult(game.loopIndex || 0) : {};
+  const corr = (game.runLoopState && game.runLoopState.activeCorruption) || [];
+  const enc = game.runLoopState && game.runLoopState.activeEncounterModifier;
   el.innerHTML =
     "<strong>BALANCE-DEBUG v" + ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.version) || "?") + "</strong>" +
-    "<div>Meta " + power + " · RunPower " + runPower + " · Loop " + ((game.loopIndex | 0) + 1) + "</div>" +
+    "<div>Meta " + power + " · RunPower " + runPower + " · " +
+    (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Loop " + ((game.loopIndex | 0) + 1))) + "</div>" +
+    "<div>Loop HP ×" + (loopMult.hp || 1).toFixed(2) + " · DMG ×" + (loopMult.atk || 1).toFixed(2) +
+    " · Budget ×" + (loopMult.budget || 1).toFixed(2) + " · Gold ×" + (loopMult.gold || 1).toFixed(2) + "</div>" +
+    "<div>Elite+ " + Math.round((loopMult.eliteChance || 0) * 100) + "PP · EncMod " + (enc ? enc.id : "–") +
+    " · Corr " + (corr.map((c) => c.id).join(",") || "–") +
+    " · BossPhase " + ((game.enemies || []).find((e) => e.isBoss)?.bossPhase || "–") +
+    " · DblMod " + Math.round(((typeof ngEliteModCount === "function" && (game.loopIndex|0) >= 4) ? ((DL_BALANCE.ngPlus?.elites?.doubleChanceByLoop || {})[game.loopIndex|0] || 0.7) : 0) * 100) + "%</div>" +
+    "<div>Loot Rare+ +" + Math.round((loopMult.rarePlusPp || 0) * 100) + "PP · Est.clear ~" +
+    ((DL_BALANCE.ngPlus?.targetClearMin || {})[game.loopIndex|0] ? (DL_BALANCE.ngPlus.targetClearMin[game.loopIndex|0].join("–") + "m") : "–") + "</div>" +
     "<div>Welt " + (world.name || "?") + " · Fortschritt " + formatPct(progress) + " · Intensität " + intensity.toFixed(2) + "</div>" +
     "<div>Caps: Krit " + Math.round((caps.critChance || 0.45) * 100) + "% · DR " +
     Math.round((caps.damageReduction || 0.55) * 100) + "% · LS " +
@@ -473,6 +509,18 @@ function renderBalanceDebugPanel() {
     "<button type='button' data-dbg='boss'>Boss</button>" +
     "<button type='button' data-dbg='god'>Unverwundbar</button>" +
     "<button type='button' data-dbg='report'>Report</button>" +
+    "<button type='button' data-dbg='L0'>L0</button>" +
+    "<button type='button' data-dbg='L1'>L1</button>" +
+    "<button type='button' data-dbg='L3'>L3</button>" +
+    "<button type='button' data-dbg='L5'>L5</button>" +
+    "<button type='button' data-dbg='L8'>L8</button>" +
+    "<button type='button' data-dbg='corr'>Corruption</button>" +
+    "<button type='button' data-dbg='elite1'>Elite1</button>" +
+    "<button type='button' data-dbg='elite2'>Elite2</button>" +
+    "<button type='button' data-dbg='elite3'>Elite3</button>" +
+    "<button type='button' data-dbg='bossphase'>BossPhase</button>" +
+    "<button type='button' data-dbg='clearloop'>ClearLoop</button>" +
+    "<button type='button' data-dbg='resetloop'>ResetLoop</button>" +
     "</div>";
 
   el.onclick = (ev) => {
@@ -495,6 +543,37 @@ function renderBalanceDebugPanel() {
         console.log("BALANCE REPORT", dlRunBalanceReport());
         addLog("Balance-Report in Konsole (F12)", "heal");
       }
+    } else if (a === "L0" || a === "L1" || a === "L3" || a === "L5" || a === "L8") {
+      game.loopIndex = parseInt(a.slice(1), 10) || 0;
+      ensureLoopMeta();
+      addLog("Debug Loop → " + game.loopIndex, "heal");
+      updateHUD();
+    } else if (a === "corr") {
+      rollCorruptionForCurrentWorld(true);
+    } else if (a === "elite1" || a === "elite2" || a === "elite3") {
+      const e = spawnEnemy(false, 0, "elite");
+      if (e && typeof ngApplyEliteModifiers === "function") {
+        const n = a === "elite3" ? 3 : (a === "elite2" ? 2 : 1);
+        const mods = ngPickEliteModifiers(n, "elite");
+        ngApplyEliteModifiers(e, mods, game.loopIndex | 0);
+      }
+    } else if (a === "bossphase") {
+      const boss = (game.enemies || []).find((e) => e && e.isBoss && !e.dead);
+      if (boss) {
+        boss.hp = Math.max(1, Math.floor(boss.maxHp * 0.22));
+        boss.bossPhase = 3;
+        addLog("Debug: Boss → Phase 3 / low HP", "boss");
+      } else {
+        debugSpawnBoss();
+      }
+    } else if (a === "clearloop") {
+      if (typeof completeDungeonLoop === "function") completeDungeonLoop();
+    } else if (a === "resetloop") {
+      game.loopIndex = 0;
+      game.loopMeta = typeof ngCreateEmptyLoopMeta === "function" ? ngCreateEmptyLoopMeta() : {};
+      game.runLoopState = typeof ngCreateRunLoopState === "function" ? ngCreateRunLoopState() : {};
+      addLog("Debug: Loop-Test reset", "heal");
+      updateHUD();
     }
     renderBalanceDebugPanel();
   };

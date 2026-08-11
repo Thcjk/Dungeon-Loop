@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-180
+   Build: sidescroller-v3-183
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY (Hard Balance + Boss-only Run-Upgrades)
@@ -10,11 +10,11 @@
    - ~2–4 Runs pro spürbarem Meta-Upgrade
    - Meta maxLv 8, feste Kostentabelle
    - Run-Upgrades nur nach Boss-Kills (max 4 vor Final Boss)
-   - Loop/NG+ nach First Clear
+   - Loop/NG+ Endgame: Mechanik vor reiner HP-Kurve
    ============================================ */
 
 const DL_BALANCE = {
-  version: 180,
+  version: 183,
   targetFirstClearMin: 150,
   targetFirstClearRange: [140, 170],
   targetDeaths: [26, 38],
@@ -276,15 +276,159 @@ const DL_BALANCE = {
     loopGoldMult: 0.17
   },
 
+  /* Legacy linear keys – echte NG+ Werte in ngPlus.scaling */
   loop: {
-    enemyHpPerLoop: 0.28,
-    enemyAtkPerLoop: 0.20,
-    goldPerLoop: 0.17,
-    budgetMultPerLoop: 0.10,
-    budgetPerLoop: 0.10,
-    eliteChancePerLoop: 0.03,
-    bossHpPerLoop: 0.14,
-    bossAtkPerLoop: 0.08
+    enemyHpPerLoop: 0.24,
+    enemyAtkPerLoop: 0.16,
+    goldPerLoop: 0.18,
+    budgetMultPerLoop: 0.08,
+    budgetPerLoop: 0.08,
+    eliteChancePerLoop: 0.02,
+    bossHpPerLoop: 0.08,
+    bossAtkPerLoop: 0.05
+  },
+
+  ngPlus: {
+    uiLabel: "LOOP",
+    targetClearMin: {
+      0: [140, 165],
+      1: [80, 120],
+      2: [90, 130],
+      3: [100, 145],
+      4: [110, 160]
+    },
+    targetDeaths: {
+      1: [10, 20],
+      2: [14, 24],
+      3: [16, 28],
+      4: [18, 32]
+    },
+    scaling: {
+      hpBase: 1.24,
+      dmgBase: 1.16,
+      budgetPerLoop: 0.08,
+      budgetCap: 0.48,
+      budgetCapAtLoop: 6,
+      speedByLoop: [0, 0.02, 0.04, 0.06, 0.08, 0.10],
+      speedCap: 0.10,
+      atkSpdByLoop: [0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12],
+      atkSpdCap: 0.12,
+      goldBase: 1.18,
+      xpPerLoop: 0.10,
+      xpCap: 0.60,
+      rarePlusPpByLoop: [0, 0.02, 0.04, 0.06, 0.08],
+      rarePlusPpCap: 0.10,
+      legendaryPpCap: 0.02,
+      eliteChancePpByLoop: [0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12],
+      eliteChancePpCap: 0.12,
+      /* Ab Loop 7: flacheres Scaling */
+      lateFromLoop: 7,
+      lateHpAdd: 0.12,
+      lateDmgAdd: 0.08,
+      lateBudgetAdd: 0.04,
+      lateGoldAdd: 0.12
+    },
+    elites: {
+      unlockLoop: 1,
+      modifiers: {
+        berserk: { damage: 0.22, atkSpd: 0.12, hp: -0.08 },
+        armored: { armor: 0.20, hp: 0.10, move: -0.08 },
+        fast: { move: 0.20, atkSpd: 0.18, damage: -0.08 },
+        vampiric: { healOnHit: 0.04, healIcd: 2.5 },
+        explosive: { delay: 0.9, radius: 70, dmgPctMaxHp: 0.18 },
+        shielded: { shieldPct: 0.25 }
+      },
+      pool: ["berserk", "armored", "fast", "vampiric", "explosive", "shielded"],
+      doubleUnlockLoop: 4,
+      doubleChanceByLoop: { 4: 0.35, 5: 0.45, 6: 0.55, 7: 0.65 },
+      doubleChanceCap: 0.70,
+      doubleStrength: 0.90,
+      forbiddenPairs: [
+        ["fast", "berserk"],
+        ["vampiric", "shielded"]
+      ],
+      rareArmoredShielded: true,
+      tripleUnlockLoop: 8,
+      tripleChanceByLoop: { 8: 0.10 },
+      tripleChanceCap: 0.15,
+      rewardMult: { 1: 3.5, 2: 4.5, 3: 5.5 }
+    },
+    encounterModifiers: {
+      unlockLoop: 2,
+      chance: 0.20,
+      pool: {
+        haste: { move: 0.10, atkSpd: 0.08, reward: 0.08 },
+        fortified: { hp: 0.15, armor: 0.05, reward: 0.10 },
+        deadly: { damage: 0.12, reward: 0.12 },
+        swarm: { budget: 0.18, hp: -0.08, reward: 0.15 },
+        ranged_pressure: { rangedWeightRel: 0.50, maxRanged: 3, reward: 0.12 }
+      }
+    },
+    bossEvolution: {
+      unlockLoop: 3,
+      extraHp: 0.08,
+      extraDmg: 0.05,
+      phase2Speed: 0.06,
+      phase3Speed: 0.10,
+      newAttackInterval: [12, 18],
+      advancedPhaseLoop: 6,
+      advancedPhaseHpFrac: 0.25,
+      finalEnrageLoop: 6,
+      finalEnrageHpFrac: 0.20,
+      finalEnrageSpeed: 0.12,
+      finalEnrageDmg: 0.08
+    },
+    corruption: {
+      unlockLoop: 5,
+      countAtUnlock: 1,
+      doubleFromLoop: 7,
+      doubleChanceByLoop: { 7: 0.25, 8: 0.35, 9: 0.45 },
+      doubleChanceCap: 0.50,
+      pool: {
+        blood_moon: { enemyDmg: 0.15, gold: 0.20, title: "BLOOD MOON", desc: "Gegner +15% Schaden. Gold +20%." },
+        darkness: { telegraph: -0.10, reward: 0.15, title: "DARKNESS", desc: "Telegraphs −10%. Belohnung +15%." },
+        scarcity: { gold: -0.15, rarePlusRel: 0.25, title: "SCARCITY", desc: "Gold −15%. Rare+ Loot +25% relativ." },
+        overgrowth: { tankSupportWeightRel: 0.40, hp: 0.08, reward: 0.12, title: "OVERGROWTH", desc: "Mehr Tanks/Support. HP +8%." },
+        warpath: { budget: 0.20, breathChanceMul: 0.50, gold: 0.18, title: "WARPATH", desc: "Härtere Wellen. Gold +18%." },
+        frail_power: { playerDmg: 0.15, playerMaxHp: -0.18, title: "FRAIL POWER", desc: "Du +15% Schaden, −18% Max HP." }
+      }
+    },
+    rewards: {
+      firstClearBonus: 1200,
+      loopClearBonus: { 1: 1500, 2: 2200, 3: 3200, 4: 4500, 5: 6000 },
+      loopClearBonusFrom6Base: 6000,
+      loopClearBonusFrom6Growth: 1.20
+    },
+    runUpgrades: {
+      rarePlusPpByLoop: [0, 0.02, 0.03, 0.04, 0.05],
+      rarePlusPpCap: 0.06,
+      exclusiveFromLoop: 3,
+      exclusiveChance: 0.15
+    },
+    mastery: {
+      unlockLoop: 3,
+      maxTier: 2,
+      costs: [7500, 12000],
+      bonuses: {
+        upgrade_attack: 0.03,
+        upgrade_health: 0.03,
+        upgrade_atkspd: 0.02,
+        upgrade_crit: 0.01,
+        upgrade_bossdmg: 0.03,
+        upgrade_gold: 0.04
+      }
+    },
+    featureUnlocks: {
+      1: "Elite Awakening – Elites erhalten Modifier",
+      2: "Encounter Mutations – Wellen können mutieren",
+      3: "Boss Evolution – neue Boss-Muster",
+      4: "Double Elites – Elites mit 2 Modifiern",
+      5: "Corruption – Welten werden korrumpiert",
+      6: "Advanced Boss Phases",
+      7: "Endgame – Double Corruption möglich",
+      8: "Triple Modifier Elites"
+    },
+    selectPrepared: true
   },
 
   powerTargets: {
@@ -676,13 +820,8 @@ function dlEncounterBudget(worldDef, progress, isBoss, loopIndex, breath) {
   }
 
   const L = Math.max(0, loopIndex | 0);
-  const loop = DL_BALANCE.loop || {};
-  const multPer = loop.budgetMultPerLoop != null ? loop.budgetMultPerLoop : (loop.budgetPerLoop || 0);
-  if (multPer > 0 && multPer < 1.5) {
-    budget *= 1 + L * multPer;
-  } else if (L > 0) {
-    budget += L * (loop.budgetPerLoop || 0);
-  }
+  const loopMult = dlLoopEnemyMult(L);
+  if (loopMult && loopMult.budget) budget *= loopMult.budget;
 
   if (breath) {
     const r = DL_BALANCE.rhythm || {};
@@ -874,18 +1013,89 @@ function dlPlayerPowerScore(stats, scale100) {
   return Math.round(norm * 100) / 100;
 }
 
+function dlNgPlusCfg() {
+  return (DL_BALANCE && DL_BALANCE.ngPlus) || {};
+}
+
+function dlPow(base, exp) {
+  let r = 1;
+  const n = Math.max(0, exp | 0);
+  for (let i = 0; i < n; i++) r *= base;
+  return r;
+}
+
+/** NG+ Multiplikatoren – exponentiell bis Loop 6, danach flacheres Additive. */
 function dlLoopEnemyMult(loopIndex) {
   const L = Math.max(0, loopIndex | 0);
-  const lp = DL_BALANCE.loop || {};
+  const ng = dlNgPlusCfg().scaling || {};
+  const lateFrom = ng.lateFromLoop != null ? ng.lateFromLoop : 7;
+  const hpBase = ng.hpBase != null ? ng.hpBase : 1.24;
+  const dmgBase = ng.dmgBase != null ? ng.dmgBase : 1.16;
+  const goldBase = ng.goldBase != null ? ng.goldBase : 1.18;
+
+  let hp, atk, gold, budget;
+  if (L < lateFrom) {
+    hp = dlPow(hpBase, L);
+    atk = dlPow(dmgBase, L);
+    gold = dlPow(goldBase, L);
+    const bCap = ng.budgetCap != null ? ng.budgetCap : 0.48;
+    const bPer = ng.budgetPerLoop != null ? ng.budgetPerLoop : 0.08;
+    budget = 1 + Math.min(bCap, L * bPer);
+  } else {
+    const baseL = lateFrom - 1;
+    hp = dlPow(hpBase, baseL) * dlPow(1 + (ng.lateHpAdd != null ? ng.lateHpAdd : 0.12), L - baseL);
+    atk = dlPow(dmgBase, baseL) * dlPow(1 + (ng.lateDmgAdd != null ? ng.lateDmgAdd : 0.08), L - baseL);
+    gold = dlPow(goldBase, baseL) * dlPow(1 + (ng.lateGoldAdd != null ? ng.lateGoldAdd : 0.12), L - baseL);
+    const bCap = ng.budgetCap != null ? ng.budgetCap : 0.48;
+    const bPer = ng.budgetPerLoop != null ? ng.budgetPerLoop : 0.08;
+    budget = 1 + Math.min(bCap, baseL * bPer) + (L - baseL) * (ng.lateBudgetAdd != null ? ng.lateBudgetAdd : 0.04);
+  }
+
+  function ppFromArr(arr, loop, cap) {
+    if (loop <= 0) return 0;
+    if (loop < arr.length && arr[loop] != null) return Math.min(cap, arr[loop]);
+    return cap;
+  }
+  const spd = ppFromArr(ng.speedByLoop || [0], L, ng.speedCap != null ? ng.speedCap : 0.10);
+  const as = ppFromArr(ng.atkSpdByLoop || [0], L, ng.atkSpdCap != null ? ng.atkSpdCap : 0.12);
+
+  const xp = Math.min(ng.xpCap != null ? ng.xpCap : 0.60, L * (ng.xpPerLoop != null ? ng.xpPerLoop : 0.10));
+  const rarePp = ppFromArr(ng.rarePlusPpByLoop || [0], L, ng.rarePlusPpCap != null ? ng.rarePlusPpCap : 0.10);
+  const elitePp = ppFromArr(ng.eliteChancePpByLoop || [0], L, ng.eliteChancePpCap != null ? ng.eliteChancePpCap : 0.12);
+
+  const boss = (dlNgPlusCfg().bossEvolution) || {};
+  const bossExtraHp = L >= (boss.unlockLoop || 3) ? (boss.extraHp || 0.08) : 0;
+  const bossExtraAtk = L >= (boss.unlockLoop || 3) ? (boss.extraDmg || 0.05) : 0;
+
   return {
-    hp: 1 + L * (lp.enemyHpPerLoop || 0),
-    atk: 1 + L * (lp.enemyAtkPerLoop || 0),
-    gold: 1 + L * (lp.goldPerLoop || 0),
-    budget: 1 + L * (lp.budgetMultPerLoop != null ? lp.budgetMultPerLoop : (lp.budgetPerLoop || 0)),
-    eliteChance: L * (lp.eliteChancePerLoop || 0),
-    bossHp: 1 + L * (lp.bossHpPerLoop || 0),
-    bossAtk: 1 + L * (lp.bossAtkPerLoop || 0)
+    hp, atk, gold, budget,
+    speed: 1 + spd,
+    atkSpd: 1 + as,
+    xp: 1 + xp,
+    rarePlusPp: rarePp,
+    legendaryPp: Math.min(ng.legendaryPpCap != null ? ng.legendaryPpCap : 0.02, rarePp * 0.2),
+    eliteChance: elitePp,
+    bossHp: hp * (1 + bossExtraHp),
+    bossAtk: atk * (1 + bossExtraAtk)
   };
+}
+
+function dlLoopClearBonusGold(loopIndex) {
+  const L = Math.max(0, loopIndex | 0);
+  const rw = (dlNgPlusCfg().rewards) || {};
+  if (L <= 0) return rw.firstClearBonus != null ? rw.firstClearBonus : 1200;
+  const map = rw.loopClearBonus || {};
+  if (map[L] != null) return map[L];
+  if (L <= 5) return map[L] || 0;
+  const base = rw.loopClearBonusFrom6Base != null ? rw.loopClearBonusFrom6Base : 6000;
+  const growth = rw.loopClearBonusFrom6Growth != null ? rw.loopClearBonusFrom6Growth : 1.20;
+  return Math.floor(base * dlPow(growth, L - 5));
+}
+
+function dlLoopFeatureBlurb(loopIndex) {
+  const map = (dlNgPlusCfg().featureUnlocks) || {};
+  const L = Math.max(0, loopIndex | 0);
+  return map[L] || map[String(L)] || "Härtere Gegner und bessere Belohnungen.";
 }
 
 /** Theme / World-Composition → Rollen-Gewichte */
@@ -1173,6 +1383,9 @@ if (typeof module !== "undefined" && module.exports) {
     dlSynergyExtra,
     dlSynergyMult,
     dlLoopEnemyMult,
+    dlNgPlusCfg,
+    dlLoopClearBonusGold,
+    dlLoopFeatureBlurb,
     dlThemeRoleWeights,
     dlPlayerPowerScore,
     dlRunSanityChecks,
