@@ -551,7 +551,7 @@ const CLASS_BRIEFINGS = {
 };
 
 const BRIEFING_SHARED = {
-  goal: "Sterbe, upgrade, komm weiter: Jede Welt braucht oft viele Runs. Alle Welten geschafft → Glückwunsch, dann von vorn neu starten.",
+  goal: "Sterbe, upgrade, komm weiter. Alle Welten geschafft → Glückwunsch, dann ganz von vorne (ohne Upgrades).",
   controls: [
     "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
     "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
@@ -4178,7 +4178,8 @@ function completeDungeonLoop() {
   if (summary) {
     summary.textContent =
       "Alle Welten bezwungen · Level " + game.dungeonLevel +
-      " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold";
+      " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold\n" +
+      "Neu starten = ganz von vorne (Gold & Upgrades zurückgesetzt).";
   }
   addLog("Glückwunsch – Dungeon Loop geschafft!", "heal");
   showAnnouncement("victory", "GLÜCKWUNSCH", "Dungeon Loop geschafft", 3.2);
@@ -4195,7 +4196,7 @@ function hideVictoryPanel() {
   $("victory-panel")?.classList.add("hidden");
 }
 
-/** Neustart von Anfang an – Upgrades/Gold bleiben. */
+/** Ganz von vorne: Gold, Upgrades und Meta zurück – sonst rennst du durch. */
 function restartFromVictory() {
   hideVictoryPanel();
   clearActiveRun();
@@ -4203,6 +4204,17 @@ function restartFromVictory() {
   game.isDead = false;
   game.isPaused = false;
   stopLoop();
+
+  // Fortschritt komplett resetten (Name/Klasse/Slot bleiben)
+  game.totalGold = 0;
+  game.runGold = 0;
+  game.lastRunGold = 0;
+  game.upgrades = emptyUpgrades();
+  game.meta = defaultMeta();
+  syncUnlockedAbilities(game.classKey);
+  saveMeta();
+  if (game.playerName) saveLocalPlayer({ quiet: true });
+
   resetRun();
   try {
     createHero();
@@ -4218,10 +4230,14 @@ function restartFromVictory() {
   $("btn-pause").disabled = false;
   $("btn-restart").disabled = false;
   $("btn-pause").textContent = "Pause (P)";
+  updateTotalGold();
+  renderUpgradeButtons();
+  renderAbilityPanel();
+  renderSetupAbilityHint();
   safeSpawnWave();
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Neu gestartet – zurück zum Wald. Deine Upgrades bleiben!");
+  addLog("Ganz von vorne – Wald, Level 1. Upgrades und Gold sind zurückgesetzt.");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
