@@ -5187,6 +5187,10 @@ function advanceToNextWorld() {
   playWorldMusic(newWorld);
   emitCombatEvent("world_change");
   if (game.runUpgradeState) game.runUpgradeState.undyingUsedThisWorld = false;
+  ensureRunLoopState();
+  if ((game.runLoopState.activeCorruption || []).length) {
+    game.runLoopState.corruptionsSurvived = (game.runLoopState.corruptionsSurvived | 0) + 1;
+  }
   rollCorruptionForCurrentWorld(true);
 }
 
@@ -5238,7 +5242,8 @@ function completeDungeonLoop() {
   if (summary) {
     const lines = [
       "Zeit · Kills " + game.monstersDefeated + " · Gold " + earnedGold + (bonusGold ? (" · Bonus +" + bonusGold) : ""),
-      "Elites mit Mods: " + (rs.elitesWithMods | 0) + " · Corruptionen: " + ((rs.activeCorruption || []).length),
+      "Elites mit Mods: " + (rs.elitesWithMods | 0) + " · Corruptions Survived: " + (rs.corruptionsSurvived | 0) +
+        " · Deaths: " + (rs.deathsThisLoop | 0),
       preview
         ? ("Nächster Loop: HP +" + Math.round(preview.hpDelta * 100) + "% · DMG +" + Math.round(preview.dmgDelta * 100) + "% · " + (preview.feature || ""))
         : ("Nächster Loop härter – Meta bleibt.")
