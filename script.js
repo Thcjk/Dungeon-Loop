@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-164";
+const BUILD_ID = "sidescroller-v3-165";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -551,7 +551,7 @@ const CLASS_BRIEFINGS = {
 };
 
 const BRIEFING_SHARED = {
-  goal: "Sterbe, upgrade, komm weiter: oft 10–15 Versuche pro Welt. Alle Welten → Glückwunsch, dann wirklich von null (Gold, Upgrades, Fähigkeiten).",
+  goal: "Sterbe, farme Gold, upgrade – oft 10–15 Versuche pro Welt. Upgrades bleiben immer sinnvoll; du kannst nicht endlos steckenbleiben.",
   controls: [
     "<kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> – vor und zurück bewegen",
     "<kbd>Maus</kbd> auf Gegner – automatisch angreifen (Klassen-Waffe)",
@@ -560,8 +560,8 @@ const BRIEFING_SHARED = {
   ],
   watch: [
     "Münzen springen hoch: bewege dich darunter und fange sie in der Luft für <strong>x2 Gold</strong>.",
-    "Ein Run reicht selten – Gold in Upgrades stecken, dann dieselbe Welt erneut versuchen.",
-    "Spezial-CD-Upgrades schalten nach und nach neue Fähigkeiten frei (Meilensteine).",
+    "Ein Run reicht selten – Gold farmen, upgraden, dieselbe Welt erneut. Späte Upgrades werden teurer, bleiben aber bezahlbar.",
+    "Je mehr du upgradest, desto besser farmst und kämpfst du – kein Softlock bei Stufe 10+.",
     "Weltwechsel passiert erst nach klarer Boss-Welle – nicht mitten im Kampf."
   ]
 };
@@ -753,17 +753,20 @@ const UPGRADES = [
   { key: "upgrade_magic",    label: "Magieschaden", baseCost: 100, bonus: 6,   bonusText: "+6 MAG",       tip: "Nur Magier – vor Mana upgraden!",           forClass: "mage" },
   { key: "upgrade_mana",     label: "Mana",         baseCost: 95,  bonus: 18,  bonusText: "+18 Mana",     tip: "Nur Magier – mehr Zauber pro Run.",         forClass: "mage" },
   { key: "upgrade_crit",     label: "Krit-Chance",  baseCost: 110, bonus: 0.013, bonusText: "+1.3% Krit", tip: "Waldläufer lieben das. Risiko-Reiz.",     forClass: "ranger" },
-  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 120, bonus: 0.09, bonusText: "+9% Gold",   tip: "Langzeit-Farm. Erst wenn du oft stirbst.",  forClass: "all" },
-  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 100, bonus: 0.07, bonusText: "+7% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
-  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 150, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
+  { key: "upgrade_gold",     label: "Gold-Bonus",   baseCost: 110, bonus: 0.11, bonusText: "+11% Gold",  tip: "Farm-Boost: mehr Münzen pro Run, damit du nie steckenbleibst.", forClass: "all" },
+  { key: "upgrade_xp",       label: "XP-Bonus",     baseCost: 95,  bonus: 0.07, bonusText: "+7% XP",     tip: "Schneller Held-Level im Run.",              forClass: "all" },
+  { key: "upgrade_cooldown", label: "Spezial-CD",   baseCost: 140, bonus: 0.4,  bonusText: "-0.4s CD",   tip: "Kürzere CD + Fähigkeiten bei Stufe 3/6/10/14/20", forClass: "all" }
 ];
 
-// Balance – ~10–15 Versuche/Welt; Upgrades spürbar, Start-Spezial kein One-Tap
+// Balance – grind nötig, aber kein Softlock (Upgrades bleiben immer sinnvoll/kaufbar)
 const BALANCE = {
-  upgradeCostPow: 1.52,
+  upgradeCostPow: 1.42,
+  /** Ab dieser Stufe: Kosten wachsen linear statt exponentiell */
+  upgradeCostSoftLv: 9,
+  upgradeCostLinear: 0.32,
   upgradeMax: 30,
-  lootChance: 0.21,
-  xpPerLevel: 145,
+  lootChance: 0.22,
+  xpPerLevel: 140,
   levelScalePow: 1.04,
   levelUpHealPct: 0.17,
   waveCooldown: 2.0,
@@ -772,8 +775,11 @@ const BALANCE = {
   earlyEaseUntil: 16,
   earlyHpEase: 0.12,
   earlyAtkEase: 0.18,
-  /** Hart genug für lange Upgrade-Loops, unter dem alten #101-Wall (1.08) */
+  /** Hart genug für 10–15 Versuche/Welt */
   difficultyMult: 1.04,
+  /** Investierte Upgrade-Stufen → etwas mehr Farm-Gold (Anti-Softlock) */
+  farmGoldPerUpgrade: 0.014,
+  farmGoldCap: 0.85,
   coinLife: 2.4,
   coinJumpDur: 0.78,
   coinJumpHeight: 118,
@@ -4267,9 +4273,21 @@ function getWorldDepth() {
 }
 
 function getMetaEase() {
-  // Upgrades sollen spürbar helfen (Fortschritt), Basis bleibt hart
-  const total = Object.values(game.upgrades || {}).reduce((s, v) => s + (v || 0), 0);
-  return Math.max(0.68, 1 - total * 0.0085);
+  // Immer spürbarer Fortschritt – kein Floor, der weitere Käufe nutzlos macht
+  const total = getUpgradeInvestment();
+  return Math.max(0.52, 1 / (1 + total * 0.016));
+}
+
+function getUpgradeInvestment() {
+  return Object.values(game.upgrades || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+
+/** Mehr Upgrades → etwas mehr Farm-Gold, damit man sich immer noch verbessern kann */
+function getFarmGoldMult() {
+  const inv = getUpgradeInvestment();
+  const per = BALANCE.farmGoldPerUpgrade || 0.014;
+  const cap = BALANCE.farmGoldCap || 0.85;
+  return 1 + Math.min(cap, inv * per);
 }
 
 function getBossMult(isBoss) {
@@ -4294,11 +4312,12 @@ function getEnemyStats(isBoss) {
 
   const baseHp = 26 + depth * 3.9 + danger * 7;
   const baseAtk = 3.3 + depth * 0.52 + danger * 1.3;
+  const farm = getFarmGoldMult();
 
   return {
     hp: Math.floor(baseHp * depthHp * world.hpMult * ease * diff * boss.hp * earlyHp),
     attack: Math.max(1, Math.floor(baseAtk * depthAtk * world.atkMult * ease * diff * boss.atk * earlyAtk)),
-    gold: Math.floor((6 + depth * 2.1 + danger * 3) * boss.rew * (1 + depth * 0.038)),
+    gold: Math.floor((7.2 + depth * 2.35 + danger * 3.4) * boss.rew * (1 + depth * 0.04) * farm),
     xp: Math.floor((12 + depth * 2.8 + danger * 4) * boss.rew),
     speed: (isBoss ? 0.52 : 0.71) * world.speedMult + depth * 0.011,
     attackInterval: Math.max(0.66, 1.15 - depth * 0.0075 - danger * 0.018)
@@ -5641,7 +5660,15 @@ function getUpgradeCost(k) {
   const up = UPGRADES.find((u) => u.key === k);
   const lv = game.upgrades[k] || 0;
   if (lv >= BALANCE.upgradeMax) return Infinity;
-  return Math.floor(up.baseCost * Math.pow(BALANCE.upgradeCostPow, lv));
+  const pow = BALANCE.upgradeCostPow || 1.42;
+  const soft = BALANCE.upgradeCostSoftLv ?? 9;
+  // Früh: exponentiell (Grind). Ab softLv: linear – sonst Softlock bei Stufe 10+.
+  if (lv < soft) {
+    return Math.floor(up.baseCost * Math.pow(pow, lv));
+  }
+  const anchor = up.baseCost * Math.pow(pow, soft);
+  const linear = BALANCE.upgradeCostLinear || 0.32;
+  return Math.floor(anchor * (1 + (lv - soft) * linear));
 }
 
 function isUpgradeRelevant(up) {
