@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-168";
+const BUILD_ID = "sidescroller-v3-171";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -1536,7 +1536,8 @@ function validateMeta(parsed) {
     const src = parsed.abilities?.[ck];
     if (!src) return;
     const unlocked = Array.isArray(src.unlocked) ? src.unlocked.filter((id) => typeof id === "string") : base.abilities[ck].unlocked;
-    let equipped = Array.isArray(src.equipped) ? src.equipped.slice(0, 2) : base.abilities[ck].equipped.slice();
+    let equipped = Array.isArray(src.equipped) ? src.equipped.slice(0, 2)
+      : (typeof src.equipped === "string" ? [src.equipped, null] : base.abilities[ck].equipped.slice());
     while (equipped.length < 2) equipped.push(null);
     equipped = equipped.map((id) => (id && unlocked.includes(id) ? id : null));
     // W und S müssen unterschiedliche Fähigkeiten behalten
@@ -1582,12 +1583,47 @@ function saveMeta() {
   try { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(game.meta)); } catch (_) {}
 }
 
-/** W/S-Ausrüstung: nie dieselbe Fähigkeit auf beiden Tasten */
+/** W/S-Ausrüstung: nie dieselbe Fähigkeit auf beiden Tasten – Slot 1 wird geleert */
 function normalizeEquippedPair(equipped) {
   const eq = Array.isArray(equipped) ? equipped.slice(0, 2) : [null, null];
   while (eq.length < 2) eq.push(null);
   if (eq[0] && eq[1] && eq[0] === eq[1]) eq[1] = null;
   return eq;
+}
+
+function ensureAbilitySlotCds(h) {
+  if (!h) return;
+  if (!Array.isArray(h.abilitySlotCds) || h.abilitySlotCds.length < 2) {
+    h.abilitySlotCds = [0, 0];
+  }
+}
+
+function getAbilitySlotCd(h, slotIdx) {
+  ensureAbilitySlotCds(h);
+  return Math.max(0, Number(h.abilitySlotCds[slotIdx]) || 0);
+}
+
+function setAbilitySlotCd(h, slotIdx, value) {
+  ensureAbilitySlotCds(h);
+  h.abilitySlotCds[slotIdx] = Math.max(0, Number(value) || 0);
+}
+
+function restoreAbilitySlotCds(h, saved) {
+  ensureAbilitySlotCds(h);
+  if (saved && Array.isArray(saved.abilitySlotCds) && saved.abilitySlotCds.length >= 2) {
+    h.abilitySlotCds = [
+      Math.max(0, Number(saved.abilitySlotCds[0]) || 0),
+      Math.max(0, Number(saved.abilitySlotCds[1]) || 0)
+    ];
+    return;
+  }
+  const legacy = saved?.abilityCds;
+  if (legacy && typeof legacy === "object") {
+    [0, 1].forEach((slotIdx) => {
+      const ab = getEquippedAbilityAtSlot(slotIdx);
+      if (ab && legacy[ab.id] != null) h.abilitySlotCds[slotIdx] = Math.max(0, Number(legacy[ab.id]) || 0);
+    });
+  }
 }
 
 function flashSaveIndicator(msg) {
@@ -1727,6 +1763,7 @@ function setEquippedAbility(slotIdx, abilityId) {
   saveMeta();
   if (game.playerName) saveLocalPlayer({ quiet: true });
   if (game.isRunning && !game.isDead) { markRunSaveDirty(); saveActiveRun(true); }
+  flashSaveIndicator("Taste " + getAbilityKeyLabel(slot) + (nextId ? " gespeichert" : " geleert"));
   renderAbilityPanel();
   updateClassHint();
   updateStatus();
@@ -1796,7 +1833,7 @@ function renderAbilityLoadout() {
       html += '<div class="ability-slot ability-slot--empty"><span class="ability-slot-key">' + key + '</span><span class="ability-slot-name">–</span></div>';
       return;
     }
-    const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+    const left = Math.max(0, getEffectiveAbilityCd(ab) - getAbilitySlotCd(h, slotIdx));
     const ready = left <= 0;
     html += '<div class="ability-slot' + (ready ? " ready" : "") + '">' +
       '<span class="ability-slot-key">' + key + '</span>' +
@@ -1832,7 +1869,7 @@ function drawAbilityOverhead(ctx, h) {
   const slots = [0, 1].map((slotIdx) => {
     const ab = getEquippedAbilityAtSlot(slotIdx);
     if (!ab) return null;
-    const ready = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
+    const ready = getAbilitySlotCd(h, slotIdx) >= getEffectiveAbilityCd(ab);
     return { key: getAbilityKeyLabel(slotIdx), ready };
   }).filter(Boolean);
   if (!slots.length) return;
@@ -1876,8 +1913,8 @@ function renderAbilityPanel() {
   const owned = game.meta?.abilities[ck]?.unlocked || [];
   const equipped = game.meta?.abilities[ck]?.equipped || [null, null];
 
-  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · Taste <kbd>W</kbd>/<kbd>S</kbd> getrennt</p>';
-  html += '<p class="ability-meta ability-meta--hint">Meilensteine: CD Stufe <strong>3 · 6 · 10 · 14 · 20</strong> – W und S speichern je eine eigene Fähigkeit (nicht dieselbe).</p>';
+  let html = '<p class="ability-meta">Spezial-CD Stufe <strong>' + cdLv + '</strong> · ' + owned.length + '/' + list.length + ' Fähigkeiten · <kbd>W</kbd> und <kbd>S</kbd> getrennt</p>';
+  html += '<p class="ability-meta ability-meta--hint">Jede Taste speichert <strong>eine eigene</strong> Fähigkeit – dieselbe Fähigkeit auf W und S ist nicht möglich. Änderung nur über die Auswahl.</p>';
   html += '<div class="ability-equip-grid">';
   [0, 1].forEach((slotIdx) => {
     const otherId = equipped[slotIdx === 0 ? 1 : 0] || null;
@@ -2318,12 +2355,14 @@ function updateClassHint() {
   const cls = CLASSES[game.classKey];
   const hint = $("controls-hint");
   if (!hint || !cls) return;
-  const slots = [0, 1].map((i) => getEquippedAbilityAtSlot(i)).filter(Boolean);
-  const eq = slots.map((a) => a.name).join(", ") || "–";
-  const keyHint = "<kbd>W</kbd>/<kbd>S</kbd> (<kbd>↑</kbd>/<kbd>↓</kbd>) Spezial";
+  const wAb = getEquippedAbilityAtSlot(0);
+  const sAb = getEquippedAbilityAtSlot(1);
+  const wLabel = wAb ? ("<kbd>W</kbd> " + wAb.name) : "<kbd>W</kbd> –";
+  const sLabel = sAb ? ("<kbd>S</kbd> " + sAb.name) : "<kbd>S</kbd> –";
   const moveHint = "<kbd>A</kbd>/<kbd>D</kbd> (<kbd>←</kbd>/<kbd>→</kbd>) Bewegen";
   const action = cls.attackType === "melee" ? "Schwert" : cls.attackType === "ranged" ? "Schießen" : "Zaubern";
-  hint.innerHTML = moveHint + " | <kbd>Maus</kbd> = <strong>" + action + "</strong> | " + keyHint + " (" + eq + ") | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
+  hint.innerHTML = moveHint + " | <kbd>Maus</kbd> = <strong>" + action + "</strong> | " +
+    wLabel + " · " + sLabel + " | <kbd>U</kbd> Upgrades &amp; Fähigkeiten";
 }
 
 function onMouseMove(e) {
@@ -3174,6 +3213,7 @@ function serializeHero(h) {
     attack: h.attack, defense: h.defense, crit: h.crit,
     magicDamage: h.magicDamage, goldBonus: h.goldBonus, xpBonus: h.xpBonus,
     specialCd: h.specialCd, specialTimer: h.specialTimer || 0,
+    abilitySlotCds: [...(h.abilitySlotCds || [0, 0])],
     abilityCds: { ...(h.abilityCds || {}) },
     warriorBuff: h.warriorBuff || 0,
     warriorBuffMult: h.warriorBuffMult || 1,
@@ -3269,6 +3309,7 @@ function restoreHeroFromSave(data) {
   h.xpBonus = Number(s.xpBonus) || h.xpBonus;
   h.specialCd = Number(s.specialCd) || h.specialCd;
   h.specialTimer = Math.max(0, Number(s.specialTimer) || 0);
+  restoreAbilitySlotCds(h, s);
   h.abilityCds = { ...(s.abilityCds || h.abilityCds || {}) };
   h.warriorBuff = Math.max(0, Number(s.warriorBuff) || 0);
   h.warriorBuffMult = Number(s.warriorBuffMult) || 1;
@@ -4114,6 +4155,7 @@ function createHero() {
     moveSpeedMult: Math.min(1.55, moveSpd),
     specialCd: Math.max(2.5, cls.specialCd - eff("upgrade_cooldown")),
     specialTimer: 0,
+    abilitySlotCds: [0, 0],
     abilityCds: {},
     warriorBuff: 0,
     warriorBuffMult: 1,
@@ -4129,8 +4171,14 @@ function createHero() {
   initHeroAbilityCds(game.hero);
 }
 
-/** Cooldown-Timer für alle Klassen-Fähigkeiten initialisieren */
+/** Cooldown-Timer pro W/S-Taste (getrennt, auch bei gleicher Fähigkeits-ID) */
 function initHeroAbilityCds(h) {
+  h.abilitySlotCds = [0, 0];
+  [0, 1].forEach((slotIdx) => {
+    const ab = getEquippedAbilityAtSlot(slotIdx);
+    if (ab) h.abilitySlotCds[slotIdx] = getEffectiveAbilityCd(ab) * 0.4;
+  });
+  // Legacy-Spiegel für ältere Saves
   h.abilityCds = {};
   getClassAbilities(game.classKey).forEach((ab) => {
     h.abilityCds[ab.id] = ab.cd * 0.4;
@@ -5108,18 +5156,20 @@ function castAbility(ab, h, st) {
   return true;
 }
 
-/** Cooldowns & Buffs – kein Auto-Cast */
+/** Cooldowns & Buffs – kein Auto-Cast; W und S haben je eigenen Timer */
 function updateAbilityState(dt, h) {
   if (game.abilityCastLock > 0) game.abilityCastLock -= dt;
   if (h.warriorBuff > 0) h.warriorBuff -= dt;
-  Object.keys(h.abilityCds).forEach((k) => { h.abilityCds[k] += dt; });
+  ensureAbilitySlotCds(h);
+  [0, 1].forEach((slotIdx) => {
+    h.abilitySlotCds[slotIdx] = getAbilitySlotCd(h, slotIdx) + dt;
+  });
 
-  // Bereit-Status nur über der Heldenkopf-Anzeige (W/S ✓) – kein mittiges Popup.
   h.abilityReadyState = h.abilityReadyState || {};
   [0, 1].forEach((slotIdx) => {
     const ab = getEquippedAbilityAtSlot(slotIdx);
     if (!ab) return;
-    h.abilityReadyState[ab.id] = (h.abilityCds[ab.id] || 0) >= getEffectiveAbilityCd(ab);
+    h.abilityReadyState[ab.id + ":slot" + slotIdx] = getAbilitySlotCd(h, slotIdx) >= getEffectiveAbilityCd(ab);
   });
 }
 
@@ -5130,12 +5180,12 @@ function useEquippedAbility(slotIdx) {
   if (!ab) return;
   const st = heroStats();
   const cd = getEffectiveAbilityCd(ab);
-  if ((h.abilityCds[ab.id] || 0) < cd) return;
+  if (getAbilitySlotCd(h, slotIdx) < cd) return;
   if (!canCastAbility(ab, h, st)) return;
   if (castAbility(ab, h, st)) {
-    h.abilityCds[ab.id] = 0;
+    setAbilitySlotCd(h, slotIdx, 0);
     h.abilityReadyState = h.abilityReadyState || {};
-    h.abilityReadyState[ab.id] = false;
+    h.abilityReadyState[ab.id + ":slot" + slotIdx] = false;
   }
 }
 
@@ -5844,7 +5894,7 @@ function updateStatus() {
     const parts = [0, 1].map((slotIdx) => {
       const ab = getEquippedAbilityAtSlot(slotIdx);
       if (!ab) return null;
-      const left = Math.max(0, getEffectiveAbilityCd(ab) - (h.abilityCds[ab.id] || 0));
+      const left = Math.max(0, getEffectiveAbilityCd(ab) - getAbilitySlotCd(h, slotIdx));
       const cd = left <= 0 ? "✓" : Math.ceil(left) + "s";
       return getAbilityKeyLabel(slotIdx) + ": " + ab.name + " " + cd;
     }).filter(Boolean);

@@ -1,6 +1,6 @@
 /* ============================================
    Dungeon Loop – ZENTRALES BALANCE-SYSTEM
-   Build: sidescroller-v3-168
+   Build: sidescroller-v3-171
    Alle wichtigen Formeln & Zielwerte an einem Ort.
    ============================================
    PHILOSOPHY
