@@ -1,18 +1,26 @@
 /* ============================================
-   Dungeon Loop – Temporäre RUN-UPGRADES
-   Verloren bei Tod / NG+-Loop-Start.
+   Dungeon Loop – Temporäre RUN-UPGRADES (Hard)
+   Post-Boss-Picks only · unique combat builds.
    Browser: vor script.js laden; Node: require().
    ============================================ */
 
 const DL_RUN_UPGRADE_DEFAULTS = {
   rarity: {
-    early: { common: 0.58, uncommon: 0.30, rare: 0.09, epic: 0.025, legendary: 0.005 },
-    mid:   { common: 0.40, uncommon: 0.34, rare: 0.18, epic: 0.07,  legendary: 0.01 },
-    late:  { common: 0.25, uncommon: 0.35, rare: 0.25, epic: 0.12,  legendary: 0.03 }
+    early: { common: 0.50, uncommon: 0.32, rare: 0.14, epic: 0.035, legendary: 0.005 },
+    mid:   { common: 0.35, uncommon: 0.34, rare: 0.20, epic: 0.08,  legendary: 0.03 },
+    late:  { common: 0.20, uncommon: 0.30, rare: 0.28, epic: 0.15,  legendary: 0.07 }
   },
-  milestones: [4, 9, 15, 22, 30, 39, 49, 60, 72, 85, 99, 114, 130],
+  /** defeatedWorldIndex 0..3 → Rarity nach Boss W1..W4 */
+  rarityByWorld: {
+    0: { common: 0.50, uncommon: 0.32, rare: 0.14, epic: 0.035, legendary: 0.005 },
+    1: { common: 0.36, uncommon: 0.34, rare: 0.20, epic: 0.07,  legendary: 0.03 },
+    2: { common: 0.24, uncommon: 0.30, rare: 0.26, epic: 0.14,  legendary: 0.06 },
+    3: { common: 0.14, uncommon: 0.26, rare: 0.30, epic: 0.20,  legendary: 0.10 }
+  },
+  milestones: [],
+  freeRerolls: 1,
   baseCoinCatchMult: 2,
-  baseLifestealCap: 0.10
+  baseLifestealCap: 0.07
 };
 
 function dlRunUpgradeCfg() {
@@ -20,7 +28,10 @@ function dlRunUpgradeCfg() {
     ? DL_BALANCE.runUpgrades : null;
   return {
     rarity: (ru && ru.rarity) || DL_RUN_UPGRADE_DEFAULTS.rarity,
-    milestones: (ru && ru.milestones) || DL_RUN_UPGRADE_DEFAULTS.milestones,
+    rarityByWorld: (ru && ru.rarityByWorld) || DL_RUN_UPGRADE_DEFAULTS.rarityByWorld,
+    milestones: (ru && Array.isArray(ru.milestones)) ? ru.milestones : DL_RUN_UPGRADE_DEFAULTS.milestones,
+    freeRerolls: (ru && ru.freeRerolls != null)
+      ? ru.freeRerolls : DL_RUN_UPGRADE_DEFAULTS.freeRerolls,
     baseCoinCatchMult: (ru && ru.baseCoinCatchMult != null)
       ? ru.baseCoinCatchMult : DL_RUN_UPGRADE_DEFAULTS.baseCoinCatchMult,
     baseLifestealCap: (ru && ru.baseLifestealCap != null)
@@ -28,114 +39,134 @@ function dlRunUpgradeCfg() {
   };
 }
 
-/** Katalog: Offense / Defense / Economy (Abschnitte 28–30) */
+/** Katalog: Combat-Builds (Hard Balance Abschnitte 8–13) – fast alles UNIQUE */
 const DL_RUN_UPGRADES = [
-  /* ---- OFFENSE ---- */
-  { id: "sharp_blade", name: "SCHARFE KLINGE", rarity: "common", unique: false, maxStacks: 4, power: 5,
-    tags: ["offense", "damage"], desc: "+6% Schaden",
-    effects: { damageAdd: 0.06 } },
-  { id: "quick_hands", name: "SCHNELLE HÄNDE", rarity: "common", unique: false, maxStacks: 4, power: 5,
-    tags: ["offense", "atkspd"], desc: "+5% Angriffsgeschwindigkeit",
-    effects: { atkSpdAdd: 0.05 } },
-  { id: "weak_spot", name: "SCHWACHE STELLE", rarity: "common", unique: false, maxStacks: 3, power: 5,
-    tags: ["offense", "crit"], desc: "+3% Krit-Chance",
-    effects: { critAdd: 0.03 } },
-  { id: "boss_hunter", name: "BOSSJÄGER", rarity: "common", unique: false, maxStacks: 3, power: 6,
-    tags: ["offense", "boss"], desc: "+8% Schaden gegen Bosse",
-    effects: { bossDmgAdd: 0.08 } },
-  { id: "executioner", name: "HENKER", rarity: "uncommon", unique: true, maxStacks: 1, power: 9,
-    tags: ["offense"], desc: "+22% Schaden gegen Gegner unter 20% LP",
-    effects: { executioner: true, execHpFrac: 0.2, execDmgAdd: 0.22 } },
-  { id: "adrenaline", name: "ADRENALIN", rarity: "uncommon", unique: true, maxStacks: 1, power: 9,
-    tags: ["offense"], desc: "+15% Angriffsgeschwindigkeit unter 35% LP",
-    effects: { adrenaline: true, adrHpFrac: 0.35, adrAtkSpdAdd: 0.15 } },
-  { id: "crit_precision", name: "KRIT-PRÄZISION", rarity: "uncommon", unique: false, maxStacks: 3, power: 9,
-    tags: ["offense", "crit"], desc: "+12% Krit-Schaden",
-    effects: { critDmgAdd: 0.12 } },
-  { id: "berserker", name: "BERSERKER", rarity: "rare", unique: true, maxStacks: 1, power: 14,
-    tags: ["offense"], desc: "+2,5% Schaden je 10% fehlender LP (max. +20%)",
-    effects: { berserker: true, bersPer10: 0.025, bersMax: 0.2 } },
-  { id: "chain_reaction", name: "KETTENREAKTION", rarity: "rare", unique: true, maxStacks: 1, power: 14,
-    tags: ["offense", "crit"], desc: "Bei Krit 18% Chance: nächster Gegner nimmt 35% des Schadens",
-    effects: { chainReaction: true, chainChance: 0.18, chainFrac: 0.35 } },
-  { id: "focus", name: "FOKUS", rarity: "rare", unique: true, maxStacks: 1, power: 13,
-    tags: ["offense"], desc: "Nach 3s ohne Schaden: +15% Schaden bis zum nächsten Treffer",
-    effects: { focus: true, focusDelay: 3, focusDmgAdd: 0.15 } },
-  { id: "glass_cannon", name: "GLASKANONE", rarity: "epic", unique: true, maxStacks: 1, power: 20,
-    tags: ["offense", "glass"], desc: "+35% Schaden, −22% max. LP",
-    effects: { glassCannon: true, damageAdd: 0.35, maxHpAdd: -0.22 } },
-  { id: "specialist", name: "SPEZIALIST", rarity: "epic", unique: true, maxStacks: 1, power: 21,
-    tags: ["offense", "ability"], desc: "+30% Fähigkeitsschaden, −12% Angriffsschaden, −12% CD",
-    effects: { specialist: true, abilityDmgAdd: 0.3, attackDmgAdd: -0.12, cdrAdd: 0.12 } },
-  { id: "war_machine", name: "KRIEGSMASCHINE", rarity: "legendary", unique: true, maxStacks: 1, power: 28,
-    tags: ["offense"], desc: "Bei Kill +1,5% Schaden (max. +24%); bei Treffer −3 Stacks",
-    effects: { warMachine: true, wmPerKill: 0.015, wmMax: 0.24, wmLoseOnHit: 3 } },
+  /* ---- COMMON (power ~10) ---- */
+  { id: "sharp_blade", name: "SCHARFE KLINGE", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["offense", "damage"], desc: "+8% Schaden",
+    effects: { damageAdd: 0.08 } },
+  { id: "quick_hands", name: "SCHNELLE HÄNDE", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["offense", "atkspd"], desc: "+7% Angriffsgeschwindigkeit",
+    effects: { atkSpdAdd: 0.07 } },
+  { id: "tough_body", name: "ZÄHER KÖRPER", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["defense", "hp"], desc: "+10% max. LP",
+    effects: { maxHpAdd: 0.10 } },
+  { id: "plating", name: "PANZERUNG", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["defense", "armor"], desc: "+6% effektive Rüstung / Schadensreduktion",
+    effects: { armorAdd: 0.06 } },
+  { id: "weak_spot", name: "SCHWACHE STELLE", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["offense", "crit"], desc: "+4% Krit-Chance",
+    effects: { critAdd: 0.04 } },
+  { id: "boss_hunter", name: "BOSSJÄGER", rarity: "common", unique: true, maxStacks: 1, power: 10,
+    tags: ["offense", "boss"], desc: "+10% Schaden gegen Bosse",
+    effects: { bossDmgAdd: 0.10 } },
 
-  /* ---- DEFENSE ---- */
-  { id: "tough_body", name: "HARTER KÖRPER", rarity: "common", unique: false, maxStacks: 4, power: 5,
-    tags: ["defense", "hp"], desc: "+8% max. LP",
-    effects: { maxHpAdd: 0.08 } },
-  { id: "plating", name: "PANZERUNG", rarity: "common", unique: false, maxStacks: 3, power: 5,
-    tags: ["defense", "armor"], desc: "+5% effektive Rüstung / Schadensreduktion",
-    effects: { armorAdd: 0.05 } },
-  { id: "second_wind", name: "ZWEITER ATEM", rarity: "uncommon", unique: true, maxStacks: 1, power: 9,
-    tags: ["defense", "heal"], desc: "Nach 8s ohne Schaden: alle 4s 2% max. LP heilen",
-    effects: { secondWind: true, swDelay: 8, swInterval: 4, swHealFrac: 0.02 } },
-  { id: "guard_layer", name: "SCHUTZSCHICHT", rarity: "uncommon", unique: true, maxStacks: 1, power: 10,
-    tags: ["defense"], desc: "Nach schwerem Treffer (≥15% max. LP): +10% DR für 4s (CD 10s)",
-    effects: { guardLayer: true, guardHitFrac: 0.15, guardDr: 0.1, guardDur: 4, guardCd: 10 } },
-  { id: "iron_skin", name: "EISENHAUT", rarity: "rare", unique: true, maxStacks: 1, power: 14,
-    tags: ["defense"], desc: "3 Treffer in 5s → +15% DR für 5s (CD 12s)",
-    effects: { ironSkin: true, ironHits: 3, ironWindow: 5, ironDr: 0.15, ironDur: 5, ironCd: 12 } },
-  { id: "bloodlust", name: "BLUTRAUSCH", rarity: "rare", unique: true, maxStacks: 1, power: 13,
-    tags: ["defense", "lifesteal"], desc: "Jeder 12. Treffer heilt 2,5% max. LP (ICD 2s)",
-    effects: { bloodlust: true, blEvery: 12, blHealFrac: 0.025, blIcd: 2 } },
-  { id: "titan", name: "TITAN", rarity: "epic", unique: true, maxStacks: 1, power: 20,
-    tags: ["defense", "tank"], desc: "+32% LP, +10% Rüstung, −10% Bewegungsgeschwindigkeit",
-    effects: { titan: true, maxHpAdd: 0.32, armorAdd: 0.1, moveSpeedAdd: -0.1 } },
-  { id: "vampire", name: "VAMPIR", rarity: "epic", unique: true, maxStacks: 1, power: 22,
-    tags: ["defense", "lifesteal"], desc: "+5% Lebensraub, Cap 16%, Level-Heilung −50%",
-    effects: { vampire: true, lifestealAdd: 0.05, lifestealCap: 0.16, levelHealMult: 0.5 } },
-  { id: "last_warrior", name: "LETZTER KRIEGER", rarity: "legendary", unique: true, maxStacks: 1, power: 30,
-    tags: ["defense", "revive"], desc: "Einmal pro Run: bei tödlichem Schaden auf 25% LP, 2s Immunität",
-    effects: { lastWarrior: true, lwHpFrac: 0.25, lwImmune: 2 } },
+  /* ---- UNCOMMON (power ~15) ---- */
+  { id: "executioner", name: "HENKER", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
+    tags: ["offense"], desc: "+25% Schaden gegen Gegner unter 20% LP",
+    effects: { executioner: true, execHpFrac: 0.2, execDmgAdd: 0.25 } },
+  { id: "adrenaline", name: "ADRENALIN", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
+    tags: ["offense"], desc: "+18% Angriffsgeschwindigkeit unter 30% LP",
+    effects: { adrenaline: true, adrHpFrac: 0.3, adrAtkSpdAdd: 0.18 } },
+  { id: "crit_precision", name: "KRIT-PRÄZISION", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
+    tags: ["offense", "crit"], desc: "+18% Krit-Schaden",
+    effects: { critDmgAdd: 0.18 } },
+  { id: "second_wind", name: "ZWEITER ATEM", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
+    tags: ["defense", "heal"], desc: "Nach 9s ohne Schaden: alle 5s 2% max. LP heilen",
+    effects: { secondWind: true, swDelay: 9, swInterval: 5, swHealFrac: 0.02 } },
+  { id: "elite_hunter", name: "ELITE-JÄGER", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
+    tags: ["offense", "elite"], desc: "+18% Schaden gegen Eliten, +20% Elite-Gold",
+    effects: { eliteDamageAdd: 0.18, eliteGoldAdd: 0.20 } },
 
-  /* ---- ECONOMY ---- */
-  { id: "gold_find", name: "GOLDFUND", rarity: "common", unique: false, maxStacks: 3, power: 5,
-    tags: ["economy", "gold"], desc: "+8% Gold",
-    effects: { goldAdd: 0.08 } },
-  { id: "elite_gold", name: "ELITE-GOLD", rarity: "uncommon", unique: true, maxStacks: 1, power: 8,
-    tags: ["economy"], desc: "+25% Gold von Eliten",
-    effects: { eliteGoldAdd: 0.25 } },
-  { id: "coin_magnet", name: "MÜNZMAGNET", rarity: "rare", unique: true, maxStacks: 1, power: 12,
-    tags: ["economy"], desc: "Münz-Fang-Multiplikator 2 → 2,35",
-    effects: { coinCatchSet: 2.35 } },
-  { id: "gold_greed", name: "GOLDGIER", rarity: "epic", unique: true, maxStacks: 1, power: 18,
-    tags: ["economy"], desc: "+30% Gold, −8% Spielerschaden",
-    effects: { goldAdd: 0.3, damageAdd: -0.08 } },
-  { id: "gold_fever", name: "GOLDFIEBER", rarity: "legendary", unique: true, maxStacks: 1, power: 26,
-    tags: ["economy"], desc: "Fang-Bonus ×3, +12% erlittener Schaden",
-    effects: { coinCatchScale: 3, enemyDmgTakenAdd: 0.12 } }
+  /* ---- RARE (power ~22) ---- */
+  { id: "berserker", name: "BERSERKER", rarity: "rare", unique: true, maxStacks: 1, power: 22,
+    tags: ["offense"], desc: "+3% Schaden je 10% fehlender LP (max. +24%)",
+    effects: { berserker: true, bersPer10: 0.03, bersMax: 0.24 } },
+  { id: "chain_reaction", name: "KETTENREAKTION", rarity: "rare", unique: true, maxStacks: 1, power: 22,
+    tags: ["offense", "crit"], desc: "Bei Krit 20% Chance: anderer Gegner nimmt 40% des Schadens",
+    effects: { chainReaction: true, chainChance: 0.20, chainFrac: 0.40 } },
+  { id: "iron_skin", name: "EISENHAUT", rarity: "rare", unique: true, maxStacks: 1, power: 22,
+    tags: ["defense"], desc: "3 Treffer in 5s → +16% DR für 5s (CD 12s)",
+    effects: { ironSkin: true, ironHits: 3, ironWindow: 5, ironDr: 0.16, ironDur: 5, ironCd: 12 } },
+  { id: "bloodlust", name: "BLUTRAUSCH", rarity: "rare", unique: true, maxStacks: 1, power: 22,
+    tags: ["defense", "lifesteal"], desc: "Jeder 12. Treffer heilt 2,5% max. LP (ICD 2,5s)",
+    effects: { bloodlust: true, blEvery: 12, blHealFrac: 0.025, blIcd: 2.5 } },
+  { id: "special_focus", name: "SPEZIALFOKUS", rarity: "rare", unique: true, maxStacks: 1, power: 22,
+    tags: ["offense", "ability"], desc: "+20% Fähigkeitsschaden, −8% CD (W/S)",
+    effects: { abilityDmgAdd: 0.20, cdrAdd: 0.08 } },
+
+  /* ---- EPIC (power ~32) ---- */
+  { id: "glass_cannon", name: "GLASKANONE", rarity: "epic", unique: true, maxStacks: 1, power: 32,
+    tags: ["offense", "glass"], desc: "+38% Schaden, −28% max. LP",
+    effects: { glassCannon: true, damageAdd: 0.38, maxHpAdd: -0.28 } },
+  { id: "titan", name: "TITAN", rarity: "epic", unique: true, maxStacks: 1, power: 32,
+    tags: ["defense", "tank"], desc: "+35% LP, +12% Rüstung, −12% Bewegungsgeschwindigkeit",
+    effects: { titan: true, maxHpAdd: 0.35, armorAdd: 0.12, moveSpeedAdd: -0.12 } },
+  { id: "specialist", name: "SPEZIALIST", rarity: "epic", unique: true, maxStacks: 1, power: 32,
+    tags: ["offense", "ability"], desc: "+35% Fähigkeitsschaden, −12% CD, −18% Normalangriff",
+    effects: { specialist: true, abilityDmgAdd: 0.35, cdrAdd: 0.12, attackDmgAdd: -0.18 } },
+  { id: "vampire", name: "VAMPIR", rarity: "epic", unique: true, maxStacks: 1, power: 32,
+    tags: ["defense", "lifesteal"], desc: "+5% Lebensraub, Cap 13%, Level-Heilung −65%",
+    effects: { vampire: true, lifestealAdd: 0.05, lifestealCap: 0.13, levelHealMult: 0.35 } },
+
+  /* ---- LEGENDARY (power ~42) ---- */
+  { id: "last_warrior", name: "LETZTER KRIEGER", rarity: "legendary", unique: true, maxStacks: 1, power: 42,
+    tags: ["defense", "revive"], desc: "Einmal pro Run: bei tödlichem Schaden auf 20% LP, 1,5s Immunität",
+    effects: { lastWarrior: true, lwHpFrac: 0.20, lwImmune: 1.5 } },
+  { id: "war_machine", name: "KRIEGSMASCHINE", rarity: "legendary", unique: true, maxStacks: 1, power: 42,
+    tags: ["offense"], desc: "Bei Kill +1,5% Schaden (max. +24%); bei Treffer −4 Stacks",
+    effects: { warMachine: true, wmPerKill: 0.015, wmMax: 0.24, wmLoseOnHit: 4 } },
+  { id: "time_breaker", name: "ZEITBRECHER", rarity: "legendary", unique: true, maxStacks: 1, power: 42,
+    tags: ["offense", "ability"], desc: "Fähigkeitstreffer auf Elite/Boss: 10% Chance CD der Fähigkeit zu resetten (ICD 10s)",
+    effects: { timeBreaker: true, tbChance: 0.10, tbIcd: 10 } }
 ];
 
 const DL_RUN_RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
-const DL_RUN_BUILD_TYPES = ["offense", "defense", "economy"];
+const DL_RUN_BUILD_TYPES = ["offense", "defense"];
 
 function dlRunUpgradeById(id) {
   return DL_RUN_UPGRADES.find((u) => u.id === id) || null;
 }
 
-function dlRunUpgradeRarityTable(progress01) {
-  const r = dlRunUpgradeCfg().rarity;
-  const p = Math.max(0, Math.min(1, progress01 || 0));
-  if (p < 0.33) return Object.assign({}, r.early);
-  if (p < 0.66) return Object.assign({}, r.mid);
-  return Object.assign({}, r.late);
+function dlCopyRarityTable(table) {
+  return Object.assign({}, table || {});
 }
 
-function dlRollRunUpgradeRarity(progress01, rng) {
+/** Rarity-Tabelle für Fortschritt 0..1 (early/mid/late). */
+function dlRunUpgradeRarityTable(progress01OrWorld) {
+  if (dlLooksLikeWorldIndex(progress01OrWorld)) {
+    return dlRunUpgradeRarityForWorld(progress01OrWorld);
+  }
+  const r = dlRunUpgradeCfg().rarity;
+  const p = Math.max(0, Math.min(1, progress01OrWorld || 0));
+  if (p < 0.33) return dlCopyRarityTable(r.early);
+  if (p < 0.66) return dlCopyRarityTable(r.mid);
+  return dlCopyRarityTable(r.late);
+}
+
+/** Rarity nach besiegtem Boss (defeatedWorldIndex 0..3). */
+function dlRunUpgradeRarityForWorld(defeatedWorldIndex) {
+  const cfg = dlRunUpgradeCfg();
+  const idx = Math.max(0, Math.min(3, defeatedWorldIndex | 0));
+  const byWorld = cfg.rarityByWorld || DL_RUN_UPGRADE_DEFAULTS.rarityByWorld;
+  if (byWorld && byWorld[idx]) return dlCopyRarityTable(byWorld[idx]);
+  // Fallback early/mid/late
+  const r = cfg.rarity || DL_RUN_UPGRADE_DEFAULTS.rarity;
+  if (idx <= 0) return dlCopyRarityTable(r.early);
+  if (idx === 1) return dlCopyRarityTable(r.mid);
+  return dlCopyRarityTable(r.late);
+}
+
+function dlLooksLikeWorldIndex(n) {
+  if (n == null || !Number.isFinite(n)) return false;
+  return n === Math.floor(n) && n >= 0 && n <= 3;
+}
+
+function dlRollRunUpgradeRarity(worldOrProgress, rng) {
   const roll = typeof rng === "function" ? rng : Math.random;
-  const table = dlRunUpgradeRarityTable(progress01);
+  const table = dlLooksLikeWorldIndex(worldOrProgress)
+    ? dlRunUpgradeRarityForWorld(worldOrProgress)
+    : dlRunUpgradeRarityTable(worldOrProgress);
   let r = roll();
   for (let i = 0; i < DL_RUN_RARITY_ORDER.length; i++) {
     const key = DL_RUN_RARITY_ORDER[i];
@@ -146,17 +177,13 @@ function dlRollRunUpgradeRarity(progress01, rng) {
   return "common";
 }
 
-function dlIsRunMilestone(playerLevel) {
-  const lv = Math.max(0, Math.floor(playerLevel || 0));
-  return dlRunUpgradeCfg().milestones.indexOf(lv) >= 0;
+/** Meilensteine ungenutzt (Hard: nur Post-Boss). */
+function dlIsRunMilestone(/* playerLevel */) {
+  return false;
 }
 
-function dlPendingRunMilestones(playerLevel, claimedSetOrArray) {
-  const lv = Math.max(0, Math.floor(playerLevel || 0));
-  const claimed = claimedSetOrArray instanceof Set
-    ? claimedSetOrArray
-    : new Set(claimedSetOrArray || []);
-  return dlRunUpgradeCfg().milestones.filter((m) => m <= lv && !claimed.has(m));
+function dlPendingRunMilestones(/* playerLevel, claimedSetOrArray */) {
+  return [];
 }
 
 function dlRunUpgradeOwnedCount(state, id) {
@@ -170,13 +197,13 @@ function dlRunUpgradeOwnedCount(state, id) {
   return n;
 }
 
+/** Unique: nie erneut anbieten wenn bereits owned. */
 function dlCanOfferRunUpgrade(def, state) {
   if (!def) return false;
   const owned = dlRunUpgradeOwnedCount(state, def.id);
+  if (owned > 0 && (def.unique || (def.maxStacks != null && def.maxStacks <= 1))) return false;
   const max = def.maxStacks != null ? def.maxStacks : (def.unique ? 1 : 1);
   if (owned >= max) return false;
-  if (def.unique && owned > 0) return false;
-  if ((def.rarity === "legendary" || def.rarity === "epic") && def.unique && owned > 0) return false;
   return true;
 }
 
@@ -217,8 +244,10 @@ function dlDominantBuildTags(state) {
   return keys;
 }
 
-function dlDraftOne(state, progress01, excludeIds, preferMode, slot0Build, rng) {
-  const rarity = dlRollRunUpgradeRarity(progress01, rng);
+function dlDraftOne(state, rarityKeyOrProgress, excludeIds, preferMode, slot0Build, rng) {
+  const rarity = (typeof rarityKeyOrProgress === "string" && DL_RUN_RARITY_ORDER.indexOf(rarityKeyOrProgress) >= 0)
+    ? rarityKeyOrProgress
+    : dlRollRunUpgradeRarity(rarityKeyOrProgress, rng);
   let pool = null;
 
   if (preferMode === "tags") {
@@ -242,9 +271,10 @@ function dlDraftOne(state, progress01, excludeIds, preferMode, slot0Build, rng) 
 }
 
 /**
- * Smart-Draft: Slot0 50% Tag-Match, Slot1 random, Slot2 anderer Build-Typ.
+ * Smart-Draft über Fortschritt 0..1 (oder world-index-Heuristik).
+ * Slot0 50% Tag-Match, Slot1 random, Slot2 anderer Build-Typ.
  */
-function dlSmartDraftRunUpgrades(state, progress01, count, rng) {
+function dlSmartDraftRunUpgrades(state, rarityProgress, count, rng) {
   const n = Math.max(1, count == null ? 3 : count | 0);
   const roll = typeof rng === "function" ? rng : Math.random;
   const picked = [];
@@ -255,13 +285,19 @@ function dlSmartDraftRunUpgrades(state, progress01, count, rng) {
     let prefer = "random";
     if (i === 0 && roll() < 0.5) prefer = "tags";
     else if (i === 2) prefer = "diffBuild";
-    const def = dlDraftOne(state, progress01, exclude, prefer, slot0Build, roll);
+    const def = dlDraftOne(state, rarityProgress, exclude, prefer, slot0Build, roll);
     if (!def) break;
     picked.push(def);
     exclude.add(def.id);
     if (i === 0) slot0Build = dlRunPrimaryBuild(def);
   }
   return picked;
+}
+
+/** Post-Boss-Draft: nutzt rarityByWorld[defeatedWorldIndex]. */
+function dlSmartDraftAfterBoss(state, defeatedWorldIndex, count, rng) {
+  const idx = Math.max(0, Math.min(3, defeatedWorldIndex | 0));
+  return dlSmartDraftRunUpgrades(state, idx, count, rng);
 }
 
 /** Freier Reroll: dieselben 3 IDs dürfen nicht erneut erscheinen. */
@@ -283,7 +319,6 @@ function dlRerollRunDraft(state, previousIds, progress01, rng) {
     if (i === 0) slot0Build = dlRunPrimaryBuild(def);
   }
 
-  // Falls Pool zu klein: gleiche Menge wie vorher, aber nicht exakt dieselbe ID-Menge
   if (draft.length < 3) {
     const soft = dlSmartDraftRunUpgrades(state, progress01, 3, roll);
     const softIds = soft.map((d) => d.id).sort().join(",");
@@ -293,15 +328,22 @@ function dlRerollRunDraft(state, previousIds, progress01, rng) {
   return draft;
 }
 
+function dlRerollAfterBoss(state, previousIds, defeatedWorldIndex, rng) {
+  const idx = Math.max(0, Math.min(3, defeatedWorldIndex | 0));
+  return dlRerollRunDraft(state, previousIds, idx, rng);
+}
+
 function dlCreateEmptyRunUpgradeState() {
+  const cfg = dlRunUpgradeCfg();
   return {
     upgrades: [],
     stacks: {},
-    rerolls: 1,
+    rerolls: cfg.freeRerolls != null ? cfg.freeRerolls : 1,
     powerScore: 0,
     buildTags: {},
     claimedMilestones: [],
     claimedWorlds: [],
+    claimedBossWorlds: [],
     focusTimer: 0,
     warMachineStacks: 0,
     lastWarriorUsed: false,
@@ -310,6 +352,7 @@ function dlCreateEmptyRunUpgradeState() {
     guardCd: 0,
     ironCd: 0,
     bloodlustIcd: 0,
+    timeBreakerIcd: 0,
     noDamageTimer: 0
   };
 }
@@ -351,6 +394,7 @@ function dlComputeRunBonus(state) {
     critAdd: 0,
     critDmgAdd: 0,
     bossDmgAdd: 0,
+    eliteDamageAdd: 0,
     maxHpMult: 1,
     armorAdd: 0,
     moveSpeedMult: 1,
@@ -365,20 +409,47 @@ function dlComputeRunBonus(state) {
     coinCatchMult: cfg.baseCoinCatchMult,
     enemyDmgTakenMult: 1,
     executioner: false,
+    execHpFrac: 0.2,
+    execDmgAdd: 0.25,
     adrenaline: false,
+    adrHpFrac: 0.3,
+    adrAtkSpdAdd: 0.18,
     berserker: false,
+    bersPer10: 0.03,
+    bersMax: 0.24,
     focus: false,
     chainReaction: false,
+    chainChance: 0.2,
+    chainFrac: 0.4,
     glassCannon: false,
     specialist: false,
     warMachine: false,
+    wmPerKill: 0.015,
+    wmMax: 0.24,
+    wmLoseOnHit: 4,
     secondWind: false,
+    swDelay: 9,
+    swInterval: 5,
+    swHealFrac: 0.02,
     guardLayer: false,
     ironSkin: false,
+    ironHits: 3,
+    ironWindow: 5,
+    ironDr: 0.16,
+    ironDur: 5,
+    ironCd: 12,
     bloodlust: false,
+    blEvery: 12,
+    blHealFrac: 0.025,
+    blIcd: 2.5,
     titan: false,
     vampire: false,
     lastWarrior: false,
+    lwHpFrac: 0.2,
+    lwImmune: 1.5,
+    timeBreaker: false,
+    tbChance: 0.1,
+    tbIcd: 10,
     warMachineStacks: (state && state.warMachineStacks) || 0
   };
   if (!state || !state.stacks) return out;
@@ -398,6 +469,7 @@ function dlComputeRunBonus(state) {
     if (e.critAdd) out.critAdd += e.critAdd * n;
     if (e.critDmgAdd) out.critDmgAdd += e.critDmgAdd * n;
     if (e.bossDmgAdd) out.bossDmgAdd += e.bossDmgAdd * n;
+    if (e.eliteDamageAdd) out.eliteDamageAdd += e.eliteDamageAdd * n;
     if (e.maxHpAdd) out.maxHpMult += e.maxHpAdd * n;
     if (e.armorAdd) out.armorAdd += e.armorAdd * n;
     if (e.moveSpeedAdd) out.moveSpeedMult += e.moveSpeedAdd * n;
@@ -413,21 +485,68 @@ function dlComputeRunBonus(state) {
     if (e.coinCatchSet != null) coinCatchSet = e.coinCatchSet;
     if (e.coinCatchScale) coinCatchScale *= Math.pow(e.coinCatchScale, n);
 
-    if (e.executioner) out.executioner = true;
-    if (e.adrenaline) out.adrenaline = true;
-    if (e.berserker) out.berserker = true;
+    if (e.executioner) {
+      out.executioner = true;
+      if (e.execHpFrac != null) out.execHpFrac = e.execHpFrac;
+      if (e.execDmgAdd != null) out.execDmgAdd = e.execDmgAdd;
+    }
+    if (e.adrenaline) {
+      out.adrenaline = true;
+      if (e.adrHpFrac != null) out.adrHpFrac = e.adrHpFrac;
+      if (e.adrAtkSpdAdd != null) out.adrAtkSpdAdd = e.adrAtkSpdAdd;
+    }
+    if (e.berserker) {
+      out.berserker = true;
+      if (e.bersPer10 != null) out.bersPer10 = e.bersPer10;
+      if (e.bersMax != null) out.bersMax = e.bersMax;
+    }
     if (e.focus) out.focus = true;
-    if (e.chainReaction) out.chainReaction = true;
+    if (e.chainReaction) {
+      out.chainReaction = true;
+      if (e.chainChance != null) out.chainChance = e.chainChance;
+      if (e.chainFrac != null) out.chainFrac = e.chainFrac;
+    }
     if (e.glassCannon) out.glassCannon = true;
     if (e.specialist) out.specialist = true;
-    if (e.warMachine) out.warMachine = true;
-    if (e.secondWind) out.secondWind = true;
+    if (e.warMachine) {
+      out.warMachine = true;
+      if (e.wmPerKill != null) out.wmPerKill = e.wmPerKill;
+      if (e.wmMax != null) out.wmMax = e.wmMax;
+      if (e.wmLoseOnHit != null) out.wmLoseOnHit = e.wmLoseOnHit;
+    }
+    if (e.secondWind) {
+      out.secondWind = true;
+      if (e.swDelay != null) out.swDelay = e.swDelay;
+      if (e.swInterval != null) out.swInterval = e.swInterval;
+      if (e.swHealFrac != null) out.swHealFrac = e.swHealFrac;
+    }
     if (e.guardLayer) out.guardLayer = true;
-    if (e.ironSkin) out.ironSkin = true;
-    if (e.bloodlust) out.bloodlust = true;
+    if (e.ironSkin) {
+      out.ironSkin = true;
+      if (e.ironHits != null) out.ironHits = e.ironHits;
+      if (e.ironWindow != null) out.ironWindow = e.ironWindow;
+      if (e.ironDr != null) out.ironDr = e.ironDr;
+      if (e.ironDur != null) out.ironDur = e.ironDur;
+      if (e.ironCd != null) out.ironCd = e.ironCd;
+    }
+    if (e.bloodlust) {
+      out.bloodlust = true;
+      if (e.blEvery != null) out.blEvery = e.blEvery;
+      if (e.blHealFrac != null) out.blHealFrac = e.blHealFrac;
+      if (e.blIcd != null) out.blIcd = e.blIcd;
+    }
     if (e.titan) out.titan = true;
     if (e.vampire) out.vampire = true;
-    if (e.lastWarrior) out.lastWarrior = true;
+    if (e.lastWarrior) {
+      out.lastWarrior = true;
+      if (e.lwHpFrac != null) out.lwHpFrac = e.lwHpFrac;
+      if (e.lwImmune != null) out.lwImmune = e.lwImmune;
+    }
+    if (e.timeBreaker) {
+      out.timeBreaker = true;
+      if (e.tbChance != null) out.tbChance = e.tbChance;
+      if (e.tbIcd != null) out.tbIcd = e.tbIcd;
+    }
   });
 
   if (coinCatchSet != null) out.coinCatchMult = coinCatchSet;
@@ -439,7 +558,9 @@ function dlDescribeRunUpgrade(def) {
   if (!def) return "";
   const r = ({ common: "Gewöhnlich", uncommon: "Ungewöhnlich", rare: "Selten",
     epic: "Episch", legendary: "Legendär" })[def.rarity] || def.rarity;
-  const stack = def.unique ? "Einzigartig" : ("max. " + (def.maxStacks || 1) + "×");
+  const stack = def.unique || (def.maxStacks != null && def.maxStacks <= 1)
+    ? "Einzigartig"
+    : ("max. " + (def.maxStacks || 1) + "×");
   return def.name + " · " + r + " · " + stack + " — " + (def.desc || "");
 }
 
@@ -449,13 +570,16 @@ if (typeof module !== "undefined" && module.exports) {
     DL_RUN_UPGRADE_DEFAULTS,
     dlRunUpgradeById,
     dlRunUpgradeRarityTable,
+    dlRunUpgradeRarityForWorld,
     dlRollRunUpgradeRarity,
     dlIsRunMilestone,
     dlPendingRunMilestones,
     dlRunUpgradeOwnedCount,
     dlCanOfferRunUpgrade,
     dlSmartDraftRunUpgrades,
+    dlSmartDraftAfterBoss,
     dlRerollRunDraft,
+    dlRerollAfterBoss,
     dlApplyRunUpgradePick,
     dlCreateEmptyRunUpgradeState,
     dlComputeRunBonus,

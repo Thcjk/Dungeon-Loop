@@ -133,10 +133,13 @@ function dealPlayerDamage(e, rawDmg, opts) {
   if (isCrit) dmg *= (st.critDamage || (BALANCE.critDamageBase || 1.7));
 
   if (e.isBoss && st.bossDamage) dmg *= (1 + st.bossDamage);
+  if (e.isElite && st.eliteDamageAdd) dmg *= (1 + st.eliteDamageAdd);
 
-  // Executioner: +22% vs targets under 20% HP
-  if (st.executioner && e.maxHp > 0 && (e.hp / e.maxHp) < 0.2) {
-    dmg *= 1.22;
+  // Executioner
+  const execFrac = st.execHpFrac != null ? st.execHpFrac : 0.2;
+  const execAdd = st.execDmgAdd != null ? st.execDmgAdd : 0.25;
+  if (st.executioner && e.maxHp > 0 && (e.hp / e.maxHp) < execFrac) {
+    dmg *= (1 + execAdd);
   }
 
   if (e.weakTimer > 0 && e.damageTakenMult) dmg *= e.damageTakenMult;
@@ -159,7 +162,7 @@ function dealPlayerDamage(e, rawDmg, opts) {
       rus.hitCount = (rus.hitCount || 0) + 1;
       if (rus.hitCount >= 12 && (rus.bloodlustIcd || 0) <= 0) {
         rus.hitCount = 0;
-        rus.bloodlustIcd = 2;
+        rus.bloodlustIcd = 2.5;
         game.hero.hp = Math.min(st.maxHp, game.hero.hp + Math.floor(st.maxHp * 0.025));
       }
     }
@@ -186,9 +189,9 @@ function dealPlayerDamage(e, rawDmg, opts) {
     });
   }
 
-  // Chain Reaction: bei Crit 18% Chance, nächster Gegner 35%
+  // Chain Reaction: Crit → 20% Chance, 40% Schaden an nächsten Gegner
   if (isCrit && st.chainReaction && game.enemies) {
-    if (Math.random() < 0.18) {
+    if (Math.random() < 0.20) {
       let nearest = null, best = Infinity;
       const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
       game.enemies.forEach((o2) => {
@@ -197,7 +200,7 @@ function dealPlayerDamage(e, rawDmg, opts) {
         if (d < best) { best = d; nearest = o2; }
       });
       if (nearest) {
-        const chain = Math.max(1, Math.floor(dmg * 0.35));
+        const chain = Math.max(1, Math.floor(dmg * 0.40));
         nearest.hp -= chain;
         nearest.hitFlash = Math.max(nearest.hitFlash || 0, 6);
         if (typeof spawnDamage === "function") {
