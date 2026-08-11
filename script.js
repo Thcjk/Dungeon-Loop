@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-157";
+const BUILD_ID = "sidescroller-v3-158";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 3;
 const WORLD_LAYOUT_VERSION = 4;
@@ -790,6 +790,8 @@ const game = {
   totalGold: 0, upgrades: {},
   isRunning: false, isPaused: false, isDead: false,
   dungeonLevel: 1, runGold: 0, runXp: 0, playerLevel: 1, monstersDefeated: 0,
+  /** Gold aus dem letzten Run (für Game-Over-Anzeige nach dem Einbuchen) */
+  lastRunGold: 0,
   /** Aktuelle Welt (0..WORLDS.length-1) – wechselt erst nach Boss-Welle */
   worldIndex: 0,
   /** Aktuelle Welle war Welt-Boss (Tor zur nächsten Welt) */
@@ -3878,7 +3880,7 @@ async function continueOrStartRun() {
 }
 
 function resetRun() {
-  game.dungeonLevel = 1; game.runGold = 0; game.runXp = 0; game.playerLevel = 1;
+  game.dungeonLevel = 1; game.runGold = 0; game.lastRunGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.worldIndex = 0; game.waveWasBoss = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
@@ -5070,15 +5072,17 @@ function onEnemyKill(e) {
 function onDeath() {
   game.isDead = true;
   stopMusic();
-  // Gold aus dem Run sichern, Upgrades bleiben im Slot
-  game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + Math.floor(Number(game.runGold) || 0));
+  // Gold aus dem Run sichern – Betrag merken, bevor runGold genullt wird
+  const earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
+  game.lastRunGold = earnedGold;
+  game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
   clearActiveRun();
   if (game.hero) { game.hero.deathAnim = true; game.hero.animState = "death"; game.hero.animFrame = 0; }
-  addLog("Game Over!", "death");
+  addLog("Game Over! +" + earnedGold + " Gold gesichert.", "death");
   let deathT = 0;
   function deathFrame(now) {
     deathT += 16;
@@ -5095,14 +5099,20 @@ function onDeath() {
 function showGameOver() {
   hidePauseMenu();
   const world = getWorld();
+  const earnedGold = Math.max(0, Math.floor(Number(game.lastRunGold) || 0));
   emitCombatEvent("game_over");
   $("gameover-panel").classList.remove("hidden");
   $("gameover-summary").textContent =
     "Level " + game.dungeonLevel + " · " + world.name + "\n" +
-    game.monstersDefeated + " Monster besiegt · " + game.runGold + " Gold";
-  $("final-score").textContent = calcScore();
+    game.monstersDefeated + " Monster besiegt · " + earnedGold + " Gold";
+  $("final-score").textContent = calcScore(earnedGold);
   $("gameover-tip").textContent = getUpgradeTip();
-  $("save-hint").textContent = "";
+  const hint = $("save-hint");
+  if (hint) {
+    hint.textContent = earnedGold
+      ? (earnedGold + " Gold wurden deinem Konto gutgeschrieben.")
+      : "Gold und Upgrades bleiben permanent. Der Run startet neu.";
+  }
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold(); renderUpgradeButtons(); renderAbilityPanel();
@@ -5595,7 +5605,12 @@ async function buyUpgrade(k) {
 function updateTotalGold() {
   if ($("total-gold")) $("total-gold").textContent = getSpendableGold();
 }
-function calcScore() { return game.dungeonLevel*100 + game.monstersDefeated*50 + game.runGold + game.playerLevel*200; }
+function calcScore(runGoldOverride) {
+  const gold = runGoldOverride != null
+    ? Math.max(0, Math.floor(Number(runGoldOverride) || 0))
+    : Math.max(0, Math.floor(Number(game.lastRunGold || game.runGold) || 0));
+  return game.dungeonLevel * 100 + game.monstersDefeated * 50 + gold + game.playerLevel * 200;
+}
 
 function loadLocalScores() {
   try {
@@ -5634,7 +5649,7 @@ async function saveScore() {
     score: calcScore(),
     dungeon_level: game.dungeonLevel,
     monsters_defeated: game.monstersDefeated,
-    gold: game.runGold,
+    gold: Math.max(0, Math.floor(Number(game.lastRunGold || game.runGold) || 0)),
     player_level: game.playerLevel
   };
   saveLocalScore(entry);
