@@ -66,7 +66,38 @@
     }
   }
 
+  function watchGameFrame() {
+    const frame = document.getElementById("game-frame");
+    if (!frame) return;
+    const sync = () => document.body.classList.toggle("in-run", !frame.classList.contains("hidden"));
+    sync();
+    new MutationObserver(sync).observe(frame, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // Bestes Spielgefühl auf Handys: bei Rungewinn/-fortsetzen (klarer User-Gesture)
+  // direkt versuchen, in den echten Fullscreen zu wechseln. Schlägt das fehl
+  // (z.B. iPhone-Safari ohne Fullscreen-API), greift trotzdem der CSS-Querformat-
+  // Immersivmodus oben (body.in-run + orientation: landscape).
+  function enterImmersiveMode() {
+    const frame = document.getElementById("game-frame");
+    if (!frame || document.fullscreenElement) return;
+    if (typeof frame.requestFullscreen !== "function") return;
+    try {
+      frame.requestFullscreen().catch(() => {});
+    } catch (_) { /* Fullscreen-API nicht verfügbar (z.B. iPhone-Safari) – CSS-Immersivmodus greift trotzdem */ }
+  }
+
+  function bindImmersiveTriggers() {
+    ["btn-menu-continue", "btn-briefing-go", "btn-start-run", "btn-gameover-run", "btn-victory-loop"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("click", enterImmersiveMode);
+    });
+  }
+
   function init() {
+    watchGameFrame();
+    bindImmersiveTriggers();
+
     bindHold(document.getElementById("touch-left"), "a");
     bindHold(document.getElementById("touch-right"), "d");
 

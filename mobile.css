@@ -140,3 +140,53 @@ body.is-mobile-build #game-canvas {
 @media (orientation: portrait) {
   .orientation-hint { display: block; }
 }
+
+/* === Querformat-Immersivmodus während eines Runs ===
+   Läuft unabhängig von der echten Fullscreen-API (die z.B. auf iPhone-Safari
+   für beliebige Elemente nicht verfügbar ist) – body.in-run wird von
+   mobile-controls.js gesetzt, sobald #game-frame sichtbar ist. */
+@media (orientation: landscape) {
+  body.is-mobile-build.in-run .header,
+  body.is-mobile-build.in-run .footer,
+  body.is-mobile-build.in-run .orientation-hint {
+    display: none;
+  }
+  body.is-mobile-build.in-run .container {
+    padding: 0;
+    gap: 0;
+    max-width: none;
+  }
+  body.is-mobile-build.in-run #game-section {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  body.is-mobile-build.in-run .game-layout {
+    display: block;
+  }
+  body.is-mobile-build.in-run .game-sidebar {
+    display: none;
+  }
+  body.is-mobile-build.in-run .game-frame {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: unset;
+    border: none;
+    border-radius: 0;
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+  }
+  body.is-mobile-build.in-run .game-frame #game-canvas {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  body.is-mobile-build.in-run .touch-dpad { bottom: max(10px, env(safe-area-inset-bottom)); }
+  body.is-mobile-build.in-run .touch-abilities { bottom: max(10px, env(safe-area-inset-bottom)); }
+}
