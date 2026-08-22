@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Dungeon Loop</title>
+  <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css?v=184">
+</head>
+<body>
+  <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
+
+  <header class="header">
+    <h1>Dungeon Loop</h1>
+    <p class="subtitle">Maus auf Gegner = angreifen | Bewegen: <kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> | Spezial: <kbd>W</kbd>/<kbd>S</kbd> oder <kbd>↑</kbd>/<kbd>↓</kbd> | U = Upgrades | Esc = Pause</p>
+  </header>
+
+  <main class="container">
+
+    <section class="card setup-card" id="setup-section">
+
+      <!-- Startmenü -->
+      <div id="menu-home" class="menu-panel">
+        <div class="menu-home-layout">
+          <div class="menu-home-main">
+            <h2>Hauptmenü</h2>
+            <p class="menu-lead">Bis zu 3 Spielstände · lokal in diesem Browser gespeichert</p>
+            <div class="menu-actions">
+              <button type="button" class="btn btn-primary btn-large" id="btn-menu-continue" disabled>Fortsetzen</button>
+              <button type="button" class="btn btn-gold btn-large" id="btn-menu-new">Neues Spiel</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-settings">Einstellungen</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-roadmap">Loop-Roadmap</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-credits">Mitwirkende</button>
+            </div>
+            <div id="home-slot-preview" class="save-slot-list save-slot-list--preview"></div>
+            <p class="hint" id="menu-home-hint">Fortsetzen lädt den letzten Slot · Neues Spiel → Held + kurze Anleitung · Laden zeigt alle Slots</p>
+            <p class="hint tutorial-hint" id="tutorial-hint">Tipp: Mit der Maus auf Gegner zielen und angreifen. <kbd>A</kbd>/<kbd>D</kbd> bewegen, <kbd>W</kbd>/<kbd>S</kbd> Spezial, <kbd>U</kbd> Upgrades, <kbd>Esc</kbd> Pause.</p>
+          </div>
+          <aside class="menu-brand" aria-label="Dungeon Loop">
+            <div class="menu-brand-glow" aria-hidden="true"></div>
+            <canvas id="menu-brand-canvas" class="menu-brand-logo" width="320" height="300" aria-hidden="true"></canvas>
+            <p class="menu-brand-title">Dungeon Loop</p>
+            <p class="menu-brand-tag">Drei Helden · Ein Weg</p>
+          </aside>
+        </div>
+      </div>
+
+      <div id="menu-settings" class="menu-panel hidden">
+        <h2>Einstellungen</h2>
+        <p class="menu-lead">Werden lokal gespeichert und nach Neustart beibehalten.</p>
+        <div class="settings-grid">
+          <label class="settings-row"><span>Musik</span><input type="checkbox" id="setting-music-enabled" checked></label>
+          <label class="settings-row"><span>Musiklautstärke</span><input type="range" id="setting-music-vol" min="0" max="100" value="32"></label>
+          <label class="settings-row"><span>Soundeffekte</span><input type="checkbox" id="setting-sfx-enabled" checked></label>
+          <label class="settings-row"><span>Effektlautstärke</span><input type="range" id="setting-sfx-vol" min="0" max="100" value="55"></label>
+          <label class="settings-row"><span>Bildschirmwackeln</span><input type="checkbox" id="setting-screen-shake" checked></label>
+          <label class="settings-row"><span>Partikel</span><input type="checkbox" id="setting-particles" checked></label>
+          <h3 class="settings-section-title">Tutorial &amp; Hinweise</h3>
+          <label class="settings-row"><span>Neue Mechaniken erklären</span><input type="checkbox" id="setting-explain-mechanics" checked></label>
+          <label class="settings-row"><span>Bekannte Loop-Intros verkürzen</span><input type="checkbox" id="setting-short-loop-intro" checked></label>
+          <label class="settings-row"><span>Korruptions-Intro automatisch schließen</span><input type="checkbox" id="setting-auto-corruption"></label>
+        </div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-settings-back">Zurück</button>
+          <button type="button" class="btn btn-primary" id="btn-settings-save">Übernehmen</button>
+        </div>
+      </div>
+
+      <div id="menu-credits" class="menu-panel hidden">
+        <h2>Mitwirkende</h2>
+        <div class="credits-body">
+          <p><strong>Dungeon Loop</strong> – Indie-SeitenScroller</p>
+          <p>Kampf, Wellen, Welten, Upgrades und lokale Spielstände.</p>
+          <p>Pixel-Art &amp; Audio aus dem integrierten Asset-Pack.</p>
+          <p>Version <span class="credits-build">sidescroller-v3-179</span></p>
+          <p class="hint">Keine Cloud-Pflicht · Fortschritt liegt in deinem Browser (localStorage).</p>
+        </div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-credits-back">Zurück</button>
+        </div>
+      </div>
+
+      <!-- Neues Spiel: zuerst Slot wählen -->
+      <div id="menu-new-slot" class="menu-panel hidden">
+        <h2>Neues Spiel – Slot wählen</h2>
+        <p class="menu-lead">Wähle einen der 3 Speicherplätze.</p>
+        <div id="new-slot-list" class="save-slot-list"></div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-new-slot-back">Zurück</button>
+        </div>
+      </div>
+
+      <!-- Neues Spiel: Heldenwahl -->
+      <div id="menu-new" class="menu-panel hidden">
+        <h2>Neues Spiel – Held wählen</h2>
+        <p class="menu-lead" id="new-slot-label">Slot 1</p>
+        <div class="setup-layout">
+          <div class="setup-main">
+            <label class="label" for="player-name">Spielername</label>
+            <input type="text" id="player-name" class="input" placeholder="Dein Name" maxlength="20" autocomplete="off">
+
+            <p class="label">Klasse wählen</p>
+            <div class="class-select class-tabs" id="class-select">
+              <button type="button" class="class-btn warrior selected" data-class="warrior">
+                <span class="class-name">Krieger</span>
+                <span class="class-desc">Schild &amp; Schwert</span>
+              </button>
+              <button type="button" class="class-btn ranger" data-class="ranger">
+                <span class="class-name">Waldläufer</span>
+                <span class="class-desc">Kapuze &amp; Bogen</span>
+              </button>
+              <button type="button" class="class-btn mage" data-class="mage">
+                <span class="class-name">Magier</span>
+                <span class="class-desc">Robe &amp; Stab</span>
+              </button>
+            </div>
+
+            <div class="ability-section ability-section--setup" id="ability-section">
+              <h3 class="ability-heading">Spezialfähigkeiten</h3>
+              <div id="ability-setup-hint" class="ability-setup-hint"></div>
+            </div>
+
+            <div class="menu-actions menu-actions--row">
+              <button type="button" class="btn btn-secondary" id="btn-new-back">Zurück</button>
+              <button type="button" class="btn btn-primary btn-large" id="btn-start-new">Weiter zur Anleitung</button>
+            </div>
+            <p class="hint" id="load-hint">Name eingeben, Klasse wählen – danach kurze Anleitung vor dem Start.</p>
+          </div>
+
+          <aside class="hero-card warrior" id="hero-card">
+            <div class="hero-card-frame">
+              <h3 class="hero-card-title" id="hero-card-class">KRIEGER</h3>
+              <div class="hero-card-portrait">
+                <canvas id="hero-card-canvas" width="260" height="300"></canvas>
+              </div>
+              <div class="hero-card-stats">
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">❤️</span>
+                  <span class="hero-stat-label">HP</span>
+                  <strong id="hero-stat-hp">115</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">⚔</span>
+                  <span class="hero-stat-label">Angriff</span>
+                  <strong id="hero-stat-atk">19</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">🛡</span>
+                  <span class="hero-stat-label">Rüstung</span>
+                  <strong id="hero-stat-def">5</strong>
+                </div>
+                <div class="hero-stat">
+                  <span class="hero-stat-icon">⭐</span>
+                  <span class="hero-stat-label">Seltenheit</span>
+                  <strong id="hero-stat-rarity">Gewöhnlich</strong>
+                </div>
+              </div>
+              <div class="hero-card-weapon">
+                <span class="hero-weapon-label">Aktuelle Waffe</span>
+                <strong id="hero-weapon-name">Eisenschwert + Schild</strong>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- Vor dem Start: kurze Anleitung (klassenabhängig) -->
+      <div id="menu-briefing" class="menu-panel hidden">
+        <h2 id="briefing-title">Bereit zum Aufbruch</h2>
+        <p class="menu-lead" id="briefing-lead">Lies kurz Ziel, Steuerung und Klassen-Tipps – dann geht’s los.</p>
+        <div class="briefing-body" id="briefing-body">
+          <section class="briefing-block">
+            <h3 class="briefing-heading">Ziel</h3>
+            <p id="briefing-goal"></p>
+          </section>
+          <section class="briefing-block">
+            <h3 class="briefing-heading">Steuerung</h3>
+            <ul class="briefing-list" id="briefing-controls"></ul>
+          </section>
+          <section class="briefing-block briefing-block--class">
+            <h3 class="briefing-heading" id="briefing-class-heading">Dein Held</h3>
+            <p class="briefing-role" id="briefing-role"></p>
+            <ul class="briefing-list" id="briefing-tips"></ul>
+          </section>
+          <section class="briefing-block">
+            <h3 class="briefing-heading">Im Spiel beachten</h3>
+            <ul class="briefing-list" id="briefing-watch"></ul>
+          </section>
+        </div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-briefing-back">Zurück zur Heldenwahl</button>
+          <button type="button" class="btn btn-gold btn-large" id="btn-briefing-go">Run starten</button>
+        </div>
+      </div>
+
+      <!-- Spielstände laden -->
+      <div id="menu-load" class="menu-panel hidden">
+        <h2>Spielstand laden</h2>
+        <p class="menu-lead">Wähle einen Slot – du startest direkt im Run.</p>
+        <div id="save-slot-list" class="save-slot-list"></div>
+        <div class="menu-actions menu-actions--row">
+          <button type="button" class="btn btn-secondary" id="btn-load-back">Zurück</button>
+        </div>
+        <p class="hint" id="load-slots-hint">Noch keine Spielstände.</p>
+      </div>
+
+      <button type="button" class="hidden" id="btn-load-player" tabindex="-1" aria-hidden="true">Spiel starten</button>
+      <button type="button" class="hidden" id="btn-new-game" tabindex="-1" aria-hidden="true">Neuer Spielstand</button>
+    </section>
+
+    <section class="card game-card hidden" id="game-section">
+
+      <div class="game-layout">
+        <div class="game-frame hidden" id="game-frame">
+          <button type="button" class="btn-fullscreen" id="btn-fullscreen" title="Vollbild">⛶</button>
+          <canvas id="game-canvas" width="640" height="360" tabindex="0"></canvas>
+
+          <div class="hud">
+            <div class="hud-card hud-player">
+              <div class="hud-bar hp-bar">
+                <span class="hud-label">HP</span>
+                <div class="pack-bar-track hp-track"><div class="pack-bar-fill hp" id="hud-hp-fill"></div></div>
+                <span class="hud-val" id="hud-hp-text">0/0</span>
+              </div>
+              <div class="hud-bar xp-bar">
+                <span class="hud-label">XP</span>
+                <div class="pack-bar-track xp-track"><div class="pack-bar-fill xp" id="hud-xp-fill"></div></div>
+                <span class="hud-val" id="hud-xp-text">0/0</span>
+              </div>
+              <div class="hud-bar mana-bar hidden" id="hud-mana-wrap">
+                <span class="hud-label">MP</span>
+                <div class="pack-bar-track mana-track"><div class="pack-bar-fill mana" id="hud-mana-fill"></div></div>
+                <span class="hud-val" id="hud-mana-text">0/0</span>
+              </div>
+            </div>
+            <div class="hud-card hud-stats">
+              <div class="hud-stat-row">
+                <div class="hud-stat"><span class="stat-icon coin">🪙</span><span id="hud-gold">0</span></div>
+                <div class="hud-stat"><span class="stat-icon">LV</span><span id="hud-level">1</span></div>
+              </div>
+              <div class="hud-stat-row">
+                <div class="hud-stat"><span class="stat-icon">⚔</span><span id="hud-enemies">0</span></div>
+                <div class="hud-stat world-name" id="hud-world">Wald</div>
+              </div>
+              <div class="hud-event-icons hidden" id="hud-event-icons"></div>
+              <div class="hud-loop" id="hud-loop">LOOP 1</div>
+            </div>
+          </div>
+
+          <div class="event-feedback-toast hidden" id="event-feedback-toast"></div>
+
+          <div class="controls-hint" id="controls-hint">
+            <kbd>A</kbd>/<kbd>D</kbd> (<kbd>←</kbd>/<kbd>→</kbd>) Vor/Zurück &nbsp;|&nbsp;
+            <kbd>Maus</kbd> auf Gegner = angreifen · Münze in der Luft <strong>bewegen &amp; fangen</strong> = x2 &nbsp;|&nbsp;
+            <kbd>W</kbd>/<kbd>S</kbd> (<kbd>↑</kbd>/<kbd>↓</kbd>) Spezial &nbsp;|&nbsp;
+            <kbd>U</kbd> Upgrades &amp; Fähigkeiten &nbsp;|&nbsp;
+            <kbd>P</kbd>/<kbd>Esc</kbd> Pause &nbsp;|&nbsp;
+            <kbd>F</kbd> Vollbild
+          </div>
+
+          <div class="pause-overlay hidden" id="pause-panel">
+            <div class="pause-content">
+              <h2 class="pause-title">PAUSE</h2>
+              <p class="pause-hint">Spiel angehalten · <kbd>Esc</kbd> / <kbd>P</kbd> weiter</p>
+              <div class="pause-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-pause-resume">Weiter</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-pause-upgrades">Upgrades &amp; Fähigkeiten</button>
+                <button type="button" class="btn btn-secondary btn-large" id="btn-pause-loopinfo">Loop-Information</button>
+                <button type="button" class="btn btn-secondary btn-large" id="btn-pause-menu">Hauptmenü</button>
+              </div>
+              <div id="pause-event-effects" class="pause-event-effects"></div>
+              <p class="pause-hint">Einstellungen erreichst du im Hauptmenü.</p>
+            </div>
+          </div>
+
+          <div class="gameover-overlay hidden" id="gameover-panel">
+            <div class="gameover-content">
+              <h2 class="gameover-title" id="gameover-title">SPIEL VORBEI</h2>
+              <p class="gameover-summary" id="gameover-summary"></p>
+              <p class="gameover-loop-info hidden" id="gameover-loop-info"></p>
+              <p class="gameover-next" id="gameover-next"></p>
+              <p class="gameover-score">Punkte: <strong id="final-score">0</strong></p>
+              <div class="gameover-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-gameover-run">Erneut versuchen</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-gameover-upgrade">Upgraden</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="victory-overlay hidden" id="victory-panel">
+            <div class="victory-content">
+              <h2 class="victory-title">GLÜCKWUNSCH</h2>
+              <p class="victory-lead" id="victory-lead">Erster Durchlauf geschafft!</p>
+              <p class="victory-summary" id="victory-summary"></p>
+              <div class="victory-keep-reset" id="victory-keep-reset"></div>
+              <p class="victory-next-preview hidden" id="victory-next-preview"></p>
+              <p class="victory-hint">Nächster Loop = Meta behalten, Run-Power neu. Neu starten = alles zurücksetzen.</p>
+              <div class="victory-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Loop</button>
+                <button type="button" class="btn btn-secondary" id="btn-victory-roadmap">Loop-Roadmap</button>
+                <button type="button" class="btn btn-gold btn-large" id="btn-victory-restart">Neu starten</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="run-upgrade-overlay hidden" id="run-upgrade-overlay">
+            <div class="run-upgrade-content">
+              <h2 class="run-upgrade-title" id="run-upgrade-title">RUN-UPGRADE</h2>
+              <p class="run-upgrade-hint">Welt geschafft – wähle ein Run-Upgrade für die nächste Welt.</p>
+              <div class="run-upgrade-choices" id="run-upgrade-choices"></div>
+              <button type="button" class="btn btn-secondary" id="run-upgrade-reroll">Neu würfeln</button>
+            </div>
+          </div>
+
+          <!-- NG+ First-Clear Intro -->
+          <div class="ng-info-overlay hidden" id="ngplus-intro-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="ngplus-intro-body"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-ngplus-intro-next">NG+ ANSEHEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loop start info (blocking) -->
+          <div class="ng-info-overlay hidden" id="loop-info-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-info-body"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-loop-info-start">LOOP STARTEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- First-encounter tip -->
+          <div class="ng-tip-overlay hidden" id="ng-tip-overlay">
+            <div class="ng-tip-content">
+              <div class="ng-tip-kicker" id="ng-tip-kicker">NEUE MECHANIK</div>
+              <h3 class="ng-tip-title" id="ng-tip-title"></h3>
+              <p class="ng-tip-body" id="ng-tip-body"></p>
+              <button type="button" class="btn btn-primary" id="btn-ng-tip-ok">VERSTANDEN</button>
+            </div>
+          </div>
+
+          <!-- Encounter flash -->
+          <div class="ng-enc-flash hidden" id="ng-enc-flash">
+            <div class="ng-enc-flash-kicker">MODIFIZIERTE WELLE</div>
+            <div class="ng-enc-flash-title" id="ng-enc-flash-title"></div>
+            <div class="ng-enc-flash-body" id="ng-enc-flash-body"></div>
+          </div>
+
+          <!-- Corruption intro (blocking) -->
+          <div class="ng-info-overlay corruption-theme hidden" id="corruption-overlay">
+            <div class="ng-info-content">
+              <div class="ng-info-head">
+                <div class="ng-info-kicker">🌀 KORRUPTION</div>
+                <h2 class="ng-info-title" id="corruption-title">BLUTMOND</h2>
+              </div>
+              <p class="corruption-body" id="corruption-body"></p>
+              <p class="ng-note">Höheres Risiko = höhere Belohnung</p>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-corruption-enter">WELT BETRETEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pause Loop Codex -->
+          <div class="ng-info-overlay hidden" id="loop-codex-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-codex-body" class="ng-scroll"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-secondary" id="btn-loop-codex-close">Schließen</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roadmap -->
+          <div class="ng-info-overlay hidden" id="loop-roadmap-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-roadmap-body" class="ng-scroll"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-secondary" id="btn-loop-roadmap-close">Schließen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="event-overlay hidden" id="event-overlay">
+            <div class="event-content">
+              <h2 class="event-title" id="event-title">EREIGNIS</h2>
+              <p class="event-body" id="event-body"></p>
+              <div class="event-choices" id="event-choices"></div>
+              <p class="event-key-hint"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> · <kbd>Esc</kbd> weiter</p>
+              <div class="event-feedback hidden" id="event-feedback"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <aside class="game-sidebar">
+          <div class="status-bar">
+            <div class="status-item"><span class="status-label">Dungeon</span><span class="status-value" id="dungeon-level">1</span></div>
+            <div class="status-item"><span class="status-label">Monster</span><span class="status-value" id="monsters-killed">0</span></div>
+            <div class="status-item"><span class="status-label">Held-Lv</span><span class="status-value" id="player-level">1</span></div>
+            <div class="status-item"><span class="status-label">Spezial</span><span class="status-value" id="special-status">–</span></div>
+            <div class="ability-loadout hidden" id="ability-loadout"></div>
+            <div class="status-item"><span class="status-label">Account</span><span class="status-value" id="account-level">1</span></div>
+          </div>
+
+          <div class="loot-display hidden" id="loot-display">
+            <span class="loot-label">Beste Beute:</span>
+            <span class="loot-item" id="best-loot-text">–</span>
+          </div>
+
+          <div class="controls">
+            <div class="audio-toggles">
+              <button type="button" class="btn btn-audio toggle-on" id="btn-toggle-music">Musik AN</button>
+              <button type="button" class="btn btn-audio toggle-on" id="btn-toggle-sfx">Sound AN</button>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-start-run">Run starten</button>
+            <button type="button" class="btn btn-secondary" id="btn-pause" disabled>Pause (P)</button>
+            <button type="button" class="btn btn-gold" id="btn-open-upgrades">Upgrades &amp; Fähigkeiten (U)</button>
+            <button type="button" class="btn btn-danger" id="btn-restart" disabled>Neustart</button>
+            <button type="button" class="btn btn-secondary" id="btn-to-menu">Hauptmenü</button>
+          </div>
+
+          <div class="sidebar-log combat-log-card">
+            <h3>Kampflog</h3>
+            <ul class="combat-log" id="combat-log"></ul>
+          </div>
+        </aside>
+      </div>
+
+      <div class="upgrade-overlay hidden" id="upgrade-section">
+        <div class="upgrade-panel card">
+          <div class="upgrade-header">
+            <h2>Upgrades &amp; Fähigkeiten</h2>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-close-upgrades">Schließen (U)</button>
+          </div>
+          <p class="upgrade-strategy" id="upgrade-tip">Stirb, sammle Gold, werde stärker – ein Run reicht nie!</p>
+          <p class="total-gold">Verfügbares Gold: <strong id="total-gold">0</strong> <span class="total-gold-hint">(Run + Gesamt)</span></p>
+          <div class="ability-section ability-section--game" id="ability-section-game">
+            <h3 class="ability-heading">Spezialfähigkeiten</h3>
+            <p class="ability-game-lead">Spezial-CD schaltet Fähigkeiten frei · <kbd>W</kbd>/<kbd>S</kbd> im Kampf</p>
+            <div id="ability-panel" class="ability-panel"></div>
+          </div>
+          <h3 class="upgrade-subheading">Stat-Upgrades</h3>
+          <div class="upgrade-grid" id="upgrade-grid"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-179</span> · Offline-fähig</p></footer>
+  <script src="asset-pack.js?v=184"></script>
+  <script src="world-config.js?v=184"></script>
+  <script src="world-render.js?v=184"></script>
+  <script src="visual-enemies.js?v=184"></script>
+  <script src="visual-fx.js?v=184"></script>
+  <script src="pack-fx.js?v=184"></script>
+  <script src="visual-sprites.js?v=184"></script>
+  <script src="hero-render.js?v=184"></script>
+  <script src="balance.js?v=184"></script>
+  <script src="events.js?v=184"></script>
+  <script src="ngplus.js?v=184"></script>
+  <script src="ngplus-info.js?v=184"></script>
+  <script src="run-upgrades.js?v=184"></script>
+  <script src="abilities.js?v=184"></script>
+  <script src="progression.js?v=184"></script>
+  <script src="script.js?v=184"></script>
+</body>
+</html>

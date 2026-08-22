@@ -1,0 +1,40 @@
+{
+  "enabled": true,
+  "volume": 0.55,
+  "sfxVolume": 0.55,
+  "musicVolume": 0.32,
+  "description": "Sound-Dateien in sounds/ – enabled true wenn Dateien vorhanden.",
+  "music": {
+    "menu": "music_menu",
+    "game": "music_game"
+  },
+  "files": {
+    "music_menu": "sounds/music/menu.mp3",
+    "music_game": "sounds/music/menu.mp3",
+    "wave_spawn": "sounds/waves/wave_spawn.ogg",
+    "wave_clear": "sounds/waves/wave_clear.ogg",
+    "boss_spawn": "sounds/waves/boss_spawn.ogg",
+    "boss_defeated": "sounds/waves/boss_defeated.ogg",
+    "player_melee": "sounds/combat/sword_swing.wav",
+    "player_melee_hit": "sounds/combat/sword_swing.wav",
+    "player_arrow": "sounds/combat/arrow_shoot.wav",
+    "player_magic": "sounds/combat/magic_cast.wav",
+    "player_staff": "sounds/combat/staff_hit.wav",
+    "player_special_warrior": "sounds/combat/shield_bash.wav",
+    "player_special_ranger": "sounds/combat/multi_arrow.wav",
+    "player_special_mage": "sounds/combat/fireball.wav",
+    "player_hurt": "sounds/combat/player_hurt.wav",
+    "enemy_attack": "sounds/combat/enemy_attack.wav",
+    "enemy_hit": "sounds/combat/sword_swing.wav",
+    "explosion": "sounds/combat/explosion.wav",
+    "coin": "sounds/ui/coin.wav",
+    "level_up": "sounds/ui/level_up.wav",
+    "world_change": "sounds/ui/world_change.ogg",
+    "game_over": "sounds/ui/game_over.wav",
+    "ambient_forest": "sounds/ambient/forest.mp3",
+    "ambient_swamp": "sounds/ambient/swamp.ogg",
+    "ambient_frost": "sounds/ambient/frost.ogg",
+    "ambient_fire": "sounds/ambient/fire.mp3",
+    "ambient_ruins": "sounds/ambient/ruins.ogg"
+  }
+}

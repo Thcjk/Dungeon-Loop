@@ -1,0 +1,1024 @@
+{
+  "heroes": {
+    "warrior": {
+      "idle": "assets/pack/heroes/warrior/idle.png",
+      "idle_card": "assets/pack/heroes/warrior/idle_card.png",
+      "attack": "assets/pack/heroes/warrior/attack.png",
+      "attack_card": "assets/pack/heroes/warrior/attack_card.png",
+      "cast": "assets/pack/heroes/warrior/cast.png",
+      "cast_card": "assets/pack/heroes/warrior/cast_card.png",
+      "hurt": "assets/pack/heroes/warrior/hurt.png",
+      "hurt_card": "assets/pack/heroes/warrior/hurt_card.png",
+      "death": "assets/pack/heroes/warrior/death.png",
+      "death_card": "assets/pack/heroes/warrior/death_card.png"
+    },
+    "ranger": {
+      "idle": "assets/pack/heroes/ranger/idle.png",
+      "idle_card": "assets/pack/heroes/ranger/idle_card.png",
+      "attack": "assets/pack/heroes/ranger/attack.png",
+      "attack_card": "assets/pack/heroes/ranger/attack_card.png",
+      "cast": "assets/pack/heroes/ranger/cast.png",
+      "cast_card": "assets/pack/heroes/ranger/cast_card.png",
+      "hurt": "assets/pack/heroes/ranger/hurt.png",
+      "hurt_card": "assets/pack/heroes/ranger/hurt_card.png",
+      "death": "assets/pack/heroes/ranger/death.png",
+      "death_card": "assets/pack/heroes/ranger/death_card.png"
+    },
+    "mage": {
+      "idle": "assets/pack/heroes/mage/idle.png",
+      "idle_card": "assets/pack/heroes/mage/idle_card.png",
+      "attack": "assets/pack/heroes/mage/attack.png",
+      "attack_card": "assets/pack/heroes/mage/attack_card.png",
+      "cast": "assets/pack/heroes/mage/cast.png",
+      "cast_card": "assets/pack/heroes/mage/cast_card.png",
+      "hurt": "assets/pack/heroes/mage/hurt.png",
+      "hurt_card": "assets/pack/heroes/mage/hurt_card.png",
+      "death": "assets/pack/heroes/mage/death.png",
+      "death_card": "assets/pack/heroes/mage/death_card.png"
+    }
+  },
+  "enemies": {
+    "forest": {
+      "forest_bandit": {
+        "path": "assets/pack/enemies/forest/forest_bandit.png",
+        "name": "Bandit",
+        "w": 65,
+        "h": 78
+      },
+      "forest_goblin": {
+        "path": "assets/pack/enemies/forest/forest_goblin.png",
+        "name": "Goblin",
+        "w": 66,
+        "h": 78
+      },
+      "forest_hornet": {
+        "path": "assets/pack/enemies/forest/forest_hornet.png",
+        "name": "Hornet",
+        "w": 61,
+        "h": 78
+      },
+      "forest_sapling": {
+        "path": "assets/pack/enemies/forest/forest_sapling.png",
+        "name": "Sapling",
+        "w": 58,
+        "h": 78
+      },
+      "forest_spider": {
+        "path": "assets/pack/enemies/forest/forest_spider.png",
+        "name": "Spider",
+        "w": 86,
+        "h": 78
+      },
+      "forest_vine_crawler": {
+        "path": "assets/pack/enemies/forest/forest_vine_crawler.png",
+        "name": "Vine Crawler",
+        "w": 107,
+        "h": 78
+      },
+      "forest_wraith": {
+        "path": "assets/pack/enemies/forest/forest_wraith.png",
+        "name": "Wraith",
+        "w": 49,
+        "h": 78
+      }
+    },
+    "swamp": {
+      "swamp_alligator": {
+        "path": "assets/pack/enemies/swamp/swamp_alligator.png",
+        "name": "Alligator",
+        "w": 171,
+        "h": 78
+      },
+      "swamp_hag": {
+        "path": "assets/pack/enemies/swamp/swamp_hag.png",
+        "name": "Hag",
+        "w": 51,
+        "h": 78
+      },
+      "swamp_leech": {
+        "path": "assets/pack/enemies/swamp/swamp_leech.png",
+        "name": "Leech",
+        "w": 104,
+        "h": 78
+      },
+      "swamp_mosquito_swarm": {
+        "path": "assets/pack/enemies/swamp/swamp_mosquito_swarm.png",
+        "name": "Mosquito Swarm",
+        "w": 54,
+        "h": 78
+      },
+      "swamp_mud_elemental": {
+        "path": "assets/pack/enemies/swamp/swamp_mud_elemental.png",
+        "name": "Mud Elemental",
+        "w": 51,
+        "h": 78
+      },
+      "swamp_toad": {
+        "path": "assets/pack/enemies/swamp/swamp_toad.png",
+        "name": "Toad",
+        "w": 101,
+        "h": 78
+      },
+      "swamp_zombie": {
+        "path": "assets/pack/enemies/swamp/swamp_zombie.png",
+        "name": "Zombie",
+        "w": 55,
+        "h": 78
+      }
+    },
+    "frost": {
+      "snow_frost_bat": {
+        "path": "assets/pack/enemies/frost/snow_frost_bat.png",
+        "name": "Frost Bat",
+        "w": 66,
+        "h": 78
+      },
+      "snow_frost_raider": {
+        "path": "assets/pack/enemies/frost/snow_frost_raider.png",
+        "name": "Frost Raider",
+        "w": 70,
+        "h": 78
+      },
+      "snow_ice_golem": {
+        "path": "assets/pack/enemies/frost/snow_ice_golem.png",
+        "name": "Ice Golem",
+        "w": 56,
+        "h": 78
+      },
+      "snow_ice_spider": {
+        "path": "assets/pack/enemies/frost/snow_ice_spider.png",
+        "name": "Ice Spider",
+        "w": 91,
+        "h": 78
+      },
+      "snow_ice_wraith": {
+        "path": "assets/pack/enemies/frost/snow_ice_wraith.png",
+        "name": "Ice Wraith",
+        "w": 50,
+        "h": 78
+      },
+      "snow_shaman": {
+        "path": "assets/pack/enemies/frost/snow_shaman.png",
+        "name": "Shaman",
+        "w": 52,
+        "h": 78
+      },
+      "snow_yeti": {
+        "path": "assets/pack/enemies/frost/snow_yeti.png",
+        "name": "Yeti",
+        "w": 69,
+        "h": 78
+      }
+    },
+    "fire": {
+      "volcano_ash_wraith": {
+        "path": "assets/pack/enemies/fire/volcano_ash_wraith.png",
+        "name": "Ash Wraith",
+        "w": 65,
+        "h": 78
+      },
+      "volcano_cultist": {
+        "path": "assets/pack/enemies/fire/volcano_cultist.png",
+        "name": "Cultist",
+        "w": 52,
+        "h": 78
+      },
+      "volcano_fire_imp": {
+        "path": "assets/pack/enemies/fire/volcano_fire_imp.png",
+        "name": "Fire Imp",
+        "w": 81,
+        "h": 78
+      },
+      "volcano_hellhound": {
+        "path": "assets/pack/enemies/fire/volcano_hellhound.png",
+        "name": "Hellhound",
+        "w": 109,
+        "h": 78
+      },
+      "volcano_magma_scorpion": {
+        "path": "assets/pack/enemies/fire/volcano_magma_scorpion.png",
+        "name": "Magma Scorpion",
+        "w": 73,
+        "h": 78
+      },
+      "volcano_obsidian_golem": {
+        "path": "assets/pack/enemies/fire/volcano_obsidian_golem.png",
+        "name": "Obsidian Golem",
+        "w": 59,
+        "h": 78
+      },
+      "volcano_salamander": {
+        "path": "assets/pack/enemies/fire/volcano_salamander.png",
+        "name": "Salamander",
+        "w": 96,
+        "h": 78
+      }
+    },
+    "ruins": {
+      "ruins_cursed_priest": {
+        "path": "assets/pack/enemies/ruins/ruins_cursed_priest.png",
+        "name": "Cursed Priest",
+        "w": 48,
+        "h": 78
+      },
+      "ruins_mummy_warrior": {
+        "path": "assets/pack/enemies/ruins/ruins_mummy_warrior.png",
+        "name": "Mummy Warrior",
+        "w": 47,
+        "h": 78
+      },
+      "ruins_sand_worm": {
+        "path": "assets/pack/enemies/ruins/ruins_sand_worm.png",
+        "name": "Sand Worm",
+        "w": 68,
+        "h": 78
+      },
+      "ruins_scarab_swarm": {
+        "path": "assets/pack/enemies/ruins/ruins_scarab_swarm.png",
+        "name": "Scarab Swarm",
+        "w": 64,
+        "h": 78
+      },
+      "ruins_skeleton_archer": {
+        "path": "assets/pack/enemies/ruins/ruins_skeleton_archer.png",
+        "name": "Skeleton Archer",
+        "w": 66,
+        "h": 78
+      },
+      "ruins_sphinx": {
+        "path": "assets/pack/enemies/ruins/ruins_sphinx.png",
+        "name": "Sphinx",
+        "w": 77,
+        "h": 78
+      },
+      "ruins_stone_guardian": {
+        "path": "assets/pack/enemies/ruins/ruins_stone_guardian.png",
+        "name": "Stone Guardian",
+        "w": 57,
+        "h": 78
+      }
+    }
+  },
+  "bosses": {
+    "forest": {
+      "path": "assets/pack/bosses/boss_forest.png",
+      "name": "Forest Boss",
+      "w": 79,
+      "h": 120
+    },
+    "ruins": {
+      "path": "assets/pack/bosses/boss_ruins.png",
+      "name": "Ruins Boss",
+      "w": 77,
+      "h": 120
+    },
+    "frost": {
+      "path": "assets/pack/bosses/boss_frost.png",
+      "name": "Snow Boss",
+      "w": 82,
+      "h": 120
+    },
+    "swamp": {
+      "path": "assets/pack/bosses/boss_swamp.png",
+      "name": "Swamp Boss",
+      "w": 88,
+      "h": 120
+    },
+    "fire": {
+      "path": "assets/pack/bosses/boss_fire.png",
+      "name": "Volcano Boss",
+      "w": 77,
+      "h": 120
+    }
+  },
+  "worlds": {
+    "forest": {
+      "scene": "assets/pack/worlds/forest/scene.png",
+      "lane": "assets/pack/worlds/forest/lane.png"
+    },
+    "swamp": {
+      "scene": "assets/pack/worlds/swamp/scene.png",
+      "lane": "assets/pack/worlds/swamp/lane.png"
+    },
+    "frost": {
+      "scene": "assets/pack/worlds/frost/scene.png",
+      "lane": "assets/pack/worlds/frost/lane.png"
+    },
+    "fire": {
+      "scene": "assets/pack/worlds/fire/scene.png",
+      "lane": "assets/pack/worlds/fire/lane.png"
+    },
+    "ruins": {
+      "scene": "assets/pack/worlds/ruins/scene.png",
+      "lane": "assets/pack/worlds/ruins/lane.png"
+    }
+  },
+  "fx": {
+    "combat_magic_effects_sheet_2": "assets/pack/fx/combat_magic_effects_sheet_2.png",
+    "combat_magic_effects_sheet": "assets/pack/fx/combat_magic_effects_sheet.png",
+    "elemental_weather_effects_sheet_2": "assets/pack/fx/elemental_weather_effects_sheet_2.png",
+    "elemental_weather_effects_sheet": "assets/pack/fx/elemental_weather_effects_sheet.png",
+    "projectiles_sheet_2": "assets/pack/fx/projectiles_sheet_2.png",
+    "projectiles_sheet": "assets/pack/fx/projectiles_sheet.png"
+  },
+  "ui": {
+    "ui_panel_excerpt": "assets/pack/ui/ui_panel_excerpt.png",
+    "hud_elements_sheet_2": "assets/pack/ui/hud_elements_sheet_2.png",
+    "hud_elements_sheet": "assets/pack/ui/hud_elements_sheet.png",
+    "item_equipment_icons_sheet_2": "assets/pack/ui/item_equipment_icons_sheet_2.png",
+    "item_equipment_icons_sheet": "assets/pack/ui/item_equipment_icons_sheet.png",
+    "skill_icons_sheet_2": "assets/pack/ui/skill_icons_sheet_2.png",
+    "skill_icons_sheet": "assets/pack/ui/skill_icons_sheet.png",
+    "ui_frames_sheet_2": "assets/pack/ui/ui_frames_sheet_2.png",
+    "ui_frames_sheet": "assets/pack/ui/ui_frames_sheet.png"
+  },
+  "props": {
+    "forest": [
+      {
+        "path": "assets/pack/props/forest/prop_00.png",
+        "w": 134,
+        "h": 103
+      },
+      {
+        "path": "assets/pack/props/forest/prop_01.png",
+        "w": 83,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_02.png",
+        "w": 104,
+        "h": 60
+      },
+      {
+        "path": "assets/pack/props/forest/prop_03.png",
+        "w": 55,
+        "h": 38
+      },
+      {
+        "path": "assets/pack/props/forest/prop_04.png",
+        "w": 89,
+        "h": 48
+      },
+      {
+        "path": "assets/pack/props/forest/prop_05.png",
+        "w": 59,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_06.png",
+        "w": 63,
+        "h": 52
+      },
+      {
+        "path": "assets/pack/props/forest/prop_07.png",
+        "w": 64,
+        "h": 61
+      },
+      {
+        "path": "assets/pack/props/forest/prop_08.png",
+        "w": 33,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/forest/prop_09.png",
+        "w": 126,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_10.png",
+        "w": 109,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_11.png",
+        "w": 96,
+        "h": 87
+      },
+      {
+        "path": "assets/pack/props/forest/prop_12.png",
+        "w": 86,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_13.png",
+        "w": 88,
+        "h": 93
+      },
+      {
+        "path": "assets/pack/props/forest/prop_14.png",
+        "w": 82,
+        "h": 99
+      },
+      {
+        "path": "assets/pack/props/forest/prop_15.png",
+        "w": 86,
+        "h": 94
+      },
+      {
+        "path": "assets/pack/props/forest/prop_16.png",
+        "w": 94,
+        "h": 86
+      },
+      {
+        "path": "assets/pack/props/forest/prop_17.png",
+        "w": 87,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/forest/prop_18.png",
+        "w": 82,
+        "h": 96
+      },
+      {
+        "path": "assets/pack/props/forest/prop_19.png",
+        "w": 81,
+        "h": 97
+      },
+      {
+        "path": "assets/pack/props/forest/prop_20.png",
+        "w": 85,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/forest/prop_21.png",
+        "w": 81,
+        "h": 94
+      },
+      {
+        "path": "assets/pack/props/forest/prop_22.png",
+        "w": 79,
+        "h": 95
+      },
+      {
+        "path": "assets/pack/props/forest/prop_23.png",
+        "w": 82,
+        "h": 91
+      },
+      {
+        "path": "assets/pack/props/forest/prop_24.png",
+        "w": 79,
+        "h": 94
+      }
+    ],
+    "swamp": [
+      {
+        "path": "assets/pack/props/swamp/prop_00.png",
+        "w": 187,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_01.png",
+        "w": 82,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_02.png",
+        "w": 153,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_03.png",
+        "w": 88,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_04.png",
+        "w": 77,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_05.png",
+        "w": 99,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_06.png",
+        "w": 100,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_07.png",
+        "w": 69,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_08.png",
+        "w": 146,
+        "h": 98
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_09.png",
+        "w": 73,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_10.png",
+        "w": 40,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_11.png",
+        "w": 108,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_12.png",
+        "w": 45,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_13.png",
+        "w": 111,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_14.png",
+        "w": 64,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_15.png",
+        "w": 126,
+        "h": 82
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_16.png",
+        "w": 82,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_17.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_18.png",
+        "w": 115,
+        "h": 82
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_19.png",
+        "w": 68,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_20.png",
+        "w": 76,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/swamp/prop_21.png",
+        "w": 74,
+        "h": 110
+      }
+    ],
+    "frost": [
+      {
+        "path": "assets/pack/props/frost/prop_00.png",
+        "w": 165,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_01.png",
+        "w": 166,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_02.png",
+        "w": 178,
+        "h": 88
+      },
+      {
+        "path": "assets/pack/props/frost/prop_03.png",
+        "w": 109,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_04.png",
+        "w": 104,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_05.png",
+        "w": 135,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_06.png",
+        "w": 113,
+        "h": 91
+      },
+      {
+        "path": "assets/pack/props/frost/prop_07.png",
+        "w": 79,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_08.png",
+        "w": 84,
+        "h": 99
+      },
+      {
+        "path": "assets/pack/props/frost/prop_09.png",
+        "w": 79,
+        "h": 107
+      },
+      {
+        "path": "assets/pack/props/frost/prop_10.png",
+        "w": 96,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_11.png",
+        "w": 71,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/frost/prop_12.png",
+        "w": 70,
+        "h": 85
+      },
+      {
+        "path": "assets/pack/props/frost/prop_13.png",
+        "w": 76,
+        "h": 104
+      },
+      {
+        "path": "assets/pack/props/frost/prop_14.png",
+        "w": 89,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/frost/prop_15.png",
+        "w": 71,
+        "h": 83
+      },
+      {
+        "path": "assets/pack/props/frost/prop_16.png",
+        "w": 70,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/frost/prop_17.png",
+        "w": 79,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_18.png",
+        "w": 97,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_19.png",
+        "w": 117,
+        "h": 65
+      },
+      {
+        "path": "assets/pack/props/frost/prop_20.png",
+        "w": 70,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/frost/prop_21.png",
+        "w": 78,
+        "h": 110
+      }
+    ],
+    "fire": [
+      {
+        "path": "assets/pack/props/fire/prop_00.png",
+        "w": 162,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_01.png",
+        "w": 208,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_02.png",
+        "w": 203,
+        "h": 98
+      },
+      {
+        "path": "assets/pack/props/fire/prop_03.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_04.png",
+        "w": 83,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_05.png",
+        "w": 169,
+        "h": 67
+      },
+      {
+        "path": "assets/pack/props/fire/prop_06.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_07.png",
+        "w": 62,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_08.png",
+        "w": 93,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_09.png",
+        "w": 85,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_10.png",
+        "w": 119,
+        "h": 84
+      },
+      {
+        "path": "assets/pack/props/fire/prop_11.png",
+        "w": 91,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_12.png",
+        "w": 67,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_13.png",
+        "w": 74,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_14.png",
+        "w": 55,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_15.png",
+        "w": 70,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/fire/prop_16.png",
+        "w": 89,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/fire/prop_17.png",
+        "w": 130,
+        "h": 70
+      },
+      {
+        "path": "assets/pack/props/fire/prop_18.png",
+        "w": 85,
+        "h": 105
+      },
+      {
+        "path": "assets/pack/props/fire/prop_19.png",
+        "w": 95,
+        "h": 81
+      },
+      {
+        "path": "assets/pack/props/fire/prop_20.png",
+        "w": 89,
+        "h": 89
+      },
+      {
+        "path": "assets/pack/props/fire/prop_21.png",
+        "w": 54,
+        "h": 110
+      }
+    ],
+    "ruins": [
+      {
+        "path": "assets/pack/props/ruins/prop_00.png",
+        "w": 106,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_01.png",
+        "w": 143,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_02.png",
+        "w": 143,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_03.png",
+        "w": 130,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_04.png",
+        "w": 66,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_05.png",
+        "w": 102,
+        "h": 102
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_06.png",
+        "w": 141,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_07.png",
+        "w": 66,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_08.png",
+        "w": 114,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_09.png",
+        "w": 67,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_10.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_11.png",
+        "w": 65,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_12.png",
+        "w": 98,
+        "h": 90
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_13.png",
+        "w": 94,
+        "h": 95
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_14.png",
+        "w": 98,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_15.png",
+        "w": 56,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_16.png",
+        "w": 93,
+        "h": 92
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_17.png",
+        "w": 49,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_18.png",
+        "w": 94,
+        "h": 88
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_19.png",
+        "w": 48,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_20.png",
+        "w": 48,
+        "h": 110
+      },
+      {
+        "path": "assets/pack/props/ruins/prop_21.png",
+        "w": 71,
+        "h": 110
+      }
+    ]
+  },
+  "fxSprites": {
+    "arrow": {
+      "path": "assets/pack/fx/sprites/arrow.png",
+      "w": 72,
+      "h": 15
+    },
+    "fireball": {
+      "path": "assets/pack/fx/sprites/fireball.png",
+      "w": 72,
+      "h": 24
+    },
+    "icebolt": {
+      "path": "assets/pack/fx/sprites/icebolt.png",
+      "w": 72,
+      "h": 24
+    },
+    "poison": {
+      "path": "assets/pack/fx/sprites/poison.png",
+      "w": 72,
+      "h": 17
+    },
+    "dagger": {
+      "path": "assets/pack/fx/sprites/dagger.png",
+      "w": 72,
+      "h": 22
+    },
+    "slash": {
+      "path": "assets/pack/fx/sprites/slash.png",
+      "w": 96,
+      "h": 64
+    },
+    "explosion": {
+      "path": "assets/pack/fx/sprites/explosion.png",
+      "w": 96,
+      "h": 74
+    },
+    "magic_circle": {
+      "path": "assets/pack/fx/sprites/magic_circle.png",
+      "w": 96,
+      "h": 77
+    },
+    "spark_a": {
+      "path": "assets/pack/fx/sprites/spark_a.png",
+      "w": 64,
+      "h": 57
+    },
+    "spark_b": {
+      "path": "assets/pack/fx/sprites/spark_b.png",
+      "w": 64,
+      "h": 67
+    },
+    "light_beam": {
+      "path": "assets/pack/fx/sprites/light_beam.png",
+      "w": 96,
+      "h": 95
+    },
+    "arrow_b": {
+      "path": "assets/pack/fx/sprites/arrow_b.png",
+      "w": 72,
+      "h": 30
+    },
+    "fireball_b": {
+      "path": "assets/pack/fx/sprites/fireball_b.png",
+      "w": 72,
+      "h": 35
+    },
+    "icebolt_b": {
+      "path": "assets/pack/fx/sprites/icebolt_b.png",
+      "w": 72,
+      "h": 30
+    },
+    "poison_b": {
+      "path": "assets/pack/fx/sprites/poison_b.png",
+      "w": 72,
+      "h": 41
+    },
+    "dagger_b": {
+      "path": "assets/pack/fx/sprites/dagger_b.png",
+      "w": 72,
+      "h": 42
+    },
+    "slash_b": {
+      "path": "assets/pack/fx/sprites/slash_b.png",
+      "w": 96,
+      "h": 136
+    },
+    "explosion_b": {
+      "path": "assets/pack/fx/sprites/explosion_b.png",
+      "w": 96,
+      "h": 82
+    },
+    "magic_circle_b": {
+      "path": "assets/pack/fx/sprites/magic_circle_b.png",
+      "w": 96,
+      "h": 62
+    },
+    "spark_c": {
+      "path": "assets/pack/fx/sprites/spark_c.png",
+      "w": 64,
+      "h": 70
+    },
+    "spark_d": {
+      "path": "assets/pack/fx/sprites/spark_d.png",
+      "w": 64,
+      "h": 60
+    },
+    "light_beam_b": {
+      "path": "assets/pack/fx/sprites/light_beam_b.png",
+      "w": 96,
+      "h": 99
+    }
+  }
+}
