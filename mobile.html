@@ -2,22 +2,30 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Dungeon Loop</title>
-  <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
+  <title>Dungeon Loop – Mobile</title>
+  <meta name="description" content="Dungeon Loop – 2D-SeitenScroller mit Touch-Steuerung: kämpfe, upgrade, speichere deinen Fortschritt.">
+  <meta name="theme-color" content="#0b0a0e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dungeon Loop">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="stylesheet" href="style.css?v=179">
+  <link rel="stylesheet" href="mobile.css?v=1">
 </head>
-<body>
+<body class="is-mobile-build">
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
 
   <header class="header">
     <h1>Dungeon Loop</h1>
-    <p class="subtitle">Maus auf Gegner = angreifen | Bewegen: <kbd>A</kbd>/<kbd>D</kbd> oder <kbd>←</kbd>/<kbd>→</kbd> | Spezial: <kbd>W</kbd>/<kbd>S</kbd> oder <kbd>↑</kbd>/<kbd>↓</kbd> | U = Upgrades | Esc = Pause</p>
-    <a href="mobile.html" class="platform-switch">📱 Mobile-Version</a>
+    <p class="subtitle">Antippen &amp; über Gegner ziehen = angreifen | Buttons unten = Bewegen &amp; Spezial</p>
+    <a href="index.html" class="platform-switch">🖥 Desktop-Version</a>
   </header>
 
   <main class="container">
@@ -211,6 +219,8 @@
 
     <section class="card game-card hidden" id="game-section">
 
+      <p class="orientation-hint" id="orientation-hint">🔄 Tipp: Gerät drehen oder ⛶ Vollbild für mehr Übersicht</p>
+
       <div class="game-layout">
         <div class="game-frame hidden" id="game-frame">
           <button type="button" class="btn-fullscreen" id="btn-fullscreen" title="Vollbild">⛶</button>
@@ -303,6 +313,25 @@
             </div>
           </div>
 
+          <div class="touch-controls" id="touch-controls">
+            <div class="touch-topbar">
+              <button type="button" class="touch-btn touch-btn-small" id="touch-pause" aria-label="Pause">⏸</button>
+              <button type="button" class="touch-btn touch-btn-small" id="touch-upgrades" aria-label="Upgrades">⚙</button>
+            </div>
+            <div class="touch-dpad">
+              <button type="button" class="touch-btn touch-btn-move" id="touch-left" aria-label="Links">◀</button>
+              <button type="button" class="touch-btn touch-btn-move" id="touch-right" aria-label="Rechts">▶</button>
+            </div>
+            <div class="touch-abilities">
+              <button type="button" class="touch-btn touch-btn-ability" id="touch-ability-0" aria-label="Spezial 1">
+                <span class="touch-ability-label">–</span>
+              </button>
+              <button type="button" class="touch-btn touch-btn-ability" id="touch-ability-1" aria-label="Spezial 2">
+                <span class="touch-ability-label">–</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <aside class="game-sidebar">
@@ -374,5 +403,6 @@
   <script src="abilities.js?v=179"></script>
   <script src="progression.js?v=179"></script>
   <script src="script.js?v=179"></script>
+  <script src="mobile-controls.js?v=1"></script>
 </body>
 </html>

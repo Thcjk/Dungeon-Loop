@@ -1,0 +1,142 @@
+/* Dungeon Loop – Mobile-Zusatzstyles (Touch-Steuerung, Layout-Feinschliff)
+   Wird nur von mobile.html geladen – style.css bleibt unverändert. */
+
+html, body.is-mobile-build {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.is-mobile-build {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.is-mobile-build .header {
+  padding-right: 3rem;
+}
+
+/* Keyboard-Legende ausblenden – auf dem Touch-Build irrelevant */
+body.is-mobile-build .controls-hint { display: none; }
+
+/* Größere Tap-Ziele für Menüs auf kleinen Screens */
+body.is-mobile-build .btn,
+body.is-mobile-build .btn-large,
+body.is-mobile-build .class-btn,
+body.is-mobile-build .input {
+  min-height: 50px;
+}
+
+body.is-mobile-build #game-canvas {
+  touch-action: none;
+  cursor: default;
+}
+
+/* === Touch-Controls-Overlay über dem Canvas === */
+.touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.touch-btn {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.55);
+  border: 2px solid rgba(212, 168, 75, 0.45);
+  color: var(--text);
+  border-radius: 50%;
+  font-family: inherit;
+  line-height: 1;
+}
+.touch-btn:active, .touch-btn.is-pressed {
+  background: rgba(212, 168, 75, 0.35);
+  border-color: var(--gold);
+  transform: scale(0.94);
+}
+
+.touch-topbar {
+  position: absolute;
+  top: 46px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.touch-btn-small {
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+}
+
+.touch-dpad {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+}
+.touch-btn-move {
+  width: 58px;
+  height: 58px;
+  font-size: 1.4rem;
+}
+
+.touch-abilities {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+}
+.touch-btn-ability {
+  width: 58px;
+  height: 58px;
+  flex-direction: column;
+  font-size: 0.46rem;
+  text-align: center;
+  padding: 3px;
+  overflow: hidden;
+}
+.touch-btn-ability.on-cooldown { opacity: 0.45; }
+.touch-btn-ability.no-ability { opacity: 0.25; pointer-events: none; }
+.touch-ability-label {
+  display: block;
+  width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+/* Safe-Area (Notch/Home-Indicator) auf iOS respektieren */
+@supports (padding: max(0px)) {
+  .touch-dpad { left: max(12px, env(safe-area-inset-left)); }
+  .touch-abilities { right: max(12px, env(safe-area-inset-right)); }
+}
+
+/* Sehr schmale Screens: Buttons etwas kleiner */
+@media (max-width: 420px) {
+  .touch-btn-move, .touch-btn-ability { width: 48px; height: 48px; }
+}
+
+.orientation-hint {
+  display: none;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(212, 168, 75, 0.25);
+  background: rgba(40, 30, 16, 0.35);
+}
+@media (orientation: portrait) {
+  .orientation-hint { display: block; }
+}

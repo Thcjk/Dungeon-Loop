@@ -1,0 +1,15 @@
+{
+  "name": "Dungeon Loop",
+  "short_name": "Dungeon Loop",
+  "description": "2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt – mit Touch-Steuerung.",
+  "start_url": "./mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0a0e",
+  "theme_color": "#0b0a0e",
+  "lang": "de",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

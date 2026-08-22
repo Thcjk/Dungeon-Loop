@@ -12,6 +12,11 @@ Dungeon Loop is a **static, vanilla-JS + HTML5 Canvas browser game**. There is n
 ### Lint / test / build
 - None exist. There is no linter, test runner, or build step. CI (`.github/workflows/deploy-pages.yml`) only publishes the static files as-is to GitHub Pages.
 
+### Mobile version
+- `mobile.html` is a touch-friendly build of the same game, served from the repo root alongside `index.html` (same relative paths to `script.js`, `assets/`, `sounds/`, etc. — no duplicated assets). It adds `mobile.css` (touch-control styling, portrait/landscape hint) and `mobile-controls.js` (wires on-screen buttons to the existing global `keys`, `useEquippedAbility`, `togglePause`, `toggleUpgrades` from `script.js` — no changes to `script.js` itself). `manifest.webmanifest` makes it installable ("Add to Home Screen").
+- Both pages link to each other via a small `.platform-switch` link in the header.
+- Aiming/attacking on mobile already works via tap-and-drag on the canvas (the existing pointer events in `script.js` handle mouse and touch identically); only movement (A/D) and abilities (W/S) needed dedicated on-screen buttons.
+
 ### Notes / gotchas
 - A `favicon.ico` 404 in the browser console is expected and harmless (no favicon is shipped).
 - Supabase (cloud save + online leaderboard) is **optional and disabled by default** — `SUPABASE_URL`/`SUPABASE_KEY` in `script.js` are placeholders, so the game uses a local `localStorage` leaderboard. Schema lives in `supabase.sql`.
