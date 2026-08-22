@@ -65,6 +65,19 @@ const DL_RUN_UPGRADES = [
   { id: "executioner", name: "HENKER", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
     tags: ["offense"], desc: "+25% Schaden gegen Gegner unter 20% LP",
     effects: { executioner: true, execHpFrac: 0.2, execDmgAdd: 0.25 } },
+  /* ---- NG+ EXCLUSIVE (ab Loop 3, 15% Chance) ---- */
+  { id: "ng_executioner", name: "HENKER+", rarity: "rare", unique: true, maxStacks: 1, power: 22, ngPlusOnly: true,
+    tags: ["offense", "boss"], desc: "Boss unter 15% LP: +30% Schaden",
+    effects: { executioner: true, execHpFrac: 0.15, execDmgAdd: 0.30, bossOnlyExec: true } },
+  { id: "ng_adaptation", name: "ANPASSUNG", rarity: "rare", unique: true, maxStacks: 1, power: 18, ngPlusOnly: true,
+    tags: ["offense"], desc: "Nach Elite-Treffer: +8% Schaden gegen diesen Elite (6s)",
+    effects: { adaptation: true, adaptDmg: 0.08, adaptDur: 6 } },
+  { id: "ng_corruption_hunter", name: "KORRUPTIONSJÄGER", rarity: "epic", unique: true, maxStacks: 1, power: 28, ngPlusOnly: true,
+    tags: ["offense"], desc: "+20% Schaden in korrupten Welten, −8% sonst",
+    effects: { corruptionHunter: true, corrDmg: 0.20, normalDmgPen: -0.08 } },
+  { id: "ng_undying", name: "UNSTERBLICH", rarity: "legendary", unique: true, maxStacks: 1, power: 40, ngPlusOnly: true,
+    tags: ["defense"], desc: "1× pro Welt: tödlicher Treffer → 15% LP",
+    effects: { undying: true, undyingHpFrac: 0.15 } },
   { id: "adrenaline", name: "ADRENALIN", rarity: "uncommon", unique: true, maxStacks: 1, power: 15,
     tags: ["offense"], desc: "+18% Angriffsgeschwindigkeit unter 30% LP",
     effects: { adrenaline: true, adrHpFrac: 0.3, adrAtkSpdAdd: 0.18 } },
@@ -162,11 +175,54 @@ function dlLooksLikeWorldIndex(n) {
   return n === Math.floor(n) && n >= 0 && n <= 3;
 }
 
+function dlNgPlusRunUpgradeRarePp(loopIndex) {
+  const L = Math.max(0, loopIndex | 0);
+  const ng = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.ngPlus && DL_BALANCE.ngPlus.runUpgrades)
+    ? DL_BALANCE.ngPlus.runUpgrades : {};
+  const arr = ng.rarePlusPpByLoop || [0];
+  const cap = ng.rarePlusPpCap != null ? ng.rarePlusPpCap : 0.06;
+  if (L <= 0) return 0;
+  if (L < arr.length && arr[L] != null) return Math.min(cap, arr[L]);
+  return cap;
+}
+
+function dlApplyNgPlusRarityBoost(table, loopIndex) {
+  const pp = dlNgPlusRunUpgradeRarePp(loopIndex);
+  if (!pp || !table) return table;
+  const out = Object.assign({}, table);
+  const rareKeys = ["rare", "epic", "legendary"];
+  let rareSum = 0;
+  rareKeys.forEach((k) => { rareSum += out[k] || 0; });
+  const lowKeys = ["common", "uncommon"];
+  let lowSum = 0;
+  lowKeys.forEach((k) => { lowSum += out[k] || 0; });
+  if (lowSum <= 0) return out;
+  const take = Math.min(pp, lowSum * 0.9);
+  // Shift probability from common/uncommon into rare+
+  lowKeys.forEach((k) => {
+    if (!out[k]) return;
+    const share = out[k] / lowSum;
+    out[k] = Math.max(0, out[k] - take * share);
+  });
+  if (rareSum <= 0) {
+    out.rare = (out.rare || 0) + take;
+  } else {
+    rareKeys.forEach((k) => {
+      if (!out[k] && k !== "rare") return;
+      const share = (out[k] || 0) / rareSum;
+      out[k] = (out[k] || 0) + take * (share || (k === "rare" ? 1 : 0));
+    });
+  }
+  return out;
+}
+
 function dlRollRunUpgradeRarity(worldOrProgress, rng) {
   const roll = typeof rng === "function" ? rng : Math.random;
-  const table = dlLooksLikeWorldIndex(worldOrProgress)
+  let table = dlLooksLikeWorldIndex(worldOrProgress)
     ? dlRunUpgradeRarityForWorld(worldOrProgress)
     : dlRunUpgradeRarityTable(worldOrProgress);
+  const loop = (typeof game !== "undefined" && game) ? (game.loopIndex | 0) : 0;
+  table = dlApplyNgPlusRarityBoost(table, loop);
   let r = roll();
   for (let i = 0; i < DL_RUN_RARITY_ORDER.length; i++) {
     const key = DL_RUN_RARITY_ORDER[i];
@@ -224,6 +280,7 @@ function dlFilterOfferable(state, rarity, excludeIds, tagPrefer, buildAvoid) {
   const excl = excludeIds instanceof Set ? excludeIds : new Set(excludeIds || []);
   return DL_RUN_UPGRADES.filter((d) => {
     if (excl.has(d.id)) return false;
+    if (d.ngPlusOnly) return false;
     if (rarity && d.rarity !== rarity) return false;
     if (!dlCanOfferRunUpgrade(d, state)) return false;
     if (tagPrefer && tagPrefer.length) {
@@ -294,10 +351,26 @@ function dlSmartDraftRunUpgrades(state, rarityProgress, count, rng) {
   return picked;
 }
 
-/** Post-Boss-Draft: nutzt rarityByWorld[defeatedWorldIndex]. */
+/** Post-Boss-Draft: nutzt rarityByWorld[defeatedWorldIndex] + NG+ Exklusiv-Karten. */
 function dlSmartDraftAfterBoss(state, defeatedWorldIndex, count, rng) {
   const idx = Math.max(0, Math.min(3, defeatedWorldIndex | 0));
-  return dlSmartDraftRunUpgrades(state, idx, count, rng);
+  const draft = dlSmartDraftRunUpgrades(state, idx, count, rng);
+  const roll = typeof rng === "function" ? rng : Math.random;
+  const loop = (typeof game !== "undefined" && game) ? (game.loopIndex | 0) : 0;
+  const ng = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.ngPlus && DL_BALANCE.ngPlus.runUpgrades)
+    ? DL_BALANCE.ngPlus.runUpgrades : {};
+  const fromLoop = ng.exclusiveFromLoop != null ? ng.exclusiveFromLoop : 3;
+  const chance = ng.exclusiveChance != null ? ng.exclusiveChance : 0.15;
+  if (loop >= fromLoop && roll() < chance && draft.length) {
+    const exclusives = DL_RUN_UPGRADES.filter((u) => u.ngPlusOnly);
+    const owned = new Set((state && state.upgrades) || []);
+    const pool = exclusives.filter((u) => !owned.has(u.id) && !draft.some((d) => d.id === u.id));
+    if (pool.length) {
+      const pick = pool[Math.floor(roll() * pool.length)];
+      draft[draft.length - 1] = pick;
+    }
+  }
+  return draft;
 }
 
 /** Freier Reroll: dieselben 3 IDs dürfen nicht erneut erscheinen. */
@@ -447,6 +520,14 @@ function dlComputeRunBonus(state) {
     lastWarrior: false,
     lwHpFrac: 0.2,
     lwImmune: 1.5,
+    undying: false,
+    undyingHpFrac: 0.15,
+    adaptation: false,
+    adaptDmg: 0.08,
+    adaptDur: 6,
+    corruptionHunter: false,
+    corrDmg: 0.20,
+    normalDmgPen: -0.08,
     timeBreaker: false,
     tbChance: 0.1,
     tbIcd: 10,
@@ -541,6 +622,20 @@ function dlComputeRunBonus(state) {
       out.lastWarrior = true;
       if (e.lwHpFrac != null) out.lwHpFrac = e.lwHpFrac;
       if (e.lwImmune != null) out.lwImmune = e.lwImmune;
+    }
+    if (e.undying) {
+      out.undying = true;
+      if (e.undyingHpFrac != null) out.undyingHpFrac = e.undyingHpFrac;
+    }
+    if (e.adaptation) {
+      out.adaptation = true;
+      if (e.adaptDmg != null) out.adaptDmg = e.adaptDmg;
+      if (e.adaptDur != null) out.adaptDur = e.adaptDur;
+    }
+    if (e.corruptionHunter) {
+      out.corruptionHunter = true;
+      if (e.corrDmg != null) out.corrDmg = e.corrDmg;
+      if (e.normalDmgPen != null) out.normalDmgPen = e.normalDmgPen;
     }
     if (e.timeBreaker) {
       out.timeBreaker = true;

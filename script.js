@@ -4,7 +4,7 @@
    A/D = Vor/Zurück | P = Pause
    ============================================ */
 
-const BUILD_ID = "sidescroller-v3-181";
+const BUILD_ID = "sidescroller-v3-184";
 const GAME_VERSION = 4;
 const SAVE_SCHEMA_VERSION = 4;
 const WORLD_LAYOUT_VERSION = 4;
@@ -871,6 +871,10 @@ const game = {
   abilityCastLock: 0,
   /** Loop/NG+ (0 = First Clear) */
   loopIndex: 0,
+  /** Persistente Loop-Meta (Highscores, Mastery, Clear-Boni) */
+  loopMeta: null,
+  /** Run-lokaler Loop-State (Corruption, Encounter-Mod) */
+  runLoopState: null,
   /** Run-Telemetry für Death-Screen / Balancing */
   runStats: null,
   /** Persistente Bestwerte (pro Slot via meta/records) */
@@ -914,7 +918,10 @@ let audioPrefs = {
   musicEnabled: true, sfxEnabled: true,
   musicVolume: 0.32, sfxVolume: 0.55,
   screenShake: true, particles: true,
-  seenTutorial: false
+  seenTutorial: false,
+  explainMechanics: true,
+  shortLoopIntro: true,
+  autoCorruptionIntro: false
 };
 let saveToastTimer = 0;
 
@@ -931,7 +938,7 @@ const LAST_PLAYER_KEY = "dungeon_loop_last_player";
 const LAST_SLOT_KEY = "dungeon_loop_last_slot";
 /** Legacy Highscores (nicht mehr angezeigt) */
 const LOCAL_SCORES_KEY = "dungeon_loop_scores";
-const RUN_SAVE_VERSION = 6;
+const RUN_SAVE_VERSION = 7;
 let runSaveTimer = 0;
 let runSaveDirty = false;
 /** Aktuell gewählter Speicher-Slot (0..2) */
@@ -1537,6 +1544,7 @@ function defaultMeta() {
     saveVersion: SAVE_SCHEMA_VERSION,
     level: 1, xp: 0, totalKills: 0, playTimeMs: 0,
     loopsCleared: 0,
+    loopMeta: (typeof ngCreateEmptyLoopMeta === "function") ? ngCreateEmptyLoopMeta() : {},
     records: (typeof createDefaultRecords === "function") ? createDefaultRecords() : {},
     abilities: {
       warrior: { unlocked: [...DEFAULT_UNLOCKED.warrior], equipped: [DEFAULT_UNLOCKED.warrior[0], null] },
@@ -1559,6 +1567,9 @@ function validateMeta(parsed) {
   base.playTimeMs = Number.isFinite(play) ? Math.max(0, Math.floor(play)) : 0;
   base.saveVersion = SAVE_SCHEMA_VERSION;
   base.loopsCleared = Math.max(0, Math.floor(Number(parsed.loopsCleared) || 0));
+  base.loopMeta = typeof ngMigrateLoopMeta === "function"
+    ? ngMigrateLoopMeta(parsed.loopMeta, base.loopsCleared)
+    : (parsed.loopMeta || base.loopMeta || {});
   if (parsed.records && typeof parsed.records === "object") base.records = parsed.records;
 
   ["warrior", "ranger", "mage"].forEach((ck) => {
@@ -2612,11 +2623,24 @@ function applyEnemyDebuff(e, ab) {
 function tryLastWarrior(h) {
   const rb = getRunBonus();
   const rus = game.runUpgradeState;
-  if (!rb.lastWarrior || !rus || rus.lastWarriorUsed) return false;
-  rus.lastWarriorUsed = true;
   const st = heroStats();
-  h.hp = Math.max(1, Math.floor(st.maxHp * 0.20));
-  h.immuneTimer = 1.5;
+  // Undying (NG+) und Last Warrior – stärkeren Effekt, nicht stackbar
+  const undyingOk = rb.undying && rus && !rus.undyingUsedThisWorld;
+  const lwOk = rb.lastWarrior && rus && !rus.lastWarriorUsed;
+  if (!undyingOk && !lwOk) return false;
+  const undyingFrac = rb.undyingHpFrac != null ? rb.undyingHpFrac : 0.15;
+  const lwFrac = rb.lwHpFrac != null ? rb.lwHpFrac : 0.20;
+  if (undyingOk && (!lwOk || undyingFrac >= lwFrac)) {
+    rus.undyingUsedThisWorld = true;
+    h.hp = Math.max(1, Math.floor(st.maxHp * undyingFrac));
+    h.immuneTimer = 1.2;
+    spawnBurst(h.x + h.w / 2, h.y + h.h / 2, "#e8d5a3", 16, 5);
+    addLog("Unsterblich – überlebt!", "heal");
+    return true;
+  }
+  rus.lastWarriorUsed = true;
+  h.hp = Math.max(1, Math.floor(st.maxHp * lwFrac));
+  h.immuneTimer = rb.lwImmune != null ? rb.lwImmune : 1.5;
   spawnBurst(h.x + h.w / 2, h.y + h.h / 2, "#f1c40f", 16, 5);
   addLog("Letzter Krieger – überlebt!", "heal");
   return true;
@@ -2630,6 +2654,15 @@ function onHeroTookDamage(h, dmgBeforeHp, st) {
   h.regenPause = pause;
   const rus = game.runUpgradeState;
   if (!rus) return;
+  const rbAdapt = getRunBonus();
+  if (rbAdapt.adaptation) {
+    // Markiere zuletzt angreifenden Elite falls vorhanden
+    const elite = (game.enemies || []).find((en) => en && en.isElite && en.hp > 0 && !en.dead);
+    if (elite) {
+      rus.adaptTargetId = elite.id;
+      rus.adaptTimer = rbAdapt.adaptDur != null ? rbAdapt.adaptDur : 6;
+    }
+  }
   rus.noDamageTimer = 0;
   rus.secondWindTimer = 0;
   const rb = getRunBonus();
@@ -2694,6 +2727,12 @@ function enemyAttackPlayer(e, h, st) {
   spawnBurst(hx, hy - 8, "#e74c3c", e.isBoss ? 8 : 5, 3.5);
 
   applyDamageToHero(h, dmg, st);
+  // Vampiric elite
+  if (e.vampiricHeal && (e.vampiricTimer || 0) <= 0) {
+    const heal = Math.max(1, Math.floor(e.maxHp * e.vampiricHeal));
+    e.hp = Math.min(e.maxHp, e.hp + heal);
+    e.vampiricTimer = e.vampiricIcd || 2.5;
+  }
   h.hitFlash = e.isBoss ? 14 : 10;
   h.hurtAnim = 0.28;
   game.screenShake = Math.max(game.screenShake, e.isBoss ? 8 : 5);
@@ -2726,20 +2765,98 @@ function bossSpecialAttack(e, h, st) {
   const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
   const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
   const angle = Math.atan2(hy - ey, hx - ex);
-  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.22, st.defense)));
+  const phase = e.bossPhase || 1;
+  const enraged = !!e.bossEnraged;
+  const dmgMul = 1.22 * (enraged ? 1.08 : 1) * (phase >= 3 ? 1.06 : phase >= 2 ? 1.03 : 1);
+  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * dmgMul, st.defense)));
 
   e.attackAnim = 0.55;
   e.attackWindup = 1;
-  spawnMeleeSlash(ex, ey, angle, { life: 20, range: 70, owner: "enemy", big: true });
-  spawnExplosion(hx, hy - 10, 60);
-  game.screenShake = Math.max(game.screenShake, 10);
+  spawnMeleeSlash(ex, ey, angle, { life: 20, range: 70 + phase * 8, owner: "enemy", big: true });
+  spawnExplosion(hx, hy - 10, 60 + phase * 10);
+  if (phase >= 2 || e.ngPlusVariant) {
+    // NG+ Pattern-Variante: zweiter Slash / Shockwave
+    spawnMeleeSlash(ex, ey, angle + 0.55, { life: 16, range: 55, owner: "enemy", big: true });
+    spawnMeleeSlash(ex, ey, angle - 0.55, { life: 16, range: 55, owner: "enemy", big: true });
+  }
+  game.screenShake = Math.max(game.screenShake, 10 + phase);
   game.critFlash = 0.15;
 
   applyDamageToHero(h, dmg, st);
   h.hitFlash = 16;
   h.hurtAnim = 0.35;
   spawnDamage(hx, hy - 18, dmg, { taken: true, boss: true });
-  addLog(e.name + " – Spezialangriff!", "boss");
+  addLog(e.name + " – Spezialangriff!" + (enraged ? " (ENRAGE)" : (phase >= 3 ? " (P3)" : "")), "boss");
+  emitCombatEvent("enemy_attack");
+}
+
+/** NG+ Boss-Evolution: zusätzliche Attacke (12–18s), Phasespeed, Enrage. */
+function updateBossNgPlus(e, h, st, dt) {
+  if (!e || !e.isBoss) return;
+  const loop = game.loopIndex | 0;
+  const be = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.ngPlus && DL_BALANCE.ngPlus.bossEvolution)
+    ? DL_BALANCE.ngPlus.bossEvolution : {};
+  const unlock = be.unlockLoop != null ? be.unlockLoop : 3;
+  if (loop < unlock) {
+    e.bossPhase = 1;
+    return;
+  }
+  e.ngPlusVariant = true;
+  const hpFrac = e.maxHp > 0 ? (e.hp / e.maxHp) : 1;
+  let phase = 1;
+  if (hpFrac <= 0.55) phase = 2;
+  if (hpFrac <= 0.30) phase = 3;
+  const advLoop = be.advancedPhaseLoop != null ? be.advancedPhaseLoop : 6;
+  const advFrac = be.advancedPhaseHpFrac != null ? be.advancedPhaseHpFrac : 0.25;
+  if (loop >= advLoop && hpFrac <= advFrac) phase = Math.max(phase, 3);
+  // Final Boss (world 4) enrage
+  const isFinal = (game.worldIndex | 0) >= 4;
+  const enrageLoop = be.finalEnrageLoop != null ? be.finalEnrageLoop : 6;
+  const enrageFrac = be.finalEnrageHpFrac != null ? be.finalEnrageHpFrac : 0.20;
+  if (isFinal && loop >= enrageLoop && hpFrac <= enrageFrac) {
+    if (!e.bossEnraged) {
+      e.bossEnraged = true;
+      e.attack = Math.floor(e.attack * (1 + (be.finalEnrageDmg != null ? be.finalEnrageDmg : 0.08)));
+      e.attackInterval = Math.max(0.4, e.attackInterval / (1 + (be.finalEnrageSpeed != null ? be.finalEnrageSpeed : 0.12)));
+      addLog(e.name + " – ENRAGE!", "boss");
+      showAnnouncement("boss", "ENRAGE", e.name, 2.2);
+    }
+  }
+  if (phase !== e.bossPhase) {
+    e.bossPhase = phase;
+    if (typeof ngBossPhaseSpeed === "function" && phase >= 2) {
+      const sp = ngBossPhaseSpeed(loop, phase);
+      e.attackInterval = Math.max(0.4, (e._baseAttackInterval || e.attackInterval) / sp);
+    }
+  }
+  if (!e._baseAttackInterval) e._baseAttackInterval = e.attackInterval;
+  // Neue NG+ Attacke alle 12–18s
+  const iv = be.newAttackInterval || [12, 18];
+  if (e.ngPlusAttackCd == null) {
+    e.ngPlusAttackCd = iv[0] + Math.random() * Math.max(0.1, (iv[1] - iv[0]));
+  }
+  e.ngPlusAttackCd -= dt;
+  if (e.ngPlusAttackCd <= 0 && enemyInCombatRange(e, h)) {
+    e.ngPlusAttackCd = iv[0] + Math.random() * Math.max(0.1, (iv[1] - iv[0]));
+    bossNgPlusExtraAttack(e, h, st);
+  }
+}
+
+function bossNgPlusExtraAttack(e, h, st) {
+  const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+  const ex = e.x + e.w / 2, ey = e.y + e.h / 2;
+  e.attackAnim = 0.7;
+  e.attackWindup = 1;
+  // Telegraphierter Flächenstoß
+  spawnExplosion(hx, hy - 8, 90);
+  spawnImpactRing(hx, hy, 70, "#c0392b", 18);
+  game.screenShake = Math.max(game.screenShake, 12);
+  let dmg = applyShieldToDamage(h, Math.floor(calcPlayerDamage(e.attack * 1.35, st.defense)));
+  applyDamageToHero(h, dmg, st);
+  h.hitFlash = 14;
+  h.hurtAnim = 0.3;
+  spawnDamage(hx, hy - 18, dmg, { taken: true, boss: true });
+  addLog(e.name + " – NG+ Muster!", "boss");
   emitCombatEvent("enemy_attack");
 }
 
@@ -2773,7 +2890,7 @@ function bindEvents() {
     applySettingsFromUI();
     showMenuPanel("home");
   });
-  ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles"].forEach((id) => {
+  ["setting-music-vol","setting-sfx-vol","setting-music-enabled","setting-sfx-enabled","setting-screen-shake","setting-particles","setting-explain-mechanics","setting-short-loop-intro","setting-auto-corruption"].forEach((id) => {
     const el = $(id);
     if (el) el.addEventListener("change", () => applySettingsFromUI());
   });
@@ -2793,6 +2910,7 @@ function bindEvents() {
     hidePauseMenu();
     showUpgrades();
   });
+  bind("btn-pause-loopinfo", () => { openLoopCodex(); });
   bind("btn-pause-menu", () => {
     hidePauseMenu();
     returnToMainMenu();
@@ -2803,6 +2921,17 @@ function bindEvents() {
   bind("btn-gameover-upgrade", goToUpgrades);
   bind("btn-victory-restart", restartFromVictory);
   bind("btn-victory-loop", continueLoopFromVictory);
+  bind("btn-victory-roadmap", () => openLoopRoadmap());
+  bind("btn-menu-roadmap", () => { unlockAudio(); openLoopRoadmap(); });
+  bind("btn-ngplus-intro-next", () => {
+    hideNgPlusIntro();
+    showVictoryPanelContent();
+  });
+  bind("btn-loop-info-start", () => finishLoopInfoAndStart());
+  bind("btn-corruption-enter", () => dismissCorruptionIntro());
+  bind("btn-ng-tip-ok", () => hideNgTip());
+  bind("btn-loop-codex-close", () => hideLoopCodex());
+  bind("btn-loop-roadmap-close", () => hideLoopRoadmap());
   bind("btn-open-upgrades", toggleUpgrades);
   bind("btn-close-upgrades", hideUpgrades);
   bind("btn-reload-leaderboard", () => {});
@@ -3381,6 +3510,9 @@ function syncSettingsUI() {
   setCheck("setting-sfx-enabled", audioPrefs.sfxEnabled !== false);
   setCheck("setting-screen-shake", audioPrefs.screenShake !== false);
   setCheck("setting-particles", audioPrefs.particles !== false);
+  setCheck("setting-explain-mechanics", audioPrefs.explainMechanics !== false);
+  setCheck("setting-short-loop-intro", audioPrefs.shortLoopIntro !== false);
+  setCheck("setting-auto-corruption", !!audioPrefs.autoCorruptionIntro);
   updateAudioToggleUI();
 }
 
@@ -3401,6 +3533,9 @@ function applySettingsFromUI() {
   audioPrefs.sfxEnabled = chk("setting-sfx-enabled", true);
   audioPrefs.screenShake = chk("setting-screen-shake", true);
   audioPrefs.particles = chk("setting-particles", true);
+  audioPrefs.explainMechanics = chk("setting-explain-mechanics", true);
+  audioPrefs.shortLoopIntro = chk("setting-short-loop-intro", true);
+  audioPrefs.autoCorruptionIntro = chk("setting-auto-corruption", false);
   saveAudioPrefs();
   updateAudioToggleUI();
   if (musicTrack) musicTrack.volume = audioPrefs.musicVolume;
@@ -3685,6 +3820,12 @@ function migrateRunData(data) {
   out.clearedBossWorlds = Array.isArray(out.clearedBossWorlds)
     ? out.clearedBossWorlds.map((n) => n | 0).filter((n, i, a) => a.indexOf(n) === i)
     : [];
+  out.runLoopState = typeof ngMigrateRunLoopState === "function"
+    ? ngMigrateRunLoopState(out.runLoopState)
+    : (out.runLoopState || {});
+  if (out.loopIndex == null && out.meta && out.meta.loopsCleared != null) {
+    out.loopIndex = Math.max(0, (out.meta.loopsCleared | 0));
+  }
   return out;
 }
 
@@ -3814,6 +3955,9 @@ function saveActiveRun(force) {
     clearedBossWorlds: Array.isArray(game.clearedBossWorlds) ? game.clearedBossWorlds.slice() : [],
     loopCompleted: !!game.loopCompleted,
     loopIndex: game.loopIndex | 0,
+    runLoopState: game.runLoopState
+      ? JSON.parse(JSON.stringify(game.runLoopState))
+      : (typeof ngCreateRunLoopState === "function" ? ngCreateRunLoopState() : null),
     runGold: game.runGold,
     runXp: game.runXp,
     playerLevel: game.playerLevel,
@@ -3964,6 +4108,10 @@ function resumeRun(data) {
     : [];
   game.loopCompleted = !!data.loopCompleted;
   game.loopIndex = Math.max(0, Math.floor(Number(data.loopIndex) || 0));
+  game.runLoopState = typeof ngMigrateRunLoopState === "function"
+    ? ngMigrateRunLoopState(data.runLoopState)
+    : (data.runLoopState || null);
+  ensureLoopMeta();
   game.runGold = Math.max(0, Math.floor(Number(data.runGold) || 0));
   game.runXp = Math.max(0, Math.floor(Number(data.runXp) || 0));
   game.playerLevel = Math.max(1, Math.floor(Number(data.playerLevel) || 1));
@@ -4542,10 +4690,21 @@ function startRun() {
   $("btn-pause").textContent = "Pause (P)";
   if (typeof resetRunStatsForNewRun === "function") resetRunStatsForNewRun();
   // Kein Run-Upgrade am Start – erst nach Boss-Kill (Welt 1–4)
-  safeSpawnWave();
+  // NG+: Corruption für Welt 1 neu würfeln (Loop Index bleibt nach Tod)
+  ensureRunLoopState();
+  if ((game.loopIndex | 0) > 0) {
+    rollCorruptionForCurrentWorld(true);
+    if ($("corruption-overlay") && !$("corruption-overlay").classList.contains("hidden")) {
+      game._spawnAfterCorruption = true;
+    } else {
+      safeSpawnWave();
+    }
+  } else {
+    safeSpawnWave();
+  }
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Run gestartet – Durchlauf " + ((game.loopIndex | 0) + 1) + ". Boss besiegen → Run-Upgrade → nächste Welt!");
+  addLog("Run gestartet – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Durchlauf " + ((game.loopIndex | 0) + 1))) + ". Boss besiegen → Run-Upgrade → nächste Welt!");
   updateClassHint();
   updateRunButtons();
   markRunSaveDirty();
@@ -4580,6 +4739,8 @@ function resetRun() {
   game.dungeonLevel = 1; game.runGold = 0; game.lastRunGold = 0; game.runXp = 0; game.playerLevel = 1;
   game.worldIndex = 0; game.waveWasBoss = false;
   game.clearedBossWorlds = [];
+  game.runLoopState = typeof ngCreateRunLoopState === "function"
+    ? ngCreateRunLoopState() : { activeCorruption: [], activeEncounterModifier: null };
   game.loopCompleted = false;
   game.monstersDefeated = 0; game.combatLog = []; game.bestLoot = null;
   game.enemies = []; game.projectiles = []; game.particles = []; game.coins = [];
@@ -4694,6 +4855,11 @@ function togglePause() {
   if (game.eventPaused) return;
   const vic = $("victory-panel");
   if (vic && !vic.classList.contains("hidden")) return;
+  if (game._corruptionBlocking) return;
+  const loopInfo = $("loop-info-overlay");
+  if (loopInfo && !loopInfo.classList.contains("hidden")) return;
+  const ngIntro = $("ngplus-intro-overlay");
+  if (ngIntro && !ngIntro.classList.contains("hidden")) return;
   game.isPaused = !game.isPaused;
   $("btn-pause").textContent = game.isPaused ? "Weiter (P)" : "Pause (P)";
   if (game.isPaused) {
@@ -4801,6 +4967,7 @@ function getRunBonus() {
       attackDmgMult: 1, cdrAdd: 0, coinCatchMult: 2, enemyDmgTakenMult: 1,
       executioner: false, adrenaline: false, berserker: false, focus: false,
       chainReaction: false, warMachine: false, lastWarrior: false,
+      undying: false, adaptation: false, corruptionHunter: false,
       secondWind: false, guardLayer: false, ironSkin: false, bloodlust: false
     };
   }
@@ -4818,8 +4985,20 @@ function heroStats() {
   const critCap = caps.critChance || BALANCE.critChanceCap || 0.45;
   const critDmgCap = caps.critDamage || 2.6;
   const lsCap = rb.lifestealCap || caps.lifesteal || 0.10;
-  let hpMult = (rb.maxHpMult || 1) * (eb.maxHpMult || 1);
-  let dmgMult = (rb.damageMult || 1) * (rb.attackDmgMult || 1) * (eb.damageMult || 1) * (1 + (eb.encounterDmgAdd || 0));
+  const corr = typeof getCorruptionBonuses === "function" ? getCorruptionBonuses() : { playerDmg: 1, playerMaxHp: 1, gold: 1 };
+  ensureLoopMeta();
+  const masteryAtk = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_attack") : 0;
+  const masteryHp = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_health") : 0;
+  const masteryAs = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_atkspd") : 0;
+  const masteryCrit = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_crit") : 0;
+  const masteryBoss = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_bossdmg") : 0;
+  const masteryGold = typeof ngMasteryBonus === "function" ? ngMasteryBonus(game.loopMeta, "upgrade_gold") : 0;
+  let hpMult = (rb.maxHpMult || 1) * (eb.maxHpMult || 1) * (corr.playerMaxHp || 1) * (1 + masteryHp);
+  let dmgMult = (rb.damageMult || 1) * (rb.attackDmgMult || 1) * (eb.damageMult || 1) * (1 + (eb.encounterDmgAdd || 0)) * (corr.playerDmg || 1) * (1 + masteryAtk);
+  if (rb.corruptionHunter) {
+    const hasCorr = game.runLoopState && (game.runLoopState.activeCorruption || []).length > 0;
+    dmgMult *= hasCorr ? (1 + (rb.corrDmg != null ? rb.corrDmg : 0.20)) : (1 + (rb.normalDmgPen != null ? rb.normalDmgPen : -0.08));
+  }
   const baseMaxHp = h.maxHp + (lb.hp || 0);
   const maxHp = Math.max(1, Math.floor(baseMaxHp * hpMult));
   let missing = 1 - (h.hp / Math.max(1, maxHp));
@@ -4828,7 +5007,7 @@ function heroStats() {
     const bersPer = rb.bersPer10 != null ? rb.bersPer10 : 0.03;
     dmgMult *= (1 + Math.min(bersMax, Math.floor(missing / 0.1) * bersPer));
   }
-  let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1) * (eb.atkSpdMult || 1);
+  let atkSpd = (h.atkSpeedMult || 1) * (rb.atkSpdMult || 1) * (eb.atkSpdMult || 1) * (1 + masteryAs);
   const adrFrac = rb.adrHpFrac != null ? rb.adrHpFrac : 0.30;
   if (rb.adrenaline && (h.hp / Math.max(1, maxHp)) < adrFrac) {
     atkSpd *= (1 + (rb.adrAtkSpdAdd != null ? rb.adrAtkSpdAdd : 0.18));
@@ -4845,14 +5024,14 @@ function heroStats() {
     attack: (h.attack + (lb.attack || 0)) * dmgMult,
     defense: h.defense + (lb.defense || 0),
     metaArmorDr: Math.min(caps.damageReduction || 0.46, (h.metaArmorDr || 0) + (rb.armorAdd || 0) + tempDr + eventArmor),
-    crit: Math.min(critCap, h.crit + (lb.crit || 0) + (rb.critAdd || 0)),
+    crit: Math.min(critCap, h.crit + (lb.crit || 0) + (rb.critAdd || 0) + masteryCrit),
     critDamage: Math.min(critDmgCap, (h.critDamage || BALANCE.critDamageBase || 1.65) + (rb.critDmgAdd || 0)),
     magicDamage: (h.magicDamage + (lb.magicDamage || 0)) * dmgMult,
     abilityDmgMult: (rb.abilityDmgMult || 1) * (eb.abilityDmgMult || 1),
     maxHp,
     maxMana: h.maxMana + (lb.mana || 0) + (eb.manaAdd || 0),
-    goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1) * (eb.goldMult || 1),
-    bossDamage: Math.min(caps.bossDamage || 0.38, (h.bossDamage || 0) + (rb.bossDmgAdd || 0) + (eb.bossDmgAdd || 0) + (eb.bossElixirBossDmg || 0)),
+    goldBonus: (h.goldBonus + (lb.goldBonus || 0)) * (rb.goldMult || 1) * (eb.goldMult || 1) * (corr.gold || 1) * (1 + masteryGold),
+    bossDamage: Math.min(caps.bossDamage || 0.38, (h.bossDamage || 0) + (rb.bossDmgAdd || 0) + (eb.bossDmgAdd || 0) + (eb.bossElixirBossDmg || 0) + masteryBoss),
     lifesteal: Math.min(lsCap, (h.lifesteal || 0) + (rb.lifestealAdd || 0)),
     lifestealCap: lsCap,
     regen: h.regen || 0,
@@ -4866,6 +5045,10 @@ function heroStats() {
     executioner: !!rb.executioner,
     execHpFrac: rb.execHpFrac != null ? rb.execHpFrac : 0.2,
     execDmgAdd: rb.execDmgAdd != null ? rb.execDmgAdd : 0.25,
+    bossOnlyExec: !!rb.bossOnlyExec,
+    adaptation: !!rb.adaptation,
+    adaptDmg: rb.adaptDmg != null ? rb.adaptDmg : 0.08,
+    undying: !!rb.undying,
     chainReaction: !!rb.chainReaction,
     timeBreaker: !!rb.timeBreaker,
     cdrAdd: rb.cdrAdd || 0
@@ -5035,6 +5218,15 @@ function advanceToNextWorld() {
   showAnnouncement("world", "NEUE WELT", newWorld.name, 3.0);
   playWorldMusic(newWorld);
   emitCombatEvent("world_change");
+  if (game.runUpgradeState) game.runUpgradeState.undyingUsedThisWorld = false;
+  ensureRunLoopState();
+  if ((game.runLoopState.activeCorruption || []).length) {
+    game.runLoopState.corruptionsSurvived = (game.runLoopState.corruptionsSurvived | 0) + 1;
+  }
+  rollCorruptionForCurrentWorld(true);
+  if ($("corruption-overlay") && !$("corruption-overlay").classList.contains("hidden")) {
+    game._spawnAfterCorruption = true;
+  }
 }
 
 /** Glückwunsch – Welten geschafft. Nächster Durchlauf oder Neu starten. */
@@ -5046,43 +5238,105 @@ function completeDungeonLoop() {
   stopLoop();
   hidePauseMenu();
   hideUpgrades();
+  hideEventOverlay();
 
   const earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
   game.lastRunGold = earnedGold;
   game.totalGold = Math.max(0, Math.floor(Number(game.totalGold) || 0) + earnedGold);
   game.runGold = 0;
-  const clearedLoop = (game.loopIndex | 0) + 1;
+  const loopIdx = game.loopIndex | 0;
+  ensureLoopMeta();
+  let bonusGold = 0;
+  if (typeof ngPayLoopClearBonus === "function") {
+    const pay = ngPayLoopClearBonus(game.loopMeta, loopIdx, (amt) => {
+      game.totalGold = Math.max(0, (game.totalGold | 0) + (amt | 0));
+      bonusGold += amt | 0;
+    });
+    bonusGold = pay.paid || bonusGold;
+  }
+  game._victoryBonusGold = bonusGold;
   if (game.meta) {
-    game.meta.loopsCleared = Math.max(game.meta.loopsCleared || 0, clearedLoop);
+    game.meta.loopsCleared = Math.max(game.meta.loopsCleared || 0, loopIdx + 1);
+    game.meta.loopMeta = game.loopMeta;
     saveMeta();
   }
   if (game.playerName) saveLocalPlayer({ quiet: true });
   clearActiveRun();
 
-  const panel = $("victory-panel");
-  if (panel) panel.classList.remove("hidden");
-  const summary = $("victory-summary");
-  if (summary) {
-    summary.textContent =
-      "Durchlauf " + clearedLoop + " geschafft · Level " + game.dungeonLevel +
-      " · " + game.monstersDefeated + " Monster · " + earnedGold + " Gold\n" +
-      "Durchlauf " + (clearedLoop + 1) + ": härter, Upgrades bleiben. Oder Neu starten = von null.";
-  }
-  const lead = $("victory-lead");
-  if (lead) {
-    lead.textContent = clearedLoop <= 1
-      ? "Erster Durchlauf geschafft!"
-      : ("Durchlauf " + clearedLoop + " geschafft!");
-  }
-  addLog("Glückwunsch – Durchlauf " + clearedLoop + " geschafft!", "heal");
-  showAnnouncement("victory", "GLÜCKWUNSCH", "Durchlauf " + clearedLoop, 3.2);
-  emitCombatEvent("world_change");
   $("btn-start-run").disabled = false;
   $("btn-pause").disabled = true;
   updateTotalGold();
   renderUpgradeButtons();
   updateRunButtons();
   tryMenuMusic();
+
+  const disc = typeof ngInfoEnsure === "function" ? ngInfoEnsure(game.loopMeta) : null;
+  if (loopIdx <= 0 && disc && !disc.seenNgPlusIntro) {
+    showNgPlusIntro();
+    return;
+  }
+  showVictoryPanelContent();
+}
+
+function showNgPlusIntro() {
+  const overlay = $("ngplus-intro-overlay");
+  const body = $("ngplus-intro-body");
+  if (!overlay || typeof ngInfoBuildNgPlusIntroHtml !== "function") {
+    showVictoryPanelContent();
+    return;
+  }
+  if (body) body.innerHTML = ngInfoBuildNgPlusIntroHtml();
+  overlay.classList.remove("hidden");
+}
+
+function hideNgPlusIntro() {
+  $("ngplus-intro-overlay")?.classList.add("hidden");
+  ensureLoopMeta();
+  if (typeof ngInfoEnsure === "function") {
+    const d = ngInfoEnsure(game.loopMeta);
+    d.seenNgPlusIntro = true;
+    if (game.meta) game.meta.loopMeta = game.loopMeta;
+    saveMeta();
+  }
+}
+
+function showVictoryPanelContent() {
+  const loopIdx = game.loopIndex | 0;
+  const bonusGold = game._victoryBonusGold | 0;
+  const preview = typeof ngNextLoopPreview === "function" ? ngNextLoopPreview(loopIdx) : null;
+  const rs = game.runLoopState || {};
+  const panel = $("victory-panel");
+  if (panel) panel.classList.remove("hidden");
+  const lead = $("victory-lead");
+  if (lead) {
+    lead.textContent = loopIdx <= 0
+      ? "LOOP CLEARED – First Clear!"
+      : ("LOOP CLEARED – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + loopIdx)));
+  }
+  const summary = $("victory-summary");
+  if (summary) {
+    const lines = [
+      "Kills " + game.monstersDefeated + " · Gold " + (game.lastRunGold | 0) + (bonusGold ? (" · Bonus +" + bonusGold) : ""),
+      "Elites mit Mods: " + (rs.elitesWithMods | 0) + " · Corruptions Survived: " + (rs.corruptionsSurvived | 0) +
+        " · Deaths: " + (rs.deathsThisLoop | 0),
+      preview
+        ? ("Nächster Loop: HP +" + Math.round(preview.hpDelta * 100) + "% · DMG +" + Math.round(preview.dmgDelta * 100) + "% · " + (preview.feature || ""))
+        : ("Nächster Loop härter – Meta bleibt.")
+    ];
+    summary.textContent = lines.join("\n");
+  }
+  const keep = $("victory-keep-reset");
+  if (keep && typeof ngInfoBuildVictoryKeepHtml === "function") {
+    keep.innerHTML = ngInfoBuildVictoryKeepHtml();
+  }
+  const nextEl = $("victory-next-preview");
+  if (nextEl && preview) {
+    nextEl.classList.remove("hidden");
+    nextEl.textContent = preview.label + ": " + (preview.feature || "Mehr Druck.");
+  }
+  addLog("Glückwunsch – " + (typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("Loop " + loopIdx)) + " geschafft!" + (bonusGold ? (" +" + bonusGold + " Bonus-Gold") : ""), "heal");
+  showAnnouncement("victory", "LOOP CLEARED", typeof ngDisplayLabel === "function" ? ngDisplayLabel(loopIdx) : ("LOOP " + loopIdx), 3.2);
+  emitCombatEvent("world_change");
 }
 
 function hideVictoryPanel() {
@@ -5097,6 +5351,9 @@ function wipeProgressKeepIdentity() {
   game.upgrades = emptyUpgrades();
   game.bestLoot = null;
   game.meta = defaultMeta();
+  game.loopIndex = 0;
+  game.loopMeta = typeof ngCreateEmptyLoopMeta === "function" ? ngCreateEmptyLoopMeta() : {};
+  game.runLoopState = typeof ngCreateRunLoopState === "function" ? ngCreateRunLoopState() : {};
   // Alle Klassen auf Start-Fähigkeit – kein Rest von alten Unlocks
   ["warrior", "ranger", "mage"].forEach((ck) => {
     const base = DEFAULT_UNLOCKED[ck] || [];
@@ -5111,24 +5368,67 @@ function wipeProgressKeepIdentity() {
   if (game.playerName) saveLocalPlayer({ quiet: true });
 }
 
-/** Nächster Loop – Upgrades/Gold bleiben, Gegner härter. */
+/** Nächster Loop – zuerst Info-Screen, dann Start. */
 function continueLoopFromVictory() {
   hideVictoryPanel();
   clearActiveRun();
   game.loopCompleted = false;
   game.isDead = false;
-  game.isPaused = false;
   game.loopIndex = (game.loopIndex | 0) + 1;
+  ensureLoopMeta();
+  game.loopMeta.highestLoopReached = Math.max(game.loopMeta.highestLoopReached | 0, game.loopIndex | 0);
+  if (typeof ngUnlockFeaturesForLoop === "function") {
+    ngUnlockFeaturesForLoop(game.loopMeta, game.loopIndex | 0);
+  }
   stopLoop();
   resetRun();
-  try { createHero(); } catch (err) {
-    console.error(err);
-    addLog("Durchlauf-Start fehlgeschlagen – Strg+F5.");
-    return;
-  }
-  game.isRunning = true;
+  game.runUpgradeState = typeof dlCreateEmptyRunUpgradeState === "function"
+    ? dlCreateEmptyRunUpgradeState() : null;
+  game.eventState = typeof dlCreateEmptyEventState === "function"
+    ? dlCreateEmptyEventState() : null;
+  game.runLoopState = typeof ngCreateRunLoopState === "function"
+    ? ngCreateRunLoopState() : { activeCorruption: [], activeEncounterModifier: null };
+  game.clearedBossWorlds = [];
+  game._pendingLoopStart = true;
+  game.isPaused = true;
   $("gameover-panel")?.classList.add("hidden");
   $("game-frame")?.classList.remove("hidden");
+  showLoopInfoScreen(game.loopIndex | 0);
+  saveMeta();
+}
+
+function showLoopInfoScreen(loopIndex) {
+  const overlay = $("loop-info-overlay");
+  const body = $("loop-info-body");
+  const btn = $("btn-loop-info-start");
+  ensureLoopMeta();
+  const seen = typeof ngInfoHasSeenLoop === "function" && ngInfoHasSeenLoop(game.loopMeta, loopIndex);
+  const compact = !!(seen && audioPrefs.shortLoopIntro !== false);
+  if (!overlay || typeof ngInfoBuildLoopIntroHtml !== "function") {
+    finishLoopInfoAndStart();
+    return;
+  }
+  if (body) body.innerHTML = ngInfoBuildLoopIntroHtml(loopIndex, { compact });
+  if (btn) btn.textContent = compact ? "START" : "LOOP STARTEN";
+  overlay.classList.remove("hidden");
+  game.isPaused = true;
+}
+
+function finishLoopInfoAndStart() {
+  $("loop-info-overlay")?.classList.add("hidden");
+  ensureLoopMeta();
+  if (typeof ngInfoMarkLoopSeen === "function") {
+    ngInfoMarkLoopSeen(game.loopMeta, game.loopIndex | 0);
+  }
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+  try { createHero(); } catch (err) {
+    console.error(err);
+    addLog("Loop-Start fehlgeschlagen – Strg+F5.");
+    return;
+  }
+  game._pendingLoopStart = false;
+  game.isPaused = false;
+  game.isRunning = true;
   $("btn-start-run").disabled = true;
   $("btn-pause").disabled = false;
   $("btn-restart").disabled = false;
@@ -5137,16 +5437,211 @@ function continueLoopFromVictory() {
   updateTotalGold();
   renderUpgradeButtons();
   renderAbilityPanel();
-  safeSpawnWave();
+  rollCorruptionForCurrentWorld(true);
+  if (!$("corruption-overlay") || $("corruption-overlay").classList.contains("hidden")) {
+    safeSpawnWave();
+    beginRunLoop();
+  } else {
+    game._spawnAfterCorruption = true;
+  }
   game.combatReady = true;
   playWorldMusic(getWorld());
-  addLog("Durchlauf " + ((game.loopIndex | 0) + 1) + " – Upgrades bleiben, Gegner härter!");
+  const label = typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("LOOP " + (game.loopIndex | 0));
+  addLog(label + " gestartet – Meta bleibt, Run-Power neu!", "boss");
   updateClassHint();
   updateRunButtons();
+  updateHUD();
   markRunSaveDirty();
   saveActiveRun(true);
-  beginRunLoop();
+  saveMeta();
   if (canvas) canvas.focus();
+}
+
+function rollCorruptionForCurrentWorld(showOverlay) {
+  ensureRunLoopState();
+  if (typeof ngRollWorldCorruption !== "function") {
+    game.runLoopState.activeCorruption = [];
+    return;
+  }
+  const list = ngRollWorldCorruption(game.loopIndex | 0);
+  game.runLoopState.activeCorruption = list || [];
+  if (list && list.length && showOverlay) showCorruptionOverlay(list);
+}
+
+function showCorruptionOverlay(list) {
+  const overlay = $("corruption-overlay");
+  const title = $("corruption-title");
+  const body = $("corruption-body");
+  if (!list || !list.length) return;
+  ensureLoopMeta();
+  const first = list[0];
+  const info = (typeof NG_CORRUPTION_INFO !== "undefined" && NG_CORRUPTION_INFO[first.id]) || null;
+  const name = (info && info.name) || (first.effects && first.effects.title) || String(first.id || "KORRUPTION").toUpperCase();
+  const detail = (info && info.detail) || (first.effects && first.effects.desc) || "Die Welt ist korrumpiert.";
+  let extra = "";
+  if (list.length > 1) {
+    const s = list[1];
+    const i2 = (typeof NG_CORRUPTION_INFO !== "undefined" && NG_CORRUPTION_INFO[s.id]) || null;
+    extra = "\n+ " + ((i2 && i2.name) || s.id);
+  }
+  const known = typeof ngInfoIsCorruptionKnown === "function" && ngInfoIsCorruptionKnown(game.loopMeta, first.id);
+  // Discover now (first sight) but tip may still show
+  list.forEach((c) => {
+    if (typeof ngInfoDiscoverCorruption === "function") ngInfoDiscoverCorruption(game.loopMeta, c.id);
+  });
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+
+  if (!overlay) {
+    showAnnouncement("world", "KORRUPTION", name, 2.8);
+    addLog("Korruption: " + name + " – " + detail, "boss");
+    return;
+  }
+  if (title) title.textContent = name + (list.length > 1 ? " +" : "");
+  if (body) body.textContent = detail + extra;
+  overlay.classList.remove("hidden");
+  game.isPaused = true;
+  game._corruptionBlocking = true;
+  addLog("Korruption: " + name, "boss");
+
+  if (known && audioPrefs.autoCorruptionIntro) {
+    clearTimeout(overlay._t);
+    overlay._t = setTimeout(() => dismissCorruptionIntro(), 900);
+  }
+}
+
+function dismissCorruptionIntro() {
+  const overlay = $("corruption-overlay");
+  if (overlay) {
+    clearTimeout(overlay._t);
+    overlay.classList.add("hidden");
+  }
+  game._corruptionBlocking = false;
+  if (!game._pendingLoopStart) game.isPaused = false;
+  if (game._spawnAfterCorruption) {
+    game._spawnAfterCorruption = false;
+    safeSpawnWave();
+    beginRunLoop();
+  }
+  saveMeta();
+}
+
+function showEncounterFlash(mod) {
+  if (!mod) return;
+  const flash = $("ng-enc-flash");
+  const title = $("ng-enc-flash-title");
+  const body = $("ng-enc-flash-body");
+  const info = (typeof NG_ENCOUNTER_INFO !== "undefined" && NG_ENCOUNTER_INFO[mod.id]) || null;
+  const name = (info && info.name) || String(mod.id || "").toUpperCase();
+  const short = (info && info.short) || "Diese Welle ist modifiziert.";
+  if (!flash) {
+    showAnnouncement("world", "MODIFIZIERTE WELLE", name, 2.0);
+    return;
+  }
+  if (title) title.textContent = name;
+  if (body) body.textContent = short;
+  flash.classList.remove("hidden");
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => flash.classList.add("hidden"), 2000);
+}
+
+function queueNgTip(kicker, title, body) {
+  if (audioPrefs.explainMechanics === false) return;
+  if (!game._ngTipQueue) game._ngTipQueue = [];
+  game._ngTipQueue.push({ kicker, title, body });
+  if (!game._ngTipShowing) showNextNgTip();
+}
+
+function showNextNgTip() {
+  const q = game._ngTipQueue || [];
+  if (!q.length) {
+    game._ngTipShowing = false;
+    return;
+  }
+  game._ngTipShowing = true;
+  const tip = q.shift();
+  const overlay = $("ng-tip-overlay");
+  if (!overlay) { game._ngTipShowing = false; return; }
+  const k = $("ng-tip-kicker");
+  const t = $("ng-tip-title");
+  const b = $("ng-tip-body");
+  if (k) k.textContent = tip.kicker || "NEUE MECHANIK";
+  if (t) t.textContent = tip.title || "";
+  if (b) b.textContent = tip.body || "";
+  overlay.classList.remove("hidden");
+}
+
+function hideNgTip() {
+  $("ng-tip-overlay")?.classList.add("hidden");
+  game._ngTipShowing = false;
+  showNextNgTip();
+  saveMeta();
+}
+
+function openLoopCodex() {
+  ensureLoopMeta();
+  const overlay = $("loop-codex-overlay");
+  const body = $("loop-codex-body");
+  if (!overlay || typeof ngInfoBuildCodexHtml !== "function") return;
+  if (body) body.innerHTML = ngInfoBuildCodexHtml(game.loopMeta, game.loopIndex | 0, game.runLoopState);
+  overlay.classList.remove("hidden");
+}
+
+function hideLoopCodex() {
+  $("loop-codex-overlay")?.classList.add("hidden");
+}
+
+function openLoopRoadmap() {
+  ensureLoopMeta();
+  const overlay = $("loop-roadmap-overlay");
+  const body = $("loop-roadmap-body");
+  if (!overlay || typeof ngInfoBuildRoadmapHtml !== "function") return;
+  if (body) body.innerHTML = ngInfoBuildRoadmapHtml(game.loopMeta);
+  overlay.classList.remove("hidden");
+}
+
+function hideLoopRoadmap() {
+  $("loop-roadmap-overlay")?.classList.add("hidden");
+}
+
+function maybeDiscoverEliteMods(enemy) {
+  if (!enemy || !enemy.eliteMods || !enemy.eliteMods.length) return;
+  ensureLoopMeta();
+  if (audioPrefs.explainMechanics === false) return;
+  enemy.eliteMods.forEach((id) => {
+    if (typeof ngInfoDiscoverElite !== "function") return;
+    const first = ngInfoDiscoverElite(game.loopMeta, id);
+    if (!first) return;
+    const info = (typeof NG_ELITE_INFO !== "undefined" && NG_ELITE_INFO[id]) || null;
+    queueNgTip(
+      "NEUER ELITE-MODIFIKATOR",
+      (info && info.name) || String(id).toUpperCase(),
+      (info && info.detail) || (info && info.short) || "Neuer Elite-Modifikator."
+    );
+  });
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+}
+
+function maybeDiscoverEncounterMod(mod) {
+  if (!mod || !mod.id) return;
+  ensureLoopMeta();
+  showEncounterFlash(mod);
+  if (typeof ngInfoDiscoverEncounter === "function") {
+    const first = ngInfoDiscoverEncounter(game.loopMeta, mod.id);
+    if (first && audioPrefs.explainMechanics !== false) {
+      const info = (typeof NG_ENCOUNTER_INFO !== "undefined" && NG_ENCOUNTER_INFO[mod.id]) || null;
+      queueNgTip(
+        "NEUER ENCOUNTER-MODIFIKATOR",
+        (info && info.name) || String(mod.id).toUpperCase(),
+        (info && info.detail) || (info && info.short) || "Modifizierte Welle."
+      );
+    }
+  }
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+}
+
+/** Legacy stub – ersetzt durch Loop-Info-Screen */
+function showLoopStartOverlay(loopIndex) {
+  showLoopInfoScreen(loopIndex);
 }
 
 /** Neu starten nach Sieg: kompletter Fortschritts-Reset, dann Wald Lv.1. */
@@ -5226,7 +5721,35 @@ function getFarmGoldMult() {
 
 function getLoopMult() {
   if (typeof dlLoopEnemyMult === "function") return dlLoopEnemyMult(game.loopIndex || 0);
-  return { hp: 1, atk: 1, gold: 1 };
+  return { hp: 1, atk: 1, gold: 1, budget: 1, speed: 1, atkSpd: 1, xp: 1, eliteChance: 0, bossHp: 1, bossAtk: 1 };
+}
+
+function ensureLoopMeta() {
+  if (!game.meta) ensureMeta();
+  if (!game.meta.loopMeta || typeof game.meta.loopMeta !== "object") {
+    game.meta.loopMeta = typeof ngMigrateLoopMeta === "function"
+      ? ngMigrateLoopMeta(null, game.meta.loopsCleared || 0)
+      : {};
+  }
+  game.loopMeta = game.meta.loopMeta;
+  if (typeof ngInfoEnsure === "function") ngInfoEnsure(game.loopMeta);
+  return game.loopMeta;
+}
+
+function ensureRunLoopState() {
+  if (!game.runLoopState) {
+    game.runLoopState = typeof ngCreateRunLoopState === "function"
+      ? ngCreateRunLoopState() : { activeCorruption: [], activeEncounterModifier: null };
+  }
+  return game.runLoopState;
+}
+
+function getCorruptionBonuses() {
+  ensureRunLoopState();
+  if (typeof ngCorruptionBonuses === "function") {
+    return ngCorruptionBonuses(game.runLoopState.activeCorruption || []);
+  }
+  return { enemyDmg: 1, enemyHp: 1, gold: 1, reward: 1, budget: 1, playerDmg: 1, playerMaxHp: 1 };
 }
 
 function getBossMult(isBoss) {
@@ -5260,23 +5783,31 @@ function getEnemyStats(isBoss, roleTag) {
     ease = entryEase + (1 - entryEase) * (progress / 0.12);
   }
 
+  const corr = typeof getCorruptionBonuses === "function" ? getCorruptionBonuses() : { enemyHp: 1, enemyDmg: 1, gold: 1 };
+  const encMod = (game.runLoopState && game.runLoopState.activeEncounterModifier) || null;
+
   if (isBoss) {
     const bossDef = (typeof dlGetBossDef === "function") ? dlGetBossDef(game.worldIndex) : null;
-    const lp = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.loop) ? DL_BALANCE.loop : {};
-    const L = game.loopIndex | 0;
     let hp = bossDef ? bossDef.hp : 900;
     let atk = bossDef ? bossDef.atk : 13;
     let gold = bossDef ? bossDef.gold : 250;
-    hp *= (1 + L * (lp.bossHpPerLoop || 0.10)) * (loop.hp || 1);
-    atk *= (1 + L * (lp.bossAtkPerLoop || 0.05)) * (loop.atk || 1);
-    gold *= (world.rewardMult || 1) * (loop.gold || 1) * farm;
+    hp *= (loop.bossHp || loop.hp || 1) * (corr.enemyHp || 1);
+    atk *= (loop.bossAtk || loop.atk || 1) * (corr.enemyDmg || 1);
+    gold *= (world.rewardMult || 1) * (loop.gold || 1) * farm * (corr.gold || 1);
+    let speed = 0.52 * (world.speedMult || 1) * (loop.speed || 1);
+    let interval = Math.max(0.55, (1.05 - danger * 0.02) / (loop.atkSpd || 1));
+    // NG+ Boss phase speed (phase 1 baseline mild)
+    if (typeof ngBossPhaseSpeed === "function") {
+      const phaseSp = ngBossPhaseSpeed(game.loopIndex | 0, 1);
+      interval = Math.max(0.45, interval / phaseSp);
+    }
     return {
       hp: Math.floor(hp),
       attack: Math.max(1, Math.floor(atk)),
       gold: Math.floor(gold),
-      xp: Math.floor(((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4)) * 5),
-      speed: 0.52 * (world.speedMult || 1),
-      attackInterval: Math.max(0.7, 1.05 - danger * 0.02),
+      xp: Math.floor(((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4)) * 5 * (loop.xp || 1)),
+      speed,
+      attackInterval: interval,
       role: "boss",
       intensity: 1
     };
@@ -5284,27 +5815,31 @@ function getEnemyStats(isBoss, roleTag) {
 
   const eliteExtra = (roleTag === "elite" && typeof DL_BALANCE !== "undefined")
     ? DL_BALANCE.elite : null;
-  // roles.elite enthält bereits hp/atk-Mults; elite.rewardMult nur für Gold
-  let hp = (E ? E.baseHp : 38) * (world.hpMult || 1) * depthHp * (role.hp || 1) * ease * (loop.hp || 1);
-  let atk = (E ? E.baseAtk : 6) * (world.atkMult || 1) * depthAtk * (role.atk || 1) * ease * (loop.atk || 1);
+  let hp = (E ? E.baseHp : 38) * (world.hpMult || 1) * depthHp * (role.hp || 1) * ease * (loop.hp || 1) * (corr.enemyHp || 1);
+  let atk = (E ? E.baseAtk : 6) * (world.atkMult || 1) * depthAtk * (role.atk || 1) * ease * (loop.atk || 1) * (corr.enemyDmg || 1);
 
   let gold = (E ? E.goldBase : 5) + depth * (E ? E.goldPerDepth : 1.1) + danger * (E ? E.goldPerDanger : 1.6);
-  gold *= (world.rewardMult || 1) * (eliteExtra ? (eliteExtra.rewardMult || 3) : 1) * (loop.gold || 1) * farm;
+  gold *= (world.rewardMult || 1) * (eliteExtra ? (eliteExtra.rewardMult || 3) : 1) * (loop.gold || 1) * farm * (corr.gold || 1);
   gold *= (1 + depth * (E ? E.goldDepthFactor : 0.02));
 
-  const xp = ((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4))
-    * (eliteExtra ? 2.2 : 1);
+  let xp = ((E ? E.xpBase : 10) + depth * (E ? E.xpPerDepth : 1.8) + danger * (E ? E.xpPerDanger : 2.4))
+    * (eliteExtra ? 2.2 : 1) * (loop.xp || 1);
 
-  return {
+  let stats = {
     hp: Math.max(1, Math.floor(hp)),
     attack: Math.max(1, Math.floor(atk)),
     gold: Math.max(1, Math.floor(gold)),
     xp: Math.max(1, Math.floor(xp)),
-    speed: (0.7 * (world.speedMult || 1) * (role.speed || 1)) + depth * 0.008,
-    attackInterval: Math.max(0.66, (1.15 / (role.atkSpeed || 1)) - depth * 0.006 - danger * 0.014),
+    speed: ((0.7 * (world.speedMult || 1) * (role.speed || 1)) + depth * 0.008) * (loop.speed || 1),
+    attackInterval: Math.max(0.5, ((1.15 / (role.atkSpeed || 1)) - depth * 0.006 - danger * 0.014) / (loop.atkSpd || 1)),
     role: roleTag || "basic",
-    intensity: depthHp
+    intensity: depthHp,
+    armor: 0
   };
+  if (encMod && typeof ngApplyEncounterModToStats === "function") {
+    stats = ngApplyEncounterModToStats(stats, encMod);
+  }
+  return stats;
 }
 
 function getWaveSize() {
@@ -5369,6 +5904,25 @@ function spawnWave() {
     ? dlEncounterBudget(world, progress, isBoss, game.loopIndex || 0, breath)
     : getWaveSize();
 
+  // NG+ Encounter Mutation + Corruption Budget
+  ensureRunLoopState();
+  if (!isBoss) {
+    const rolled = (typeof ngRollEncounterModifier === "function")
+      ? ngRollEncounterModifier(game.loopIndex | 0) : null;
+    game.runLoopState.activeEncounterModifier = rolled;
+    if (rolled && rolled.effects && rolled.effects.budget) {
+      budget *= (1 + rolled.effects.budget);
+    }
+    if (rolled) {
+      maybeDiscoverEncounterMod(rolled);
+      addLog("Welle mutiert: " + String(rolled.id).toUpperCase(), "boss");
+    }
+  } else {
+    game.runLoopState.activeEncounterModifier = null;
+  }
+  const corr = getCorruptionBonuses();
+  if (!isBoss && corr.budget && corr.budget !== 1) budget *= corr.budget;
+
   // Event-Challenge Budget-Mods
   let challengeEliteChanceAdd = 0;
   let forceMinElites = 0;
@@ -5398,6 +5952,20 @@ function spawnWave() {
 
   let roles = [];
   const planOpts = { maxEnemies, composition: world.composition || null };
+  // NG+ / Corruption: Composition bias (ranged pressure, overgrowth)
+  const encRoll = game.runLoopState && game.runLoopState.activeEncounterModifier;
+  if (!isBoss && encRoll && encRoll.effects && encRoll.effects.rangedWeightRel) {
+    const comp = Object.assign({}, planOpts.composition || {});
+    comp.ranged = (comp.ranged || 0.35) * (1 + encRoll.effects.rangedWeightRel);
+    planOpts.composition = comp;
+    planOpts.maxRanged = encRoll.effects.maxRanged || 3;
+  }
+  if (!isBoss && corr.tankSupportWeightRel) {
+    const comp = Object.assign({}, planOpts.composition || world.composition || {});
+    comp.tank = (comp.tank || 0.28) * (1 + corr.tankSupportWeightRel);
+    comp.support = (comp.support || 0.18) * (1 + corr.tankSupportWeightRel);
+    planOpts.composition = comp;
+  }
   if (isBoss) {
     roles = [{ tag: "boss", cost: 8 }];
     const plan = (typeof planEncounterRoles === "function")
@@ -5407,8 +5975,8 @@ function spawnWave() {
   } else {
     let eliteChance = world.eliteChance != null ? world.eliteChance : 0.07;
     if (progress >= 0.85) eliteChance += 0.05;
-    eliteChance += (game.loopIndex | 0) * ((typeof DL_BALANCE !== "undefined" && DL_BALANCE.loop)
-      ? (DL_BALANCE.loop.eliteChancePerLoop || 0) : 0);
+    const loopMult = getLoopMult();
+    eliteChance += (loopMult.eliteChance || 0);
     eliteChance += challengeEliteChanceAdd;
     let allowElite = Math.random() < eliteChance || progress >= 0.7 || forceMinElites > 0;
     const plan = (typeof planEncounterRoles === "function")
@@ -5456,7 +6024,9 @@ function spawnWave() {
       ? (DL_BALANCE.rhythm.hardThreshold || 1.2) : 1.2;
     const breathChance = (typeof DL_BALANCE !== "undefined" && DL_BALANCE.rhythm)
       ? (DL_BALANCE.rhythm.breathChance || 0.3) : 0.3;
-    if (game.lastEncounterIntensity >= hardT && Math.random() < breathChance) {
+    const corrBreath = getCorruptionBonuses();
+    const breathAdj = breathChance * (corrBreath.breathChanceMul != null ? corrBreath.breathChanceMul : 1);
+    if (game.lastEncounterIntensity >= hardT && Math.random() < breathAdj) {
       game.breathWavesLeft = (typeof DL_BALANCE !== "undefined" ? DL_BALANCE.rhythm.breathWaves : 1);
     }
   }
@@ -5581,6 +6151,17 @@ function spawnEnemy(isBoss, index, roleTag) {
     hitFlash: 0, anim: Math.random() * 6, dead: false,
     attackTimer: 0, attackAnim: 0, attackWindup: 0
   };
+  // NG+ Elite Modifier
+  if (isElite && typeof ngEliteModCount === "function") {
+    const n = ngEliteModCount(game.loopIndex | 0);
+    if (n > 0) {
+      const mods = ngPickEliteModifiers(n, role);
+      ngApplyEliteModifiers(enemy, mods, game.loopIndex | 0);
+      if (game.runLoopState) game.runLoopState.elitesWithMods = (game.runLoopState.elitesWithMods | 0) + 1;
+      maybeDiscoverEliteMods(enemy);
+    }
+  }
+
   game.enemies.push(enemy);
   pinCharToGround(enemy);
   if (game.currentWave) game.currentWave.enemies.push({ name: enemy.name, isBoss, isElite });
@@ -6159,6 +6740,13 @@ function updateFrame(dt) {
     if (h.tempDrTimer <= 0) h.tempDr = 0;
   }
   if (h.regenPause > 0) h.regenPause -= dt;
+  // Elite vampiric ICD
+  (game.enemies || []).forEach((en) => {
+    if (en && en.vampiricTimer > 0) en.vampiricTimer -= dt;
+  });
+  if (game.runUpgradeState && (game.runUpgradeState.adaptTimer || 0) > 0) {
+    game.runUpgradeState.adaptTimer -= dt;
+  }
   if (st.regen > 0 && (h.regenPause || 0) <= 0) {
     h.hp = Math.min(st.maxHp, h.hp + st.regen * st.maxHp * dt);
   }
@@ -6194,7 +6782,22 @@ function updateFrame(dt) {
 
   // Schwert-Slashes & Effekte altern
   game.meleeSlashes = game.meleeSlashes.filter((s) => { s.life--; return s.life > 0; });
-  game.attackEffects = game.attackEffects.filter((fx) => { fx.life--; return fx.life > 0; });
+  game.attackEffects = game.attackEffects.filter((fx) => {
+    fx.life--;
+    if (fx.life <= 0 && fx.pendingEliteBomb && game.hero && !game.isDead) {
+      const bomb = fx.pendingEliteBomb;
+      const h = game.hero;
+      const hx = h.x + h.w / 2, hy = h.y + h.h / 2;
+      if (Math.hypot(hx - bomb.x, hy - bomb.y) <= (bomb.radius || 70)) {
+        const stB = heroStats();
+        const dmg = Math.max(1, Math.floor(stB.maxHp * (bomb.dmgPct || 0.18)));
+        applyDamageToHero(h, dmg, stB);
+        spawnDamage(hx, hy - 18, dmg, { taken: true });
+        spawnExplosion(bomb.x, bomb.y, bomb.radius || 70, false);
+      }
+    }
+    return fx.life > 0;
+  });
 
   // Gegner – jagen den Helden und greifen in Nahreichweite an
   game.enemies.forEach((e) => {
@@ -6242,8 +6845,26 @@ function updateFrame(dt) {
 
     /** Boss-Spezialangriff in Intervallen */
     if (e.isBoss) {
+      if (typeof updateBossNgPlus === "function") updateBossNgPlus(e, h, st, dt);
+      if (e.ngPlusVariant && !e._bossEvoTipShown) {
+        e._bossEvoTipShown = true;
+        ensureLoopMeta();
+        const d = typeof ngInfoEnsure === "function" ? ngInfoEnsure(game.loopMeta) : null;
+        if (d && !d.discoveredBossEvolutions.basic) {
+          d.discoveredBossEvolutions.basic = true;
+          if (audioPrefs.explainMechanics !== false) {
+            queueNgTip(
+              "BOSS-EVOLUTION",
+              "Neues Angriffsmuster",
+              "Dieser Boss nutzt NG+-Muster. Neue Spezialangriffe erscheinen etwa alle 12–18 Sekunden."
+            );
+          }
+          if (game.meta) game.meta.loopMeta = game.loopMeta;
+        }
+      }
       e.bossSpecialTimer = (e.bossSpecialTimer || 0) + dt;
-      if (e.bossSpecialTimer >= 5.5) {
+      const specialIv = e.bossEnraged ? 4.2 : (e.bossPhase >= 3 ? 4.6 : 5.5);
+      if (e.bossSpecialTimer >= specialIv) {
         e.bossSpecialTimer = 0;
         bossSpecialAttack(e, h, st);
         return;
@@ -6254,7 +6875,8 @@ function updateFrame(dt) {
 
     e.attackTimer += dt;
     const interval = e.attackInterval || 0.75;
-    const windup = 0.22;
+    const corrTel = typeof getCorruptionBonuses === "function" ? getCorruptionBonuses() : {};
+    const windup = 0.22 * Math.max(0.7, 1 + (corrTel.telegraph || 0));
     if (e.attackTimer >= interval - windup) {
       e.attackWindup = Math.min(1, (e.attackTimer - (interval - windup)) / windup);
     }
@@ -6550,6 +7172,26 @@ function rerollRunUpgradeDraft() {
 }
 
 function onEnemyKill(e) {
+  // NG+ Explosive elite telegraph
+  if (e && e.explosiveOnDeath && game.hero) {
+    const ex = e.explosiveOnDeath;
+    game.attackEffects.push({
+      type: "explosion",
+      x: e.x + e.w / 2,
+      y: e.y + e.h / 2,
+      radius: ex.radius || 70,
+      life: Math.floor((ex.delay || 0.9) * 60),
+      maxLife: Math.floor((ex.delay || 0.9) * 60),
+      color: "#e67e22",
+      pendingEliteBomb: {
+        dmgPct: ex.dmgPctMaxHp || 0.18,
+        radius: ex.radius || 70,
+        x: e.x + e.w / 2,
+        y: e.y + e.h / 2
+      }
+    });
+    addLog("Explosive Elite – Explosion!", "damage");
+  }
   const st = heroStats();
   let goldMult = st.goldBonus;
   if (e.isElite && st.eliteGoldMult) goldMult *= st.eliteGoldMult;
@@ -6604,6 +7246,8 @@ function onDeath() {
   if (!game.upgradeBoughtThisRun) {
     game.emptyUpgradeRuns = (game.emptyUpgradeRuns | 0) + 1;
   }
+  ensureRunLoopState();
+  game.runLoopState.deathsThisLoop = (game.runLoopState.deathsThisLoop | 0) + 1;
   // Gold aus dem Run sichern – Mindest-Belohnung gegen wertlose Runs
   let earnedGold = Math.max(0, Math.floor(Number(game.runGold) || 0));
   const cheapestCosts = UPGRADES.map((u) => {
@@ -6631,6 +7275,11 @@ function onDeath() {
     game.eventState = typeof dlCreateEmptyEventState === "function" ? dlCreateEmptyEventState() : null;
   }
   game.eventLootBonus = null;
+  // Loop Index bleibt – nur temporäre Loop-Buffs/Corruption resetten
+  const deathsKeep = game.runLoopState.deathsThisLoop | 0;
+  game.runLoopState = typeof ngCreateRunLoopState === "function"
+    ? ngCreateRunLoopState() : { activeCorruption: [], activeEncounterModifier: null };
+  game.runLoopState.deathsThisLoop = deathsKeep;
   addMetaXp(Math.floor(game.playerLevel * 1.5) + Math.floor(game.monstersDefeated / 5));
   saveMeta();
   savePlayer();
@@ -6640,7 +7289,8 @@ function onDeath() {
   if (typeof finalizeRunRecordsOnDeath === "function") {
     game._lastDeathData = finalizeRunRecordsOnDeath("hp");
   }
-  addLog("Game Over! +" + earnedGold + " Gold gesichert.", "death");
+  addLog("Game Over! +" + earnedGold + " Gold gesichert. " +
+    (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Loop " + ((game.loopIndex | 0) + 1))) + " bleibt.", "death");
   let deathT = 0;
   function deathFrame(now) {
     deathT += 16;
@@ -6667,11 +7317,35 @@ function showGameOver() {
   const prevProgress = deathData?.prevProgress ?? 0;
 
   $("gameover-panel").classList.remove("hidden");
+  const titleEl = $("gameover-title");
+  if (titleEl) {
+    titleEl.textContent = (game.loopIndex | 0) > 0
+      ? ((typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("LOOP " + (game.loopIndex | 0))) + " – RUN BEENDET")
+      : "SPIEL VORBEI";
+  }
   const summaryEl = $("gameover-summary");
   if (summaryEl) {
     summaryEl.textContent = (typeof buildGameOverRichHtml === "function" && rs)
       ? buildGameOverRichHtml(rs, rec || {}, prevProgress, earnedGold)
       : (world.name + " · Level " + game.dungeonLevel + "\n" + earnedGold + " Gold · " + game.monstersDefeated + " Kills");
+  }
+
+  const loopInfoEl = $("gameover-loop-info");
+  if (loopInfoEl) {
+    if ((game.loopIndex | 0) > 0) {
+      loopInfoEl.classList.remove("hidden");
+      loopInfoEl.textContent =
+        "Erreichte Welt: " + (world.name || "?") + "\n" +
+        "Gold gesichert: " + earnedGold + "\n" +
+        "Run-Upgrades verloren · Event-Effekte verloren\n" +
+        "Loop-Fortschritt dieser Run zurückgesetzt.\n\n" +
+        "Dein Loop bleibt freigeschaltet.\n" +
+        "Neuer Versuch startet wieder in Welt 1 von " +
+        (typeof ngDisplayLabel === "function" ? ngDisplayLabel(game.loopIndex | 0) : ("Loop " + (game.loopIndex | 0))) + ".";
+    } else {
+      loopInfoEl.classList.add("hidden");
+      loopInfoEl.textContent = "";
+    }
   }
 
   const nextEl = $("gameover-next");
@@ -6835,6 +7509,18 @@ function render() {
     ctx.fillStyle = "#111"; ctx.fillRect(barX, barY, barW, 4);
     ctx.fillStyle = e.isBoss ? "#f1c40f" : "#e74c3c";
     ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), 4);
+    if (e.isElite && e.eliteMods && e.eliteMods.length) {
+      const label = typeof ngInfoEliteLabel === "function"
+        ? ngInfoEliteLabel(e.eliteMods)
+        : ("ELITE – " + e.eliteMods.join("/").toUpperCase());
+      ctx.font = "bold 9px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillRect(vb.x + vb.w / 2 - ctx.measureText(label).width / 2 - 3, barY - 12, ctx.measureText(label).width + 6, 11);
+      ctx.fillStyle = "#f2e6c8";
+      ctx.fillText(label, vb.x + vb.w / 2, barY - 3);
+      ctx.textAlign = "left";
+    }
     if (e.attackWindup > 0.4) {
       ctx.fillStyle = "rgba(231,76,60," + (e.attackWindup * 0.7) + ")";
       ctx.font = "bold 9px Courier New";
@@ -7031,7 +7717,12 @@ function updateHUD() {
   $("hud-xp-text").textContent = formatHudRatio(game.runXp, xpNeed);
   $("hud-gold").textContent = formatHudInt(game.runGold);
   $("hud-level").textContent = game.dungeonLevel;
-  $("hud-world").textContent = world.name + " ☠" + world.danger;
+  const loopLabel = typeof ngDisplayLabel === "function"
+    ? ngDisplayLabel(game.loopIndex | 0)
+    : ((game.loopIndex | 0) <= 0 ? "ERSTER DURCHLAUF" : ("LOOP " + (game.loopIndex | 0)));
+  $("hud-world").textContent = world.name + " · " + loopLabel;
+  const loopHud = $("hud-loop");
+  if (loopHud) loopHud.textContent = loopLabel;
   const alive = game.enemies.filter((e) => e.hp > 0 && !e.dead).length;
   const hudEn = $("hud-enemies");
   if (hudEn) hudEn.textContent = alive;
@@ -7073,8 +7764,23 @@ function updateStatus() {
 // ============================================
 
 function generateLoot() {
-  let roll = Math.random(), cum = 0, rarity = RARITIES[0];
-  for (const r of RARITIES) { cum += r.chance; if (roll <= cum) { rarity = r; break; } }
+  const loop = (typeof getLoopMult === "function") ? getLoopMult() : {};
+  const corr = typeof getCorruptionBonuses === "function" ? getCorruptionBonuses() : {};
+  let rareBoost = (loop.rarePlusPp || 0) + ((corr.rarePlusRel || 0) * 0.08);
+  let legendBoost = loop.legendaryPp || 0;
+  // Build weighted table with NG+ loot quality
+  const weights = RARITIES.map((r, i) => {
+    let c = r.chance;
+    if (i >= 1) c += rareBoost * (i === 1 ? 0.45 : i === 2 ? 0.30 : i === 3 ? 0.18 : 0.07);
+    if (r.name === "Legendär" || r.name === "Mythisch") c += legendBoost * (r.name === "Legendär" ? 0.7 : 0.3);
+    return Math.max(0.001, c);
+  });
+  const sum = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * sum, cum = 0, rarity = RARITIES[0];
+  for (let i = 0; i < RARITIES.length; i++) {
+    cum += weights[i];
+    if (roll <= cum) { rarity = RARITIES[i]; break; }
+  }
 
   const types = LOOT_TYPES_BY_CLASS[game.classKey] || LOOT_TYPES_BY_CLASS.warrior;
   const baseType = types[Math.floor(Math.random() * types.length)];
@@ -7197,8 +7903,79 @@ function renderUpgradeButtons() {
         '<span class="upgrade-cost">' + (maxed ? "MAX" : cost + " 🪙") + '</span>';
       btn.onclick = () => buyUpgrade(up.key);
       grid.appendChild(btn);
+      // Mastery nach Meta-Max (Loop 3+)
+      if (maxed && typeof ngCanBuyMastery === "function" &&
+          ngCanBuyMastery(game.loopMeta, game.loopIndex | 0, up.key)) {
+        const mCost = ngMasteryCost(game.loopMeta, up.key);
+        const mLv = ngMasteryLevel(game.loopMeta, up.key);
+        const mBtn = document.createElement("button");
+        mBtn.className = "upgrade-btn mastery";
+        mBtn.disabled = getSpendableGold() < mCost;
+        mBtn.innerHTML =
+          '<span class="upgrade-info">' +
+            '<span class="upgrade-name">Mastery ' + up.label + '</span>' +
+            '<span class="upgrade-level">Stufe ' + mLv + "/2</span>" +
+            '<span class="upgrade-tip-text">Endgame-Sink ab Loop 3</span>' +
+          '</span>' +
+          '<span class="upgrade-cost">' + mCost + " 🪙</span>";
+        mBtn.onclick = () => buyMastery(up.key);
+        grid.appendChild(mBtn);
+      }
     });
   });
+  // Extra Mastery-Keys ohne eigenes Meta-Upgrade (AtkSpd / BossDmg)
+  renderExtraMasteryButtons(grid);
+}
+
+const MASTERY_EXTRA = [
+  { key: "upgrade_atkspd", label: "Angriffsgeschwindigkeit" },
+  { key: "upgrade_bossdmg", label: "Boss-Schaden" }
+];
+
+function renderExtraMasteryButtons(grid) {
+  if (!grid || typeof ngCanBuyMastery !== "function") return;
+  const loop = game.loopIndex | 0;
+  ensureLoopMeta();
+  const extras = MASTERY_EXTRA.filter((m) => ngCanBuyMastery(game.loopMeta, loop, m.key));
+  if (!extras.length) return;
+  const head = document.createElement("div");
+  head.className = "upgrade-cat";
+  head.textContent = "MASTERY";
+  grid.appendChild(head);
+  extras.forEach((m) => {
+    const mCost = ngMasteryCost(game.loopMeta, m.key);
+    const mLv = ngMasteryLevel(game.loopMeta, m.key);
+    const mBtn = document.createElement("button");
+    mBtn.className = "upgrade-btn mastery";
+    mBtn.disabled = getSpendableGold() < mCost;
+    mBtn.innerHTML =
+      '<span class="upgrade-info">' +
+        '<span class="upgrade-name">Mastery ' + m.label + '</span>' +
+        '<span class="upgrade-level">Stufe ' + mLv + "/2</span>" +
+        '<span class="upgrade-tip-text">Nur NG+ / Loop 3+</span>' +
+      '</span>' +
+      '<span class="upgrade-cost">' + mCost + " 🪙</span>";
+    mBtn.onclick = () => buyMastery(m.key);
+    grid.appendChild(mBtn);
+  });
+}
+
+async function buyMastery(k) {
+  ensureLoopMeta();
+  if (typeof ngCanBuyMastery !== "function" || !ngCanBuyMastery(game.loopMeta, game.loopIndex | 0, k)) return;
+  const cost = ngMasteryCost(game.loopMeta, k);
+  if (cost == null || getSpendableGold() < cost) return;
+  spendGold(cost);
+  const res = ngBuyMastery(game.loopMeta, k);
+  if (!res.ok) return;
+  if (game.meta) game.meta.loopMeta = game.loopMeta;
+  addLog("Mastery " + k + " → Stufe " + res.level + "!", "heal");
+  if (game.hero && !game.isDead) refreshHeroFromUpgrades();
+  await savePlayer();
+  saveMeta();
+  updateTotalGold();
+  renderUpgradeButtons();
+  if (game.isRunning && !game.isDead) { markRunSaveDirty(); saveActiveRun(true); }
 }
 
 async function buyUpgrade(k) {

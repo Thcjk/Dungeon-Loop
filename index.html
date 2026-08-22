@@ -9,7 +9,7 @@
   <title>Dungeon Loop</title>
   <meta name="description" content="Dungeon Loop – 2D-SeitenScroller: kämpfe, upgrade, speichere deinen Fortschritt.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=181">
+  <link rel="stylesheet" href="style.css?v=184">
 </head>
 <body>
   <div id="save-indicator" class="save-indicator hidden" aria-live="polite">Gespeichert</div>
@@ -34,6 +34,7 @@
               <button type="button" class="btn btn-gold btn-large" id="btn-menu-new">Neues Spiel</button>
               <button type="button" class="btn btn-secondary btn-large" id="btn-menu-load">Spielstand laden</button>
               <button type="button" class="btn btn-secondary btn-large" id="btn-menu-settings">Einstellungen</button>
+              <button type="button" class="btn btn-secondary btn-large" id="btn-menu-roadmap">Loop-Roadmap</button>
               <button type="button" class="btn btn-secondary btn-large" id="btn-menu-credits">Mitwirkende</button>
             </div>
             <div id="home-slot-preview" class="save-slot-list save-slot-list--preview"></div>
@@ -59,6 +60,10 @@
           <label class="settings-row"><span>Effektlautstärke</span><input type="range" id="setting-sfx-vol" min="0" max="100" value="55"></label>
           <label class="settings-row"><span>Bildschirmwackeln</span><input type="checkbox" id="setting-screen-shake" checked></label>
           <label class="settings-row"><span>Partikel</span><input type="checkbox" id="setting-particles" checked></label>
+          <h3 class="settings-section-title">Tutorial &amp; Hinweise</h3>
+          <label class="settings-row"><span>Neue Mechaniken erklären</span><input type="checkbox" id="setting-explain-mechanics" checked></label>
+          <label class="settings-row"><span>Bekannte Loop-Intros verkürzen</span><input type="checkbox" id="setting-short-loop-intro" checked></label>
+          <label class="settings-row"><span>Korruptions-Intro automatisch schließen</span><input type="checkbox" id="setting-auto-corruption"></label>
         </div>
         <div class="menu-actions menu-actions--row">
           <button type="button" class="btn btn-secondary" id="btn-settings-back">Zurück</button>
@@ -243,6 +248,7 @@
                 <div class="hud-stat world-name" id="hud-world">Wald</div>
               </div>
               <div class="hud-event-icons hidden" id="hud-event-icons"></div>
+              <div class="hud-loop" id="hud-loop">LOOP 1</div>
             </div>
           </div>
 
@@ -264,6 +270,7 @@
               <div class="pause-actions">
                 <button type="button" class="btn btn-primary btn-large" id="btn-pause-resume">Weiter</button>
                 <button type="button" class="btn btn-gold btn-large" id="btn-pause-upgrades">Upgrades &amp; Fähigkeiten</button>
+                <button type="button" class="btn btn-secondary btn-large" id="btn-pause-loopinfo">Loop-Information</button>
                 <button type="button" class="btn btn-secondary btn-large" id="btn-pause-menu">Hauptmenü</button>
               </div>
               <div id="pause-event-effects" class="pause-event-effects"></div>
@@ -273,8 +280,9 @@
 
           <div class="gameover-overlay hidden" id="gameover-panel">
             <div class="gameover-content">
-              <h2 class="gameover-title">SPIEL VORBEI</h2>
+              <h2 class="gameover-title" id="gameover-title">SPIEL VORBEI</h2>
               <p class="gameover-summary" id="gameover-summary"></p>
+              <p class="gameover-loop-info hidden" id="gameover-loop-info"></p>
               <p class="gameover-next" id="gameover-next"></p>
               <p class="gameover-score">Punkte: <strong id="final-score">0</strong></p>
               <div class="gameover-actions">
@@ -289,9 +297,12 @@
               <h2 class="victory-title">GLÜCKWUNSCH</h2>
               <p class="victory-lead" id="victory-lead">Erster Durchlauf geschafft!</p>
               <p class="victory-summary" id="victory-summary"></p>
-              <p class="victory-hint">Nächster Durchlauf = Upgrades behalten, härtere Gegner. Neu starten = alles zurücksetzen.</p>
+              <div class="victory-keep-reset" id="victory-keep-reset"></div>
+              <p class="victory-next-preview hidden" id="victory-next-preview"></p>
+              <p class="victory-hint">Nächster Loop = Meta behalten, Run-Power neu. Neu starten = alles zurücksetzen.</p>
               <div class="victory-actions">
-                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Durchlauf</button>
+                <button type="button" class="btn btn-primary btn-large" id="btn-victory-loop">Nächster Loop</button>
+                <button type="button" class="btn btn-secondary" id="btn-victory-roadmap">Loop-Roadmap</button>
                 <button type="button" class="btn btn-gold btn-large" id="btn-victory-restart">Neu starten</button>
               </div>
             </div>
@@ -303,6 +314,78 @@
               <p class="run-upgrade-hint">Welt geschafft – wähle ein Run-Upgrade für die nächste Welt.</p>
               <div class="run-upgrade-choices" id="run-upgrade-choices"></div>
               <button type="button" class="btn btn-secondary" id="run-upgrade-reroll">Neu würfeln</button>
+            </div>
+          </div>
+
+          <!-- NG+ First-Clear Intro -->
+          <div class="ng-info-overlay hidden" id="ngplus-intro-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="ngplus-intro-body"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-ngplus-intro-next">NG+ ANSEHEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loop start info (blocking) -->
+          <div class="ng-info-overlay hidden" id="loop-info-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-info-body"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-loop-info-start">LOOP STARTEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- First-encounter tip -->
+          <div class="ng-tip-overlay hidden" id="ng-tip-overlay">
+            <div class="ng-tip-content">
+              <div class="ng-tip-kicker" id="ng-tip-kicker">NEUE MECHANIK</div>
+              <h3 class="ng-tip-title" id="ng-tip-title"></h3>
+              <p class="ng-tip-body" id="ng-tip-body"></p>
+              <button type="button" class="btn btn-primary" id="btn-ng-tip-ok">VERSTANDEN</button>
+            </div>
+          </div>
+
+          <!-- Encounter flash -->
+          <div class="ng-enc-flash hidden" id="ng-enc-flash">
+            <div class="ng-enc-flash-kicker">MODIFIZIERTE WELLE</div>
+            <div class="ng-enc-flash-title" id="ng-enc-flash-title"></div>
+            <div class="ng-enc-flash-body" id="ng-enc-flash-body"></div>
+          </div>
+
+          <!-- Corruption intro (blocking) -->
+          <div class="ng-info-overlay corruption-theme hidden" id="corruption-overlay">
+            <div class="ng-info-content">
+              <div class="ng-info-head">
+                <div class="ng-info-kicker">🌀 KORRUPTION</div>
+                <h2 class="ng-info-title" id="corruption-title">BLUTMOND</h2>
+              </div>
+              <p class="corruption-body" id="corruption-body"></p>
+              <p class="ng-note">Höheres Risiko = höhere Belohnung</p>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-primary btn-large" id="btn-corruption-enter">WELT BETRETEN</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pause Loop Codex -->
+          <div class="ng-info-overlay hidden" id="loop-codex-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-codex-body" class="ng-scroll"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-secondary" id="btn-loop-codex-close">Schließen</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roadmap -->
+          <div class="ng-info-overlay hidden" id="loop-roadmap-overlay">
+            <div class="ng-info-content ng-info-wide">
+              <div id="loop-roadmap-body" class="ng-scroll"></div>
+              <div class="ng-info-actions">
+                <button type="button" class="btn btn-secondary" id="btn-loop-roadmap-close">Schließen</button>
+              </div>
             </div>
           </div>
 
@@ -374,19 +457,21 @@
   </main>
 
   <footer class="footer"><p>Dungeon Loop · Build <span class="footer-build">sidescroller-v3-179</span> · Offline-fähig</p></footer>
-  <script src="asset-pack.js?v=181"></script>
-  <script src="world-config.js?v=181"></script>
-  <script src="world-render.js?v=181"></script>
-  <script src="visual-enemies.js?v=181"></script>
-  <script src="visual-fx.js?v=181"></script>
-  <script src="pack-fx.js?v=181"></script>
-  <script src="visual-sprites.js?v=181"></script>
-  <script src="hero-render.js?v=181"></script>
-  <script src="balance.js?v=181"></script>
-  <script src="events.js?v=181"></script>
-  <script src="run-upgrades.js?v=181"></script>
-  <script src="abilities.js?v=181"></script>
-  <script src="progression.js?v=181"></script>
-  <script src="script.js?v=181"></script>
+  <script src="asset-pack.js?v=184"></script>
+  <script src="world-config.js?v=184"></script>
+  <script src="world-render.js?v=184"></script>
+  <script src="visual-enemies.js?v=184"></script>
+  <script src="visual-fx.js?v=184"></script>
+  <script src="pack-fx.js?v=184"></script>
+  <script src="visual-sprites.js?v=184"></script>
+  <script src="hero-render.js?v=184"></script>
+  <script src="balance.js?v=184"></script>
+  <script src="events.js?v=184"></script>
+  <script src="ngplus.js?v=184"></script>
+  <script src="ngplus-info.js?v=184"></script>
+  <script src="run-upgrades.js?v=184"></script>
+  <script src="abilities.js?v=184"></script>
+  <script src="progression.js?v=184"></script>
+  <script src="script.js?v=184"></script>
 </body>
 </html>
