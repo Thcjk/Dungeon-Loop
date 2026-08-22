@@ -105,6 +105,45 @@ if (report.upgradeTotals) {
 const runsForAttack = Math.ceil(report.upgradeCosts.attackLv1 / report.sampleRunGold.early);
 console.log("\nRuns to first attack upgrade (early): ~" + runsForAttack);
 
+/* World Events – lightweight profile matrix (§63–64) */
+let eventsMod = null;
+try { eventsMod = require("../events.js"); } catch (_) {}
+if (eventsMod && typeof eventsMod.dlEventsCfg === "function") {
+  const cfg = eventsMod.dlEventsCfg();
+  console.log("\n=== WORLD EVENTS ===");
+  console.log("Enabled: " + !!cfg.enabled);
+  console.log("Base chance: " + (cfg.spawn.baseChance * 100) + "% · Pity cap: " + (cfg.spawn.pityCap * 100) + "%");
+  console.log("Max/world: " + (cfg.limits.maxPerWorld || []).join("/"));
+  console.log("Budget compensation: " + (cfg.budgetCompensation || []).join(", "));
+
+  const profiles = [
+    { name: "Risk-Averse", acceptRisk: 0.15, acceptMerchant: 0.35 },
+    { name: "Average", acceptRisk: 0.50, acceptMerchant: 0.55 },
+    { name: "Greedy", acceptRisk: 0.85, acceptMerchant: 0.70 },
+    { name: "Skilled", acceptRisk: 0.70, acceptMerchant: 0.50 }
+  ];
+  const riskTypes = new Set(["cursed_altar", "elite_challenge", "blood_pact", "fate_gate", "golden_enemy"]);
+  console.log("\nEvent acceptance profiles (heuristic power delta / world):");
+  profiles.forEach((p) => {
+    let power = 0;
+    let events = 0;
+    for (let w = 0; w < 5; w++) {
+      const maxE = (cfg.limits.maxPerWorld || [2])[w] || 2;
+      const worldMult = (cfg.spawn.worldChanceMult || [1])[w] || 1;
+      const expected = Math.min(maxE, 12 * cfg.spawn.baseChance * worldMult * 1.1);
+      events += expected;
+      // Rough: accepted risk events give ~8% power with tradeoff
+      const accept = p.acceptRisk;
+      power += expected * 0.45 * accept * 0.08;
+      power += expected * 0.18 * p.acceptMerchant * 0.03; // merchant minor
+    }
+    const pct = (power * 100).toFixed(1);
+    console.log("  " + p.name.padEnd(12) + "~+" + pct + "% avg power · ~" + events.toFixed(1) + " events/run");
+  });
+  console.log("Target avg event power W1–W5: 0–5 / 3–8 / 5–10 / 6–12 / 7–13 %");
+  console.log("First-clear impact target (Average): −3% … +5% vs baseline");
+}
+
 if (report.warnings.length) {
   console.log("\n⚠ WARNINGS:");
   report.warnings.forEach((w) => console.log("  - " + w));
